@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">대시보드</h2>
+    <div class="flex space-x-2">
+        <!-- Add Task Modal Trigger -->
+        <button onclick="document.getElementById('taskModal').classList.remove('hidden')"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm text-sm font-medium">
+            + 새 업무
+        </button>
+    </div>
+</div>
+
+<!-- Goals Section -->
+<div class="mb-6 space-y-4">
+    <!-- Annual Goal -->
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg p-6 text-white">
+        <h2 class="text-xl font-bold mb-2">2026 전사 목표</h2>
+        <form action="/goals/annual" method="post" class="flex gap-2">
+            <input type="hidden" name="year" value="2026">
+            <input type="text" name="content" value="{{ goals.annual_2026.content if goals.annual_2026 else '' }}"
+                class="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white placeholder-blue-200 outline-none focus:bg-white/20 transition"
+                placeholder="2026년 목표를 입력하세요..." onblur="this.form.submit()">
+        </form>
+    </div>
+
+    <!-- Monthly Goals Summary (Selected Month) -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-gray-800">월별 목표 현황</h3>
+            <!-- Month Selector -->
+            <form action="/" method="get">
+                <select name="target_month" onchange="this.form.submit()"
+                    class="border-none bg-gray-100 rounded-lg px-3 py-1 text-sm font-bold text-gray-700 cursor-pointer focus:ring-0">
+                    {% for m in range(1, 13) %}
+                    <option value="{{ m }}" {% if selected_month==m %}selected{% endif %}>{{ m }}월</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <!-- System Division -->
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-100 flex flex-col gap-3">
+                <h4 class="text-xs font-bold text-blue-600 mb-1 border-b border-blue-200 pb-1">시스템사업부</h4>
+                <div>
+                    <span class="text-xs text-gray-500 block">업무목표</span>
+                    <p class="text-gray-800 font-medium text-sm">
+                        {{ goals.monthly_obj_system.content if goals.monthly_obj_system else '-' }}
+                    </p>
+                </div>
+                <div class="flex gap-4">
+                    <div>
+                        <span class="text-xs text-gray-500 block">매출목표</span>
+                        <p class="text-gray-800 font-bold text-sm">
+                            {{ goals.monthly_perf_system.goal_value if goals.monthly_perf_system else '-' }}
+                        </p>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 block">실적</span>
+                        <p class="text-gray-800 font-bold text-sm">
+                            {{ goals.monthly_perf_system.actual_value if goals.monthly_perf_system else '-' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Distribution Division -->
+            <div class="bg-pink-50 rounded-lg p-4 border border-pink-100 flex flex-col gap-3">
+                <h4 class="text-xs font-bold text-pink-600 mb-1 border-b border-pink-200 pb-1">유통사업부</h4>
+                <div>
+                    <span class="text-xs text-gray-500 block">업무목표</span>
+                    <p class="text-gray-800 font-medium text-sm">
+                        {{ goals.monthly_obj_dist.content if goals.monthly_obj_dist else '-' }}
+                    </p>
+                </div>
+                <div class="flex gap-4">
+                    <div>
+                        <span class="text-xs text-gray-500 block">매출목표</span>
+                        <p class="text-gray-800 font-bold text-sm">
+                            {{ goals.monthly_perf_dist.goal_value if goals.monthly_perf_dist else '-' }}
+                        </p>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 block">실적</span>
+                        <p class="text-gray-800 font-bold text-sm">
+                            {{ goals.monthly_perf_dist.actual_value if goals.monthly_perf_dist else '-' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<form method="get" class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-wrap gap-4 items-end">
+    <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-1">담당자</label>
+        <select name="assignee_id" class="border rounded px-3 py-2 text-sm w-40" onchange="this.form.submit()">
+            <option value="">전체 담당자</option>
+            {% for u in users %}
+            <option value="{{ u.id }}" {% if selected_assignee==u.id %}selected{% endif %}>{{ u.username }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-1">거래처 (프로젝트)</label>
+        <select name="client_id" class="border rounded px-3 py-2 text-sm w-40" onchange="this.form.submit()">
+            <option value="">전체 거래처</option>
+            {% for c in clients %}
+            <option value="{{ c.id }}" {% if selected_client==c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-1">업무 유형</label>
+        <select name="category_id" class="border rounded px-3 py-2 text-sm w-40" onchange="this.form.submit()">
+            <option value="">전체 유형</option>
+            {% for c in categories %}
+            <option value="{{ c.id }}" {% if selected_category==c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="pb-0.5">
+        <a href="/" class="text-sm text-gray-500 hover:text-gray-700 underline">초기화</a>
+    </div>
+</form>
+
+<!-- Kanban Board -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-full pb-10">
+    <!-- Todo Column -->
+    <div class="bg-gray-50 rounded-xl p-4 flex flex-col h-full border border-gray-200">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-gray-700">할 일 (Todo)</h3>
+            <span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full">{{ tasks_todo|length }}</span>
+        </div>
+        <div class="space-y-3 overflow-y-auto flex-1 pr-1">
+            {% for task in tasks_todo %}
+            {% include 'task_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- In Progress Column -->
+    <div class="bg-blue-50 rounded-xl p-4 flex flex-col h-full border border-blue-100">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-blue-800">진행 중 (In Progress)</h3>
+            <span class="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full">{{ tasks_inprogress|length }}</span>
+        </div>
+        <div class="space-y-3 overflow-y-auto flex-1 pr-1">
+            {% for task in tasks_inprogress %}
+            {% include 'task_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Done Column -->
+    <div class="bg-green-50 rounded-xl p-4 flex flex-col h-full border border-green-100">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-green-800">완료 (Done)</h3>
+            <span class="bg-green-200 text-green-800 text-xs px-2 py-1 rounded-full">{{ tasks_done|length }}</span>
+        </div>
+        <div class="space-y-3 overflow-y-auto flex-1 pr-1">
+            {% for task in tasks_done %}
+            {% include 'task_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Create Task Modal -->
+<div id="taskModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">새 업무 만들기</h3>
+            <button onclick="document.getElementById('taskModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <form action="/tasks" method="post" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">업무명</label>
+                <input type="text" name="title" required
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                <textarea name="description" rows="2"
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">상태</label>
+                    <select name="status" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="Todo">예정 (Scheduled)</option>
+                        <option value="In Progress">진행 중</option>
+                        <option value="Done">종료</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">시작일</label>
+                    <input type="date" name="start_date" class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">마감일</label>
+                    <input type="date" name="due_date" class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">담당자</label>
+                    <select name="assignee_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="0">미지정</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">업무 유형</label>
+                    <select name="category_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="0">없음</option>
+                        {% for c in categories %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트</label>
+                <select name="project_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <option value="0">Inbox (프로젝트 없음)</option>
+                    {% for p in projects %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit"
+                class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">생성</button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Task Modal -->
+<div id="editTaskModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">업무 수정</h3>
+            <button onclick="document.getElementById('editTaskModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <form id="editTaskForm" method="post" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">업무명</label>
+                <input type="text" name="title" id="edit_title" required
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                <textarea name="description" id="edit_description" rows="2"
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">상태</label>
+                    <select name="status" id="edit_status" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="Todo">예정 (Scheduled)</option>
+                        <option value="In Progress">진행 중</option>
+                        <option value="Done">종료</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">시작일</label>
+                    <input type="date" name="start_date" id="edit_start_date"
+                        class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">마감일</label>
+                    <input type="date" name="due_date" id="edit_due_date"
+                        class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">담당자</label>
+                    <select name="assignee_id" id="edit_assignee_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="0">미지정</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">업무 유형</label>
+                    <select name="category_id" id="edit_category_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="0">없음</option>
+                        {% for c in categories %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트</label>
+                <select name="project_id" id="edit_project_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <option value="0">Inbox (프로젝트 없음)</option>
+                    {% for p in projects %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit"
+                class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">저장</button>
+        </form>
+
+        <!-- Divider -->
+        <hr class="my-6 border-gray-200">
+
+        <!-- File Upload Section -->
+        <div>
+            <h4 class="font-bold text-gray-800 mb-2">첨부 파일</h4>
+            <ul id="taskFileList" class="mb-4 space-y-2 text-sm text-gray-600">
+                <!-- Dynamically populated -->
+            </ul>
+
+            <form id="taskUploadForm" method="post" enctype="multipart/form-data" class="flex gap-2">
+                <input type="file" name="file" required
+                    class="flex-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <button type="submit"
+                    class="bg-gray-800 text-white text-xs px-3 py-2 rounded hover:bg-gray-700">업로드</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openEditModal(id, title, description, status, assignee_id, start_date, due_date, project_id, category_id, filenames, filepaths) {
+        document.getElementById('edit_title').value = title;
+        document.getElementById('edit_description').value = description;
+        document.getElementById('edit_status').value = status;
+        document.getElementById('edit_assignee_id').value = assignee_id;
+        document.getElementById('edit_start_date').value = start_date;
+        document.getElementById('edit_due_date').value = due_date;
+        document.getElementById('edit_project_id').value = project_id;
+        document.getElementById('edit_category_id').value = category_id;
+
+        document.getElementById('editTaskForm').action = "/tasks/" + id + "/update";
+        document.getElementById('taskUploadForm').action = "/tasks/" + id + "/upload";
+
+        // Populate File List
+        const fileList = document.getElementById('taskFileList');
+        fileList.innerHTML = '';
+
+        if (filenames && filenames.length > 0) {
+            filenames.forEach((name, index) => {
+                const li = document.createElement('li');
+                const link = document.createElement('a');
+                link.href = filepaths[index]; // Use filepath
+                link.textContent = name;
+                link.target = "_blank";
+                link.className = "text-blue-600 hover:underline flex items-center";
+                link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
+                li.appendChild(link);
+                fileList.appendChild(li);
+            });
+        } else {
+            fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
+        }
+
+        document.getElementById('editTaskModal').classList.remove('hidden');
+    }
+</script>
+{% endblock %}

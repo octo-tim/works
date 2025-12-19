@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="h-full flex flex-col">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">프로젝트</h2>
+        <button onclick="document.getElementById('projectModal').classList.remove('hidden')"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm text-sm font-medium">
+            + 새 프로젝트
+        </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto pr-2 space-y-8">
+
+        <!-- Scheduled Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="bg-gray-50 px-6 py-3 border-b border-gray-200 flex items-center">
+                <span class="w-2.5 h-2.5 rounded-full bg-gray-400 mr-2"></span>
+                <h3 class="font-bold text-gray-800">예정 (Scheduled)</h3>
+                <span class="ml-2 bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">{{ scheduled|length
+                    }}</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">프로젝트명</th>
+                            <th scope="col" class="px-6 py-3">거래처</th>
+                            <th scope="col" class="px-6 py-3">기간</th>
+                            <th scope="col" class="px-6 py-3">설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in scheduled %}
+                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
+                            onclick="openEditModal('{{ p.id }}', '{{ p.name }}', '{{ p.description or '' }}', '{{ p.client_id or 0 }}', '{{ p.status }}', '{{ p.start_date or '' }}', '{{ p.end_date or '' }}', {{ p.files|map(attribute='filename')|list }}, {{ p.files|map(attribute='filepath')|list }})">
+                            <td class="px-6 py-4 font-medium text-gray-900">{{ p.name }}</td>
+                            <td class="px-6 py-4">
+                                {% if p.client %}
+                                <span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-bold">{{
+                                    p.client.name }}</span>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {{ p.start_date }} ~ {{ p.end_date }}
+                            </td>
+                            <td class="px-6 py-4 truncate max-w-xs">{{ p.description or '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-400">등록된 프로젝트가 없습니다.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- In Progress Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="bg-blue-50 px-6 py-3 border-b border-blue-100 flex items-center">
+                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 mr-2"></span>
+                <h3 class="font-bold text-blue-800">진행 중 (In Progress)</h3>
+                <span class="ml-2 bg-blue-200 text-blue-800 text-xs px-2 py-0.5 rounded-full">{{ inprogress|length
+                    }}</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">프로젝트명</th>
+                            <th scope="col" class="px-6 py-3">거래처</th>
+                            <th scope="col" class="px-6 py-3">기간</th>
+                            <th scope="col" class="px-6 py-3">설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in inprogress %}
+                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
+                            onclick="openEditModal('{{ p.id }}', '{{ p.name }}', '{{ p.description or '' }}', '{{ p.client_id or 0 }}', '{{ p.status }}', '{{ p.start_date or '' }}', '{{ p.end_date or '' }}', {{ p.files|map(attribute='filename')|list }}, {{ p.files|map(attribute='filepath')|list }})">
+                            <td class="px-6 py-4 font-medium text-gray-900">{{ p.name }}</td>
+                            <td class="px-6 py-4">
+                                {% if p.client %}
+                                <span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-bold">{{
+                                    p.client.name }}</span>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {{ p.start_date }} ~ {{ p.end_date }}
+                            </td>
+                            <td class="px-6 py-4 truncate max-w-xs">{{ p.description or '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-400">진행 중인 프로젝트가 없습니다.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Completed Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="bg-green-50 px-6 py-3 border-b border-green-100 flex items-center">
+                <span class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2"></span>
+                <h3 class="font-bold text-green-800">완료 (Completed)</h3>
+                <span class="ml-2 bg-green-200 text-green-800 text-xs px-2 py-0.5 rounded-full">{{ completed|length
+                    }}</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">프로젝트명</th>
+                            <th scope="col" class="px-6 py-3">거래처</th>
+                            <th scope="col" class="px-6 py-3">기간</th>
+                            <th scope="col" class="px-6 py-3">설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in completed %}
+                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
+                            onclick="openEditModal('{{ p.id }}', '{{ p.name }}', '{{ p.description or '' }}', '{{ p.client_id or 0 }}', '{{ p.status }}', '{{ p.start_date or '' }}', '{{ p.end_date or '' }}', {{ p.files|map(attribute='filename')|list }}, {{ p.files|map(attribute='filepath')|list }})">
+                            <td class="px-6 py-4 font-medium text-gray-900">{{ p.name }}</td>
+                            <td class="px-6 py-4">
+                                {% if p.client %}
+                                <span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-bold">{{
+                                    p.client.name }}</span>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {{ p.start_date }} ~ {{ p.end_date }}
+                            </td>
+                            <td class="px-6 py-4 truncate max-w-xs">{{ p.description or '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-400">완료된 프로젝트가 없습니다.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Project Modal -->
+<div id="projectModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">새 프로젝트</h3>
+            <button onclick="document.getElementById('projectModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <form action="/projects" method="post" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트명</label>
+                <input type="text" name="name" required
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                <textarea name="description" rows="2"
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">거래처</label>
+                    <select name="client_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="0">내부 프로젝트 (거래처 없음)</option>
+                        {% for c in clients %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">상태</label>
+                    <select name="status" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="Scheduled">예정</option>
+                        <option value="In Progress">진행 중</option>
+                        <option value="Completed">완료</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">시작일</label>
+                    <input type="date" name="start_date" class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">종료일</label>
+                    <input type="date" name="end_date" class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+
+            <button type="submit"
+                class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">생성</button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Project Modal -->
+<div id="editProjectModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">프로젝트 수정</h3>
+            <button onclick="document.getElementById('editProjectModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <form id="editProjectForm" method="post" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트명</label>
+                <input type="text" name="name" id="edit_name" required
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                <textarea name="description" id="edit_description" rows="2"
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">거래처</label>
+                    <select name="client_id" id="edit_client_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="0">내부 프로젝트 (거래처 없음)</option>
+                        {% for c in clients %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">상태</label>
+                    <select name="status" id="edit_status" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="Scheduled">예정</option>
+                        <option value="In Progress">진행 중</option>
+                        <option value="Completed">완료</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">시작일</label>
+                    <input type="date" name="start_date" id="edit_start_date"
+                        class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">종료일</label>
+                    <input type="date" name="end_date" id="edit_end_date"
+                        class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+
+            <button type="submit"
+                class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">저장</button>
+        </form>
+
+        <!-- Divider -->
+        <hr class="my-6 border-gray-200">
+
+        <!-- File Upload Section -->
+        <div>
+            <h4 class="font-bold text-gray-800 mb-2">첨부 파일</h4>
+            <ul id="fileList" class="mb-4 space-y-2 text-sm text-gray-600">
+                <!-- Dynamically populated -->
+            </ul>
+
+            <form id="uploadForm" method="post" enctype="multipart/form-data" class="flex gap-2">
+                <input type="file" name="file" required
+                    class="flex-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <button type="submit"
+                    class="bg-gray-800 text-white text-xs px-3 py-2 rounded hover:bg-gray-700">업로드</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openEditModal(id, name, description, client_id, status, start_date, end_date, filenames, filepaths) {
+        document.getElementById('edit_name').value = name;
+        document.getElementById('edit_description').value = description;
+        document.getElementById('edit_client_id').value = client_id;
+        document.getElementById('edit_status').value = status;
+        document.getElementById('edit_start_date').value = start_date;
+        document.getElementById('edit_end_date').value = end_date;
+
+        document.getElementById('editProjectForm').action = "/projects/" + id + "/update";
+        document.getElementById('uploadForm').action = "/projects/" + id + "/upload";
+
+        // Populate File List
+        const fileList = document.getElementById('fileList');
+        fileList.innerHTML = '';
+
+        if (filenames && filenames.length > 0) {
+            filenames.forEach((name, index) => {
+                const li = document.createElement('li');
+                const link = document.createElement('a');
+                link.href = filepaths[index]; // Use filepath
+                link.textContent = name;
+                link.target = "_blank";
+                link.className = "text-blue-600 hover:underline flex items-center";
+                link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
+                li.appendChild(link);
+                fileList.appendChild(li);
+            });
+        } else {
+            fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
+        }
+
+        document.getElementById('editProjectModal').classList.remove('hidden');
+    }
+</script>
+{% endblock %}

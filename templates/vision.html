@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">비전 (Vision)</h2>
+</div>
+
+<!-- Annual Goal -->
+<div class="mb-6">
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg p-6 text-white">
+        <h2 class="text-xl font-bold mb-2">2026 전사 목표</h2>
+        <form action="/goals/annual" method="post" class="flex gap-2">
+            <input type="hidden" name="year" value="2026">
+            <input type="text" name="content" value="{{ goals.annual_2026.content if goals.annual_2026 else '' }}"
+                class="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white placeholder-blue-200 outline-none focus:bg-white/20 transition"
+                placeholder="2026년 목표를 입력하세요..." onblur="this.form.submit()">
+        </form>
+    </div>
+</div>
+
+<!-- Monthly Goals Table -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="font-bold text-gray-800">사업부별 월별 목표 관리</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-center">
+            <thead class="bg-gray-50 text-gray-600 font-medium">
+                <tr>
+                    <th class="px-4 py-3 text-left w-32 border-r">구분</th>
+                    {% for m in range(1, 13) %}
+                    <th class="px-2 py-3 border-r min-w-[100px]">{{ m }}월</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                <!-- System Division -->
+                <tr>
+                    <td class="px-4 py-2 font-bold text-gray-700 text-left bg-gray-50 border-r">시스템사업부</td>
+                    {% for m in range(1, 13) %}
+                    <td class="px-0 py-0 border-r relative group">
+                        <form action="/goals/monthly" method="post" class="absolute inset-0">
+                            <input type="hidden" name="year" value="2026">
+                            <input type="hidden" name="month" value="{{ m }}">
+                            <input type="hidden" name="division" value="System">
+                            <input type="text" name="content" value="{{ goals.monthly_system.get(m, '') }}"
+                                class="w-full h-full px-2 py-2 text-center text-gray-600 outline-none focus:bg-blue-50 transition"
+                                onblur="this.form.submit()">
+                        </form>
+                        <div class="h-10"></div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <!-- Distribution Division -->
+                <tr>
+                    <td class="px-4 py-2 font-bold text-gray-700 text-left bg-gray-50 border-r">유통사업부</td>
+                    {% for m in range(1, 13) %}
+                    <td class="px-0 py-0 border-r relative group">
+                        <form action="/goals/monthly" method="post" class="absolute inset-0">
+                            <input type="hidden" name="year" value="2026">
+                            <input type="hidden" name="month" value="{{ m }}">
+                            <input type="hidden" name="division" value="Distribution">
+                            <input type="text" name="content" value="{{ goals.monthly_dist.get(m, '') }}"
+                                class="w-full h-full px-2 py-2 text-center text-gray-600 outline-none focus:bg-pink-50 transition"
+                                onblur="this.form.submit()">
+                        </form>
+                        <div class="h-10"></div>
+                    </td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

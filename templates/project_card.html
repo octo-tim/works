@@ -1,0 +1,21 @@
+<div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition">
+    <div class="flex justify-between items-start mb-2">
+        <h4 class="font-bold text-gray-800 text-lg">{{ p.name }}</h4>
+        {% if p.client %}
+        <span class="bg-purple-100 text-purple-700 text-[10px] px-2 py-1 rounded-full font-bold">{{ p.client.name
+            }}</span>
+        {% else %}
+        <span class="bg-gray-100 text-gray-500 text-[10px] px-2 py-1 rounded-full font-bold">Internal</span>
+        {% endif %}
+    </div>
+    <p class="text-sm text-gray-500 mb-4 line-clamp-2 h-10">{{ p.description or 'No description' }}</p>
+
+    <div class="flex justify-between items-center text-xs text-gray-400 border-t border-gray-50 pt-3">
+        <div class="flex space-x-2">
+            <span>START: {{ p.start_date }}</span>
+        </div>
+        <div>
+            <span>DUE: {{ p.end_date }}</span>
+        </div>
+    </div>
+</div>

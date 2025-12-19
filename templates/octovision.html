@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">옥토비전 (Octovision)</h2>
+</div>
+
+<!-- Annual Goal -->
+<div class="mb-8">
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg p-6 text-white">
+        <h2 class="text-xl font-bold mb-2">2026 전사 목표</h2>
+        <form action="/goals/annual" method="post" class="flex gap-2">
+            <input type="hidden" name="year" value="2026">
+            <input type="text" name="content" value="{{ goals.annual_2026.content if goals.annual_2026 else '' }}"
+                class="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white placeholder-blue-200 outline-none focus:bg-white/20 transition"
+                placeholder="2026년 목표를 입력하세요..." onblur="this.form.submit()">
+        </form>
+    </div>
+</div>
+
+<!-- Table 1: Work Objectives -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+        <h3 class="font-bold text-gray-800 text-lg">업무목표</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-100 text-gray-700 font-bold">
+                <tr>
+                    <th class="px-4 py-3 border-r w-16 text-center">월</th>
+                    <th class="px-4 py-3 border-r w-[45%] text-center">시스템사업부</th>
+                    <th class="px-4 py-3 w-[45%] text-center">유통사업부</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for m in range(1, 13) %}
+                <tr class="hover:bg-gray-50/50">
+                    <td class="px-4 py-2 text-center font-bold bg-gray-50 border-r text-gray-700">{{ m }}</td>
+
+                    <!-- System Division Objective -->
+                    <td class="px-0 py-0 border-r relative group">
+                        <form action="/goals/objective" method="post" class="absolute inset-0">
+                            <input type="hidden" name="year" value="2026">
+                            <input type="hidden" name="month" value="{{ m }}">
+                            <input type="hidden" name="division" value="System">
+                            <input type="text" name="content" value="{{ goals.objectives_system.get(m, '') }}"
+                                class="w-full h-full px-3 py-2 text-gray-700 outline-none focus:bg-blue-50 transition"
+                                onblur="this.form.submit()">
+                        </form>
+                        <div class="h-10"></div>
+                    </td>
+
+                    <!-- Distribution Division Objective -->
+                    <td class="px-0 py-0 relative group">
+                        <form action="/goals/objective" method="post" class="absolute inset-0">
+                            <input type="hidden" name="year" value="2026">
+                            <input type="hidden" name="month" value="{{ m }}">
+                            <input type="hidden" name="division" value="Distribution">
+                            <input type="text" name="content" value="{{ goals.objectives_dist.get(m, '') }}"
+                                class="w-full h-full px-3 py-2 text-gray-700 outline-none focus:bg-pink-50 transition"
+                                onblur="this.form.submit()">
+                        </form>
+                        <div class="h-10"></div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Table 2: Performance Management -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+        <h3 class="font-bold text-gray-800 text-lg">실적관리</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-100 text-gray-700 font-bold">
+                <tr>
+                    <th rowspan="2" class="px-4 py-3 border-r w-16 text-center border-b">월</th>
+                    <th colspan="2" class="px-4 py-2 border-r text-center border-b">시스템사업부</th>
+                    <th colspan="2" class="px-4 py-2 text-center border-b">유통사업부</th>
+                </tr>
+                <tr>
+                    <th class="px-4 py-2 border-r w-[22%] text-center">목표</th>
+                    <th class="px-4 py-2 border-r w-[22%] text-center">실적</th>
+                    <th class="px-4 py-2 border-r w-[22%] text-center">목표</th>
+                    <th class="px-4 py-2 w-[22%] text-center">실적</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for m in range(1, 13) %}
+                <tr class="hover:bg-gray-50/50">
+                    <td class="px-4 py-2 text-center font-bold bg-gray-50 border-r text-gray-700">{{ m }}</td>
+
+                    <!-- System Performance -->
+                    <!-- Goal -->
+                    <td class="px-0 py-0 border-r relative">
+                        <form action="/goals/performance" method="post" class="absolute inset-0">
+                            <input type="hidden" name="year" value="2026">
+                            <input type="hidden" name="month" value="{{ m }}">
+                            <input type="hidden" name="division" value="System">
+                            <input type="hidden" name="field" value="goal_value">
+                            <input type="text" name="value"
+                                value="{{ goals.performance_system[m].goal_value if goals.performance_system.get(m) else '' }}"
+                                class="w-full h-full px-2 py-2 text-center text-gray-700 outline-none focus:bg-blue-50 transition"
+                                onblur="this.form.submit()">
+                        </form>
+                        <div class="h-10"></div>
+                    </td>
+                    <!-- Actual -->
+                    <td class="px-0 py-0 border-r relative">
+                        <form action="/goals/performance" method="post" class="absolute inset-0">
+                            <input type="hidden" name="year" value="2026">
+                            <input type="hidden" name="month" value="{{ m }}">
+                            <input type="hidden" name="division" value="System">
+                            <input type="hidden" name="field" value="actual_value">
+                            <input type="text" name="value"
+                                value="{{ goals.performance_system[m].actual_value if goals.performance_system.get(m) else '' }}"
+                                class="w-full h-full px-2 py-2 text-center text-gray-700 outline-none focus:bg-blue-50 transition"
+                                onblur="this.form.submit()">
+                        </form>
+                        <div class="h-10"></div>
+                    </td>
+
+                    <!-- Distribution Performance -->
+                    <!-- Goal -->
+                    <td class="px-0 py-0 border-r relative">
+                        <form action="/goals/performance" method="post" class="absolute inset-0">
+                            <input type="hidden" name="year" value="2026">
+                            <input type="hidden" name="month" value="{{ m }}">
+                            <input type="hidden" name="division" value="Distribution">
+                            <input type="hidden" name="field" value="goal_value">
+                            <input type="text" name="value"
+                                value="{{ goals.performance_dist[m].goal_value if goals.performance_dist.get(m) else '' }}"
+                                class="w-full h-full px-2 py-2 text-center text-gray-700 outline-none focus:bg-pink-50 transition"
+                                onblur="this.form.submit()">
+                        </form>
+                        <div class="h-10"></div>
+                    </td>
+                    <!-- Actual -->
+                    <td class="px-0 py-0 relative">
+                        <form action="/goals/performance" method="post" class="absolute inset-0">
+                            <input type="hidden" name="year" value="2026">
+                            <input type="hidden" name="month" value="{{ m }}">
+                            <input type="hidden" name="division" value="Distribution">
+                            <input type="hidden" name="field" value="actual_value">
+                            <input type="text" name="value"
+                                value="{{ goals.performance_dist[m].actual_value if goals.performance_dist.get(m) else '' }}"
+                                class="w-full h-full px-2 py-2 text-center text-gray-700 outline-none focus:bg-pink-50 transition"
+                                onblur="this.form.submit()">
+                        </form>
+                        <div class="h-10"></div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="px-6 py-3 border-t border-gray-200 bg-gray-50/50">
+        <table class="w-full text-sm font-bold">
+            <tr>
+                <td class="px-4 text-center w-16 text-gray-800 border-r">합계</td>
+                <td class="px-4 text-center w-[22%] text-blue-800 border-r">{{ goals.totals.sys_goal }}</td>
+                <td class="px-4 text-center w-[22%] text-blue-600 border-r">{{ goals.totals.sys_actual }}</td>
+                <td class="px-4 text-center w-[22%] text-pink-800 border-r">{{ goals.totals.dist_goal }}</td>
+                <td class="px-4 text-center w-[22%] text-pink-600">{{ goals.totals.dist_actual }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<!-- Table 3: Key Schedule -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-8 mb-8">
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+        <div class="flex justify-between items-center">
+            <h3 class="font-bold text-gray-800 text-lg">주요일정</h3>
+            <button onclick="openScheduleModal()"
+                class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1.5 rounded shadow transition">
+                + 일정 추가
+            </button>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-100 text-gray-700 font-bold">
+                <tr>
+                    <th class="px-4 py-3 border-r w-16 text-center">월</th>
+                    <th class="px-4 py-3 border-r w-[45%] text-center">시스템사업부</th>
+                    <th class="px-4 py-3 w-[45%] text-center">유통사업부</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for m in range(1, 13) %}
+                <tr class="hover:bg-gray-50/50">
+                    <td class="px-4 py-2 text-center font-bold bg-gray-50 border-r text-gray-700">{{ m }}</td>
+
+                    <!-- System Division Schedule -->
+                    <td class="px-2 py-2 border-r relative h-24 align-top">
+                        <div class="space-y-1 mb-2">
+                            {% if goals.schedules_system.get(m) %}
+                            {% for s in goals.schedules_system[m] %}
+                            <div
+                                class="text-xs bg-blue-50 p-1 rounded border border-blue-100 flex justify-between group/item">
+                                <span><span class="font-bold text-blue-800">{{ s.date.strftime('%d') }}일:</span> {{
+                                    s.content }}</span>
+                                <!-- Delete button (optional, can add later) -->
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Distribution Division Schedule -->
+                    <td class="px-2 py-2 relative h-24 align-top">
+                        <div class="space-y-1 mb-2">
+                            {% if goals.schedules_dist.get(m) %}
+                            {% for s in goals.schedules_dist[m] %}
+                            <div
+                                class="text-xs bg-pink-50 p-1 rounded border border-pink-100 flex justify-between group/item">
+                                <span><span class="font-bold text-pink-800">{{ s.date.strftime('%d') }}일:</span> {{
+                                    s.content }}</span>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div id="scheduleModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">새 일정 추가</h3>
+            <button onclick="closeScheduleModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+        <form action="/goals/schedule" method="post">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">구분 (Division)</label>
+                    <select name="division"
+                        class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="System">시스템사업부 (System)</option>
+                        <option value="Distribution">유통사업부 (Distribution)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">날짜 (Date)</label>
+                    <input type="date" name="date_str" required
+                        class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">내용 (Content)</label>
+                    <input type="text" name="content" required placeholder="일정 내용을 입력하세요"
+                        class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeScheduleModal()"
+                        class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium">취소</button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">추가</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openScheduleModal() {
+        document.getElementById('scheduleModal').classList.remove('hidden');
+    }
+    function closeScheduleModal() {
+        document.getElementById('scheduleModal').classList.add('hidden');
+    }
+</script>
+{% endblock %}

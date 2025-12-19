@@ -1,0 +1,40 @@
+<div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer group relative"
+    onclick="openEditModal('{{ task.id }}', '{{ task.title }}', '{{ task.description or '' }}', '{{ task.status }}', '{{ task.assignee_id or 0 }}', '{{ task.due_date or '' }}', '{{ task.project_id or 0 }}', '{{ task.category_id or 0 }}', {{ task.files|map(attribute='filename')|list }}, {{ task.files|map(attribute='filepath')|list }})">
+    <div class="flex justify-between items-start mb-2">
+        {% if task.category %}
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded text-white"
+            style="background-color: {{ task.category.color }}">{{ task.category.name }}</span>
+        {% else %}
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-400 text-white">미지정</span>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-400 text-white">미지정</span>
+        {% endif %}
+
+        {% if task.project %}
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 ml-1">{{ task.project.name
+            }}</span>
+        {% endif %}
+
+        <!-- Status Dropdown (visible on hover or simple select) - For simplicity, using a small context menu or just clicking card to edit -->
+    </div>
+    <h4 class="text-sm font-semibold text-gray-800 mb-1 leading-snug">{{ task.title }}</h4>
+
+    <div class="flex justify-between items-end mt-3">
+        <div class="flex items-center space-x-2">
+            {% if task.assignee %}
+            <span class="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded" title="Assignee">{{
+                task.assignee.username }}</span>
+            {% else %}
+            <span class="text-xs text-gray-400">미배정</span>
+            {% endif %}
+        </div>
+
+        {% if task.due_date %}
+        <span
+            class="text-xs {{ 'text-red-500 font-bold' if task.due_date < task.due_date.today() else 'text-gray-400' }}">
+            {{ task.due_date.strftime('%Y-%m-%d') }}
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Modal (One per task is not efficient for 1000s of tasks, but fine for small scale MVP) -->
