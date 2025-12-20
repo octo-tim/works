@@ -13,7 +13,7 @@ from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 
-SECRET_KEY = "your-secret-key-very-secure"
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-very-secure")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 400
 
