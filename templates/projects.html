@@ -261,9 +261,16 @@
                 </div>
             </div>
 
-            <button type="submit"
-                class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">저장</button>
+            <div class="flex gap-2">
+                <button type="button" onclick="deleteProject()"
+                    class="w-1/3 bg-red-100 text-red-600 font-bold py-2 rounded-lg hover:bg-red-200 transition">삭제</button>
+                <button type="submit"
+                    class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">저장</button>
+            </div>
         </form>
+
+        <!-- Delete Form (Hidden) -->
+        <form id="deleteProjectForm" method="post" class="hidden"></form>
 
         <!-- Divider -->
         <hr class="my-6 border-gray-200">
@@ -296,6 +303,7 @@
 
         document.getElementById('editProjectForm').action = "/projects/" + id + "/update";
         document.getElementById('uploadForm').action = "/projects/" + id + "/upload";
+        document.getElementById('deleteProjectForm').action = "/projects/" + id + "/delete";
 
         // Populate File List
         const fileList = document.getElementById('fileList');
@@ -318,6 +326,12 @@
         }
 
         document.getElementById('editProjectModal').classList.remove('hidden');
+    }
+
+    function deleteProject() {
+        if (confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
+            document.getElementById('deleteProjectForm').submit();
+        }
     }
 </script>
 {% endblock %}

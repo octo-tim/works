@@ -741,3 +741,25 @@ async def upload_task_file(task_id: int, file: UploadFile = File(...), db: Sessi
     db.add(task_file)
     db.commit()
     return RedirectResponse(url="/tasks", status_code=303)
+
+@app.post("/projects/{project_id}/delete", response_class=RedirectResponse)
+def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if project:
+        db.delete(project)
+        db.commit()
+    return RedirectResponse(url="/projects", status_code=303)
+
+@app.post("/tasks/{task_id}/delete", response_class=RedirectResponse)
+def delete_task(task_id: int, request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if task:
+        db.delete(task)
+        db.commit()
+    # Check referer to redirect back to where we came from (dashboard or tasks page)
+    referer = request.headers.get("referer")
+    if referer and "tasks" not in referer: # If not from tasks page, assume dashboard or home
+        return RedirectResponse(url="/", status_code=303)
+    return RedirectResponse(url="/tasks", status_code=303)
