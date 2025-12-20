@@ -194,18 +194,22 @@ def signup_page(request: Request):
 
 @app.post("/signup")
 def signup(request: Request, username: str = Form(...), password: str = Form(...), department: str = Form(...), db: Session = Depends(get_db)):
-    if db.query(models.User).filter(models.User.username == username).first():
-        return templates.TemplateResponse("signup.html", {"request": request, "error": "Username already exists"})
-    
-    new_user = models.User(
-        username=username,
-        password_hash=get_password_hash(password),
-        department=department,
-        role="admin" if username == "윤경식" else "user"
-    )
-    db.add(new_user)
-    db.commit()
-    return RedirectResponse(url="/login", status_code=303)
+    try:
+        if db.query(models.User).filter(models.User.username == username).first():
+            return templates.TemplateResponse("signup.html", {"request": request, "error": "Username already exists"})
+        
+        new_user = models.User(
+            username=username,
+            password_hash=get_password_hash(password),
+            department=department,
+            role="admin" if username == "윤경식" else "user"
+        )
+        db.add(new_user)
+        db.commit()
+        return RedirectResponse(url="/login", status_code=303)
+    except Exception as e:
+        print(f"Signup Error: {e}") # Log to server console
+        return templates.TemplateResponse("signup.html", {"request": request, "error": f"Signup failed: {str(e)}"})
 
 @app.get("/logout")
 def logout(request: Request):
