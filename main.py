@@ -137,6 +137,14 @@ def populate_db(db: Session):
     db.add_all([task1, task2, task3, task4])
     db.commit()
 
+@app.on_event("startup")
+def startup_event():
+    db = SessionLocal()
+    try:
+        populate_db(db)
+    finally:
+        db.close()
+
 # --- Page Routes ---
 
 
@@ -195,8 +203,6 @@ def read_root(request: Request,
     
     if not current_user:
         return RedirectResponse(url="/login")
-        
-    populate_db(db)
     
     # Default to current month if not specified
     if target_month is None:
