@@ -132,9 +132,10 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-full pb-10">
     <!-- Todo Column -->
     <div class="bg-gray-50 rounded-xl p-4 flex flex-col h-full border border-gray-200">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-gray-700">할 일 (Todo)</h3>
-            <span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full">{{ tasks_todo|length }}</span>
+        <div class="bg-gray-50 px-6 py-3 border-b border-gray-200 flex items-center">
+            <span class="w-2.5 h-2.5 rounded-full bg-gray-400 mr-2"></span>
+            <h3 class="font-bold text-gray-800">예정</h3>
+            <span class="ml-2 bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">{{ tasks_todo|length }}</span>
         </div>
         <div class="space-y-3 overflow-y-auto flex-1 pr-1">
             {% for task in tasks_todo %}
@@ -146,7 +147,7 @@
     <!-- In Progress Column -->
     <div class="bg-blue-50 rounded-xl p-4 flex flex-col h-full border border-blue-100">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-blue-800">진행 중 (In Progress)</h3>
+            <h3 class="font-bold text-blue-800">진행 중</h3>
             <span class="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full">{{ tasks_inprogress|length }}</span>
         </div>
         <div class="space-y-3 overflow-y-auto flex-1 pr-1">
@@ -159,7 +160,7 @@
     <!-- Done Column -->
     <div class="bg-green-50 rounded-xl p-4 flex flex-col h-full border border-green-100">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-green-800">완료 (Done)</h3>
+            <h3 class="font-bold text-green-800">완료</h3>
             <span class="bg-green-200 text-green-800 text-xs px-2 py-1 rounded-full">{{ tasks_done|length }}</span>
         </div>
         <div class="space-y-3 overflow-y-auto flex-1 pr-1">
@@ -194,7 +195,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">상태</label>
                     <select name="status" class="w-full border rounded-lg px-3 py-2 text-sm">
-                        <option value="Todo">예정 (Scheduled)</option>
+                        <option value="Todo">예정</option>
                         <option value="In Progress">진행 중</option>
                         <option value="Done">종료</option>
                     </select>
@@ -268,7 +269,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">상태</label>
                     <select name="status" id="edit_status" class="w-full border rounded-lg px-3 py-2 text-sm">
-                        <option value="Todo">예정 (Scheduled)</option>
+                        <option value="Todo">예정</option>
                         <option value="In Progress">진행 중</option>
                         <option value="Done">종료</option>
                     </select>
