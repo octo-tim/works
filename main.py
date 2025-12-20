@@ -64,7 +64,12 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     return user
 
 
-models.Base.metadata.create_all(bind=engine)
+try:
+    models.Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Startup DB Error: {e}")
+    # We continue, so the app starts and can show the error on request
+
 
 app = FastAPI()
 
@@ -154,11 +159,14 @@ def populate_db(db: Session):
 
 @app.on_event("startup")
 def startup_event():
-    db = SessionLocal()
     try:
-        populate_db(db)
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            populate_db(db)
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"Startup Population Error: {e}")
 
 # --- Debug Route (Remove later) ---
 @app.get("/reset_admin", response_class=HTMLResponse)
@@ -180,6 +188,18 @@ def reset_admin(db: Session = Depends(get_db)):
     
     db.commit()
     return f"Done: {msg} <a href='/login'>Go to Login</a>"
+
+@app.get("/health/db", response_class=HTMLResponse)
+def health_check_db(db: Session = Depends(get_db)):
+    try:
+        user_count = db.query(models.User).count()
+        return f"<h1>✅ Database is Healthy</h1><p>Connection successful.</p><p>Total Users: {user_count}</p><p>DB URL: {engine.url}</p>"
+    except Exception as e:
+        import traceback
+        error_msg = "".join(traceback.format_exception(None, e, e.__traceback__))
+        print(f"DB Health Error: {error_msg}")
+        return f"<h1>❌ Database Error</h1><pre>{error_msg}</pre>"
+
 
 
 # --- Page Routes ---
