@@ -25,6 +25,7 @@
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                         <tr>
                             <th scope="col" class="px-6 py-3">업무명</th>
+                            <th scope="col" class="px-6 py-3">사업부</th>
                             <th scope="col" class="px-6 py-3">프로젝트/거래처</th>
                             <th scope="col" class="px-6 py-3">담당자/마감일</th>
                             <th scope="col" class="px-6 py-3">설명</th>
@@ -32,7 +33,7 @@
                     </thead>
                     <tbody>
                         {% for t in scheduled %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ t.assignee_id or 0 }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', [
+                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ t.assignee_id or 0 }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', '{{ t.department or '' }}', [
                             {%- for f in t.files -%}
                                 '{{ f.filename }}'{%- if not loop.last -%}, {%- endif -%}
                             {%- endfor -%}
@@ -42,6 +43,17 @@
                             {%- endfor -%}
                             ])">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
+                            <td class="px-6 py-4">
+                                {% if t.department == 'System' %}
+                                <span
+                                    class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
+                                {% elif t.department == 'Distribution' %}
+                                <span
+                                    class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
                             <td class="px-6 py-4">
                                 {% if t.project %}
                                 <span
@@ -63,7 +75,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="4" class="px-6 py-4 text-center text-gray-400">예정된 업무가 없습니다.</td>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-400">예정된 업무가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -84,6 +96,7 @@
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                         <tr>
                             <th scope="col" class="px-6 py-3">업무명</th>
+                            <th scope="col" class="px-6 py-3">사업부</th>
                             <th scope="col" class="px-6 py-3">프로젝트/거래처</th>
                             <th scope="col" class="px-6 py-3">담당자/마감일</th>
                             <th scope="col" class="px-6 py-3">설명</th>
@@ -91,7 +104,7 @@
                     </thead>
                     <tbody>
                         {% for t in inprogress %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ t.assignee_id or 0 }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', [
+                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ t.assignee_id or 0 }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', '{{ t.department or '' }}', [
                             {%- for f in t.files -%}
                                 '{{ f.filename }}'{%- if not loop.last -%}, {%- endif -%}
                             {%- endfor -%}
@@ -101,6 +114,17 @@
                             {%- endfor -%}
                             ])">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
+                            <td class="px-6 py-4">
+                                {% if t.department == 'System' %}
+                                <span
+                                    class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
+                                {% elif t.department == 'Distribution' %}
+                                <span
+                                    class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
                             <td class="px-6 py-4">
                                 {% if t.project %}
                                 <span
@@ -122,7 +146,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="4" class="px-6 py-4 text-center text-gray-400">진행 중인 업무가 없습니다.</td>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-400">진행 중인 업무가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -143,6 +167,7 @@
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                         <tr>
                             <th scope="col" class="px-6 py-3">업무명</th>
+                            <th scope="col" class="px-6 py-3">사업부</th>
                             <th scope="col" class="px-6 py-3">프로젝트/거래처</th>
                             <th scope="col" class="px-6 py-3">담당자/마감일</th>
                             <th scope="col" class="px-6 py-3">설명</th>
@@ -150,7 +175,7 @@
                     </thead>
                     <tbody>
                         {% for t in completed %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ t.assignee_id or 0 }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', [
+                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ t.assignee_id or 0 }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', '{{ t.department or '' }}', [
                             {%- for f in t.files -%}
                                 '{{ f.filename }}'{%- if not loop.last -%}, {%- endif -%}
                             {%- endfor -%}
@@ -160,6 +185,17 @@
                             {%- endfor -%}
                             ])">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
+                            <td class="px-6 py-4">
+                                {% if t.department == 'System' %}
+                                <span
+                                    class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
+                                {% elif t.department == 'Distribution' %}
+                                <span
+                                    class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
                             <td class="px-6 py-4">
                                 {% if t.project %}
                                 <span
@@ -181,7 +217,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="4" class="px-6 py-4 text-center text-gray-400">종료된 업무가 없습니다.</td>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-400">종료된 업무가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -368,7 +404,7 @@
 </div>
 
 <script>
-    function openEditModal(id, title, description, status, assignee_id, start_date, due_date, project_id, category_id, filenames, filepaths) {
+    function openEditModal(id, title, description, status, assignee_id, start_date, due_date, project_id, category_id, department, filenames, filepaths) {
         document.getElementById('edit_title').value = title;
         document.getElementById('edit_description').value = description;
         document.getElementById('edit_status').value = status;
@@ -377,6 +413,7 @@
         document.getElementById('edit_due_date').value = due_date;
         document.getElementById('edit_project_id').value = project_id;
         document.getElementById('edit_category_id').value = category_id;
+        document.getElementById('edit_department').value = department;
 
         document.getElementById('editTaskForm').action = "/tasks/" + id + "/update";
         document.getElementById('taskUploadForm').action = "/tasks/" + id + "/upload";

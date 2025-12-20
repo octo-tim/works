@@ -255,9 +255,10 @@ def logout(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request, 
-              assignee_id: Optional[int] = None, 
-              client_id: Optional[int] = None, 
-              category_id: Optional[int] = None,
+              assignee_id: Optional[str] = None, 
+              client_id: Optional[str] = None, 
+              category_id: Optional[str] = None,
+              department: Optional[str] = None, 
               target_month: Optional[int] = None,
               db: Session = Depends(get_db),
               current_user: models.User = Depends(get_current_user)):
@@ -271,26 +272,31 @@ def read_root(request: Request,
     
     query = db.query(models.Task)
     
-    # Dept Permission: Regular users only see tasks assigned to them? Or tasks in their dept?
-    # Requirement: "사용자는 자기 부서 업무만 볼수 있도록 한다." (Users see only their dept's work)
-    # Tasks don't have direct Dept field, but Assignee does.
-    # So filter tasks where assignee.department == current_user.department
-    if current_user.role != "admin":
-        if current_user.department == "System":
-             # Show tasks assigned to System dept users
-             query = query.join(models.User).filter(models.User.department == "System")
-        elif current_user.department == "Distribution":
-             query = query.join(models.User).filter(models.User.department == "Distribution")
-        # Else?
+    # Department Filtering Logic
+    if current_user.role == "admin":
+        if department:
+             query = query.join(models.User).filter(models.User.department == department)
+        # If no department selected, show all (Admin privilege)
+    else:
+        # Regular users: Force filter by their own department
+        # Ignore the 'department' query param if provided (security)
+        department = current_user.department # For UI reflection if needed, or just force query
+        query = query.join(models.User).filter(models.User.department == current_user.department)
     
-    if assignee_id:
-        query = query.filter(models.Task.assignee_id == assignee_id)
+    # Handle int conversion for empty strings
+    a_id = int(assignee_id) if assignee_id and assignee_id.isdigit() else None
+    c_id = int(client_id) if client_id and client_id.isdigit() else None
+    cat_id = int(category_id) if category_id and category_id.isdigit() else None
 
-    if category_id:
-        query = query.filter(models.Task.category_id == category_id)
-    if client_id:
+    if a_id:
+        query = query.filter(models.Task.assignee_id == a_id)
+
+    if cat_id:
+        query = query.filter(models.Task.category_id == cat_id)
+        
+    if c_id:
         # Filter tasks by client via project
-        query = query.join(models.Project).filter(models.Project.client_id == client_id)
+        query = query.join(models.Project).filter(models.Project.client_id == c_id)
         # Note: This will exclude Inbox tasks (project_id=None). 
         # If we want to include inbox tasks that are somehow related to client (impossible with current schema), we'd need a different approach.
         # But per schema, inbox tasks have no project, thus no client.
@@ -302,6 +308,48 @@ def read_root(request: Request,
     tasks_inprogress = [t for t in tasks if t.status == 'In Progress']
     tasks_done = [t for t in tasks if t.status == 'Done']
 
+    # Serialize for Calendar
+    calendar_events = []
+    for t in tasks:
+        # Determine color
+        color = "#6B7280" # Gray (Todo)
+        if t.status == "In Progress":
+            color = "#3B82F6" # Blue
+        elif t.status == "Done":
+            color = "#10B981" # Green
+        
+        # Determine dates
+        start = t.start_date
+        end = t.due_date
+        
+        if not start and not end:
+            continue # Skip tasks with no dates
+        
+        event = {
+            "title": f"[{t.assignee.username if t.assignee else '미지정'}] {t.title}",
+            "backgroundColor": color,
+            "borderColor": color,
+            "url": f"javascript:openEditModal('{t.id}', '{t.title}', '{t.description or ''}', '{t.status}', '{t.assignee_id or 0}', '{t.start_date or ''}', '{t.due_date or ''}', '{t.project_id or 0}', '{t.category_id or 0}', {[f.filename for f in t.files]}, {[f.filepath for f in t.files]})"
+        }
+
+        if start:
+            event["start"] = start.strftime('%Y-%m-%d')
+        else:
+            event["start"] = end.strftime('%Y-%m-%d') # Fallback to due date if no start
+            
+        if end and start and end >= start:
+            # FullCalendar end is exclusive, so add 1 day
+            # But we must be careful not to modify the DB object, use local var
+            # Convert to datetime to add day? model uses date.
+            # actually we can just use string manipulation or datetime logic
+            next_day = end + timedelta(days=1)
+            event["end"] = next_day.strftime('%Y-%m-%d')
+        elif end and not start:
+             # Only due date. Make it all day.
+             pass 
+
+        calendar_events.append(event)
+
     users = db.query(models.User).all()
     clients = db.query(models.Client).all()
     categories = db.query(models.Category).all()
@@ -312,13 +360,15 @@ def read_root(request: Request,
         "tasks_todo": tasks_todo,
         "tasks_inprogress": tasks_inprogress,
         "tasks_done": tasks_done,
+        "calendar_events": calendar_events, # Pass to template
         "users": users,
         "clients": clients,
         "categories": categories,
         "projects": db.query(models.Project).all(), # Pass projects for modal
-        "selected_assignee": assignee_id,
-        "selected_client": client_id,
-        "selected_category": category_id,
+        "selected_assignee": a_id,
+        "selected_client": c_id,
+        "selected_category": cat_id,
+        "selected_department": department, # Pass back to UI
         "selected_month": target_month,
         "goals": {
             "annual_2026": db.query(models.AnnualGoal).filter(models.AnnualGoal.year == 2026).first(),
@@ -449,6 +499,7 @@ def create_task(title: str = Form(...),
                 project_id: int = Form(None),
                 assignee_id: int = Form(None),
                 category_id: int = Form(None),
+                department: str = Form(None),
                 db: Session = Depends(get_db)):
     
     date_obj = None
@@ -470,7 +521,8 @@ def create_task(title: str = Form(...),
         due_date=date_obj,
         project_id=project_id,
         assignee_id=assignee_id,
-        category_id=category_id
+        category_id=category_id,
+        department=department
     )
     db.add(new_task)
     db.commit()
@@ -568,10 +620,13 @@ def read_projects(request: Request, db: Session = Depends(get_db), current_user:
 def create_project(name: str = Form(...), description: str = Form(None), 
                    start_date: str = Form(None), end_date: str = Form(None), 
                    status: str = Form(...), client_id: int = Form(None),
+                   department: str = Form(None),
                    db: Session = Depends(get_db)):
     
-    s_date = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
-    e_date = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
+    # Handle YYYY-MM input from type="month"
+    s_date = datetime.strptime(start_date, "%Y-%m").date() if start_date else None
+    e_date = datetime.strptime(end_date, "%Y-%m").date() if end_date else None
+    
     if client_id == 0: client_id = None
 
     new_project = models.Project(
@@ -580,7 +635,8 @@ def create_project(name: str = Form(...), description: str = Form(None),
         start_date=s_date, 
         end_date=e_date, 
         status=status, 
-        client_id=client_id
+        client_id=client_id,
+        department=department
     )
     db.add(new_project)
     db.commit()
@@ -592,14 +648,17 @@ def update_project(project_id: int,
                    name: str = Form(...), description: str = Form(None), 
                    start_date: str = Form(None), end_date: str = Form(None), 
                    status: str = Form(...), client_id: int = Form(None),
+                   department: str = Form(None),
                    db: Session = Depends(get_db)):
     
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if not project:
          return RedirectResponse(url="/projects", status_code=303)
 
-    s_date = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
-    e_date = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
+    # Handle YYYY-MM input from type="month"
+    s_date = datetime.strptime(start_date, "%Y-%m").date() if start_date else None
+    e_date = datetime.strptime(end_date, "%Y-%m").date() if end_date else None
+    
     if client_id == 0: client_id = None
 
     project.name = name
@@ -608,6 +667,7 @@ def update_project(project_id: int,
     project.end_date = e_date
     project.status = status
     project.client_id = client_id
+    project.department = department
     
     db.commit()
     return RedirectResponse(url="/projects", status_code=303)
@@ -677,6 +737,7 @@ def create_task_page(request: Request,
                 due_date: str = Form(None),
                 project_id: int = Form(0),
                 category_id: int = Form(0),
+                department: str = Form(None),
                 db: Session = Depends(get_db)):
     
     new_task = models.Task(
@@ -686,7 +747,8 @@ def create_task_page(request: Request,
         due_date=datetime.strptime(due_date, '%Y-%m-%d').date() if due_date else None,
         assignee_id=assignee_id if assignee_id != 0 else None,
         project_id=project_id if project_id != 0 else None,
-        category_id=category_id if category_id != 0 else None
+        category_id=category_id if category_id != 0 else None,
+        department=department
     )
     db.add(new_task)
     db.commit()
@@ -703,6 +765,7 @@ def update_task_details(task_id: int,
                         due_date: str = Form(None),
                         project_id: int = Form(0),
                         category_id: int = Form(0),
+                        department: str = Form(None),
                         db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login", status_code=303)
     task = db.query(models.Task).filter(models.Task.id == task_id).first()
@@ -715,6 +778,7 @@ def update_task_details(task_id: int,
         task.due_date = datetime.strptime(due_date, '%Y-%m-%d').date() if due_date else None
         task.project_id = project_id if project_id != 0 else None
         task.category_id = category_id if category_id != 0 else None
+        task.department = department
         db.commit()
     return RedirectResponse(url="/tasks", status_code=303)
 
@@ -763,3 +827,5 @@ def delete_task(task_id: int, request: Request, db: Session = Depends(get_db), c
     if referer and "tasks" not in referer: # If not from tasks page, assume dashboard or home
         return RedirectResponse(url="/", status_code=303)
     return RedirectResponse(url="/tasks", status_code=303)
+
+

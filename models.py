@@ -44,6 +44,7 @@ class Project(Base):
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     status = Column(String, default="Scheduled") # Scheduled, In Progress, Completed
+    department = Column(String, nullable=True) # "System", "Distribution"
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=True)
 
     client = relationship("Client", back_populates="projects")
@@ -58,6 +59,7 @@ class Task(Base):
     title = Column(String, index=True)
     description = Column(String, nullable=True)
     status = Column(String, default="Todo") # Todo, In Progress, Done
+    department = Column(String, nullable=True) # "System", "Distribution"
     start_date = Column(Date, nullable=True)
     due_date = Column(Date, nullable=True)
     
