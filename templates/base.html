@@ -82,12 +82,14 @@
                         <span class="font-medium">옥토비전</span>
                     </a>
                 </li>
+                {% if user and user.role == 'admin' %}
                 <li>
                     <a href="/admin"
                         class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
                         <span class="font-medium">관리자</span>
                     </a>
                 </li>
+                {% endif %}
             </ul>
         </nav>
         <div class="p-4 border-t border-gray-100">

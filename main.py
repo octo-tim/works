@@ -491,6 +491,8 @@ def update_task_status(task_id: int, status: str = Form(...), db: Session = Depe
 @app.get("/admin", response_class=HTMLResponse)
 def read_admin(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login")
+    if current_user.role != "admin":
+        return RedirectResponse(url="/", status_code=303)
     users = db.query(models.User).all()
     clients = db.query(models.Client).all()
     categories = db.query(models.Category).all()
@@ -506,6 +508,8 @@ def read_admin(request: Request, db: Session = Depends(get_db), current_user: mo
 @app.post("/admin/users", response_class=RedirectResponse)
 def create_user(username: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login", status_code=303)
+    if current_user.role != "admin":
+        return RedirectResponse(url="/", status_code=303)
     db.add(models.User(username=username))
     db.commit()
     return RedirectResponse(url="/admin", status_code=303)
@@ -514,6 +518,8 @@ def create_user(username: str = Form(...), db: Session = Depends(get_db), curren
 @app.post("/admin/clients", response_class=RedirectResponse)
 def create_client(name: str = Form(...), contact_info: str = Form(None), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login", status_code=303)
+    if current_user.role != "admin":
+        return RedirectResponse(url="/", status_code=303)
     db.add(models.Client(name=name, contact_info=contact_info))
     db.commit()
     return RedirectResponse(url="/admin", status_code=303)
@@ -522,6 +528,8 @@ def create_client(name: str = Form(...), contact_info: str = Form(None), db: Ses
 @app.post("/admin/categories", response_class=RedirectResponse)
 def create_category(name: str = Form(...), color: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login", status_code=303)
+    if current_user.role != "admin":
+        return RedirectResponse(url="/", status_code=303)
     db.add(models.Category(name=name, color=color))
     db.commit()
     return RedirectResponse(url="/admin", status_code=303)
