@@ -496,6 +496,7 @@ def read_admin(request: Request, db: Session = Depends(get_db), current_user: mo
     categories = db.query(models.Category).all()
     return templates.TemplateResponse("admin.html", {
         "request": request, 
+        "user": current_user,
         "users": users, 
         "clients": clients, 
         "categories": categories
@@ -547,7 +548,8 @@ def read_projects(request: Request, db: Session = Depends(get_db), current_user:
     clients = db.query(models.Client).all()
 
     return templates.TemplateResponse("projects.html", {
-        "request": request, 
+        "request": request,
+        "user": current_user,
         "scheduled": scheduled, 
         "inprogress": inprogress, 
         "completed": completed,
@@ -649,6 +651,7 @@ def read_tasks_page(request: Request, db: Session = Depends(get_db), current_use
     
     return templates.TemplateResponse("tasks.html", {
         "request": request,
+        "user": current_user,
         "scheduled": tasks_scheduled,
         "inprogress": tasks_inprogress,
         "completed": tasks_done, 

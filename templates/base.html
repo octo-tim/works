@@ -29,8 +29,36 @@
                 <a href="/"><img src="/static/logo.png" alt="Octo Works" class="h-8"></a>
             </h1>
         </div>
-        <nav class="flex-1 overflow-y-auto py-4">
-            <ul class="space-y-1 px-3">
+        <div class="px-6 pt-6 pb-2">
+            {% if user %}
+            <div class="bg-blue-50 rounded-xl p-4 border border-blue-100 mb-2">
+                <div class="flex items-center gap-3 mb-2">
+                    <div
+                        class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
+                        {{ user.username[0] }}
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800">{{ user.username }}</p>
+                        <p class="text-xs text-blue-600 font-medium">{{ user.department }}</p>
+                    </div>
+                </div>
+                <a href="/logout"
+                    class="block w-full text-center text-xs bg-white text-gray-600 border border-gray-200 rounded py-1.5 hover:bg-gray-50 transition">
+                    로그아웃
+                </a>
+            </div>
+            {% else %}
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-2 text-center">
+                <p class="text-sm text-gray-500 mb-2">로그인이 필요합니다</p>
+                <a href="/login"
+                    class="block w-full text-center text-sm bg-blue-600 text-white font-bold rounded py-2 hover:bg-blue-700 transition">
+                    로그인
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        <nav class="flex-1 overflow-y-auto px-3">
+            <ul class="space-y-1">
                 <li>
                     <a href="/" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
                         <span class="font-medium">대시보드</span>
