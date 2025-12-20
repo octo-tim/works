@@ -47,24 +47,20 @@ def get_db():
 def get_current_user(request: Request, db: Session = Depends(get_db)):
     token = request.cookies.get("access_token")
     if not token:
-        # Bypass: Return default admin user if no token
-        return db.query(models.User).filter(models.User.username == "윤경식").first()
+        return None
     try:
         if token.startswith("Bearer "):
             token = token[7:]
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
-             # Bypass: Return default admin user if token invalid
-            return db.query(models.User).filter(models.User.username == "윤경식").first()
+            return None
     except JWTError:
-        # Bypass: Return default admin user if error
-        return db.query(models.User).filter(models.User.username == "윤경식").first()
+        return None
     
     user = db.query(models.User).filter(models.User.username == username).first()
     if not user:
-         # Bypass: Return default admin user if user not found (shouldn't happen with valid token but safe fallback)
-        return db.query(models.User).filter(models.User.username == "윤경식").first()
+        return None
     return user
 
 
@@ -150,6 +146,28 @@ def startup_event():
         populate_db(db)
     finally:
         db.close()
+
+# --- Debug Route (Remove later) ---
+@app.get("/reset_admin", response_class=HTMLResponse)
+def reset_admin(db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == "윤경식").first()
+    msg = ""
+    if not user:
+        user = models.User(
+            username="윤경식", 
+            password_hash=get_password_hash("k0349001!"),
+            department="System",
+            role="admin"
+        )
+        db.add(user)
+        msg = "Admin user created."
+    else:
+        user.password_hash = get_password_hash("k0349001!")
+        msg = "Admin password updated to 'k0349001!'"
+    
+    db.commit()
+    return f"Done: {msg} <a href='/login'>Go to Login</a>"
+
 
 # --- Page Routes ---
 
@@ -314,9 +332,9 @@ def update_monthly_performance(request: Request, year: int = Form(...), month: i
 
 
 @app.get("/octovision", response_class=HTMLResponse)
+@app.get("/octovision", response_class=HTMLResponse)
 def read_octovision(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user:
-        return RedirectResponse(url="/login")
+    if not current_user: return RedirectResponse(url="/login")
     # Helper to safe convert string to int/float for summing
     def safe_float(val):
         try:
@@ -422,7 +440,9 @@ def create_task(title: str = Form(...),
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.post("/tasks/update_status/{task_id}")
-def update_task_status(task_id: int, status: str = Form(...), db: Session = Depends(get_db)):
+@app.post("/tasks/update_status/{task_id}")
+def update_task_status(task_id: int, status: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
     task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if task:
         task.status = status
@@ -431,7 +451,9 @@ def update_task_status(task_id: int, status: str = Form(...), db: Session = Depe
 
 
 @app.get("/admin", response_class=HTMLResponse)
-def read_admin(request: Request, db: Session = Depends(get_db)):
+@app.get("/admin", response_class=HTMLResponse)
+def read_admin(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login")
     users = db.query(models.User).all()
     clients = db.query(models.Client).all()
     categories = db.query(models.Category).all()
@@ -443,25 +465,33 @@ def read_admin(request: Request, db: Session = Depends(get_db)):
     })
 
 @app.post("/admin/users", response_class=RedirectResponse)
-def create_user(username: str = Form(...), db: Session = Depends(get_db)):
+@app.post("/admin/users", response_class=RedirectResponse)
+def create_user(username: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
     db.add(models.User(username=username))
     db.commit()
     return RedirectResponse(url="/admin", status_code=303)
 
 @app.post("/admin/clients", response_class=RedirectResponse)
-def create_client(name: str = Form(...), contact_info: str = Form(None), db: Session = Depends(get_db)):
+@app.post("/admin/clients", response_class=RedirectResponse)
+def create_client(name: str = Form(...), contact_info: str = Form(None), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
     db.add(models.Client(name=name, contact_info=contact_info))
     db.commit()
     return RedirectResponse(url="/admin", status_code=303)
 
 @app.post("/admin/categories", response_class=RedirectResponse)
-def create_category(name: str = Form(...), color: str = Form(...), db: Session = Depends(get_db)):
+@app.post("/admin/categories", response_class=RedirectResponse)
+def create_category(name: str = Form(...), color: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
     db.add(models.Category(name=name, color=color))
     db.commit()
     return RedirectResponse(url="/admin", status_code=303)
 
 @app.get("/projects", response_class=HTMLResponse)
-def read_projects(request: Request, db: Session = Depends(get_db)):
+@app.get("/projects", response_class=HTMLResponse)
+def read_projects(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login")
     # Group projects by status
     projects = db.query(models.Project).all()
     scheduled = [p for p in projects if p.status == 'Scheduled' or p.status == '예정'] 
@@ -537,7 +567,9 @@ def update_project(project_id: int,
 
 
 @app.post("/projects/{project_id}/upload")
-def upload_file(project_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+@app.post("/projects/{project_id}/upload")
+def upload_file(project_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if not project:
          return RedirectResponse(url="/projects", status_code=303)
@@ -567,7 +599,9 @@ def upload_file(project_id: int, file: UploadFile = File(...), db: Session = Dep
 
 
 @app.get("/tasks", response_class=HTMLResponse)
-def read_tasks_page(request: Request, db: Session = Depends(get_db)):
+@app.get("/tasks", response_class=HTMLResponse)
+def read_tasks_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login")
     users = db.query(models.User).all()
     categories = db.query(models.Category).all()
     projects = db.query(models.Project).all()
@@ -620,7 +654,18 @@ def update_task_details(task_id: int,
                         due_date: str = Form(None),
                         project_id: int = Form(0),
                         category_id: int = Form(0),
-                        db: Session = Depends(get_db)):
+@app.post("/tasks/{task_id}/update", response_class=RedirectResponse)
+def update_task_details(task_id: int,
+                        title: str = Form(...),
+                        description: str = Form(None),
+                        status: str = Form(...),
+                        assignee_id: int = Form(0),
+                        start_date: str = Form(None),
+                        due_date: str = Form(None),
+                        project_id: int = Form(0),
+                        category_id: int = Form(0),
+                        db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
     task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if task:
         task.title = title
@@ -635,7 +680,9 @@ def update_task_details(task_id: int,
     return RedirectResponse(url="/tasks", status_code=303)
 
 @app.post("/tasks/{task_id}/upload", response_class=RedirectResponse)
-async def upload_task_file(task_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+@app.post("/tasks/{task_id}/upload", response_class=RedirectResponse)
+async def upload_task_file(task_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
     upload_dir = "uploads/tasks"
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
