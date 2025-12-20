@@ -68,6 +68,19 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# Add JSONResponse import if not present, but using HTMLResponse for user visibility
+from fastapi.responses import JSONResponse
+import traceback
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_msg = "".join(traceback.format_exception(None, exc, exc.__traceback__))
+    print(f"Global Error: {error_msg}")
+    return HTMLResponse(
+        status_code=500,
+        content=f"<h1>Internal Server Error</h1><pre>{error_msg}</pre>"
+    )
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if not os.path.exists("uploads"):
