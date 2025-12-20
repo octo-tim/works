@@ -23,11 +23,23 @@
 <body class="bg-gray-100 font-sans text-gray-800 h-screen flex overflow-hidden">
 
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex">
-        <div class="p-6 border-b border-gray-100">
+    <!-- Mobile: Fixed, Z-Index High. Desktop: Static, Flex -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()"
+        class="fixed inset-0 bg-black/50 z-40 hidden md:hidden glass transition-opacity duration-300 opacity-0"></div>
+
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transform -translate-x-full md:translate-x-0 md:static md:flex transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
             <h1 class="text-xl font-bold text-gray-800 text-primary">
                 <a href="/"><img src="/static/logo.png" alt="Octo Works" class="h-8"></a>
             </h1>
+            <!-- Mobile Close Button -->
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
         </div>
         <div class="px-6 pt-6 pb-2">
             {% if user %}
@@ -98,18 +110,50 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
         <!-- Mobile Header (Visible only on small screens) -->
-        <header class="bg-white border-b border-gray-200 p-4 md:hidden flex justify-between items-center">
-            <h1 class="text-lg font-bold">일정 관리</h1>
-            <a href="/" class="text-sm text-blue-500">홈</a>
+        <header
+            class="bg-white border-b border-gray-200 p-4 md:hidden flex justify-between items-center z-10 sticky top-0">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="text-gray-600 hover:text-blue-600 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+                <h1 class="text-lg font-bold">일정 관리</h1>
+            </div>
+            <div class="w-8"></div>
         </header>
 
         <!-- Content Area -->
-        <div class="flex-1 overflow-auto p-4 md:p-8">
+        <div class="flex-1 overflow-auto p-4 md:p-8 bg-gray-50/50">
             {% block content %}{% endblock %}
         </div>
     </main>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            if (sidebar.classList.contains('-translate-x-full')) {
+                // Open
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                // Trigger reflow to enable transition
+                void overlay.offsetWidth;
+                overlay.classList.remove('opacity-0');
+            } else {
+                // Close
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 300);
+            }
+        }
+    </script>
 
 </body>
 
