@@ -681,16 +681,7 @@ def create_task_page(request: Request,
     db.commit()
     return RedirectResponse(url="/tasks", status_code=303)
 
-@app.post("/tasks/{task_id}/update", response_class=RedirectResponse)
-def update_task_details(task_id: int,
-                        title: str = Form(...),
-                        description: str = Form(None),
-                        status: str = Form(...),
-                        assignee_id: int = Form(0),
-                        start_date: str = Form(None),
-                        due_date: str = Form(None),
-                        project_id: int = Form(0),
-                        category_id: int = Form(0),
+
 @app.post("/tasks/{task_id}/update", response_class=RedirectResponse)
 def update_task_details(task_id: int,
                         title: str = Form(...),
