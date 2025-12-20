@@ -89,7 +89,25 @@ def get_db():
 
 # Dummy Data Generator
 def populate_db(db: Session):
-    if db.query(models.User).first():
+    # 1. Admin Creation (Always ensure Admin exists and has correct password)
+    admin_user = db.query(models.User).filter(models.User.username == "윤경식").first()
+    if not admin_user:
+        admin_user = models.User(
+            username="윤경식", 
+            password_hash=get_password_hash("k0349001!"),
+            department="System",
+            role="admin"
+        )
+        db.add(admin_user)
+        db.commit()
+    else:
+        # Ensure password is correct even if user exists
+        admin_user.password_hash = get_password_hash("k0349001!")
+        db.commit()
+
+    # 2. Check if Dummy Data Exists (Prevent duplicate dummy data)
+    # Check for a known dummy user like 'Kim Manager'
+    if db.query(models.User).filter(models.User.username == "Kim Manager").first():
         return
 
     # Users
@@ -97,18 +115,6 @@ def populate_db(db: Session):
     user2 = models.User(username="Lee Designer")
     db.add_all([user1, user2])
     db.commit()
-    
-    # Init Admin if not exists
-    if not db.query(models.User).filter(models.User.username == "윤경식").first():
-        admin = models.User(
-            username="윤경식", 
-            password_hash=get_password_hash("k0349001!"),
-            department="System",
-            role="admin"
-        )
-        db.add(admin)
-        db.commit()
-
 
     # Clients
     client1 = models.Client(name="Samsung Electronics", contact_info="02-1234-5678")
