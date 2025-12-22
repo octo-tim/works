@@ -130,3 +130,31 @@ class KeySchedule(Base):
 
 
 
+
+class MeetingMinutes(Base):
+    __tablename__ = "meeting_minutes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(Date, default=datetime.date.today)
+    time = Column(String, nullable=True) # New field
+    location = Column(String, nullable=True) # New field
+    topic = Column(String, index=True)
+    attendees = Column(String)
+    content = Column(Text)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    writer_id = Column(Integer, ForeignKey("users.id"))
+    writer = relationship("User")
+    files = relationship("MeetingMinuteFile", back_populates="meeting_minute")
+
+
+class MeetingMinuteFile(Base):
+    __tablename__ = "meeting_minute_files"
+
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String, index=True)
+    filepath = Column(String)
+    uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
+    meeting_minute_id = Column(Integer, ForeignKey("meeting_minutes.id"))
+
+    meeting_minute = relationship("MeetingMinutes", back_populates="files")

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="h-full flex flex-col max-w-5xl mx-auto w-full p-4">
+    <div class="mb-4 flex justify-between items-center print:hidden">
+        <a href="/meeting_minutes" class="text-gray-500 hover:text-gray-700 flex items-center gap-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18">
+                </path>
+            </svg>
+            목록으로
+        </a>
+        <button onclick="window.print()"
+            class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                </path>
+            </svg>
+            인쇄
+        </button>
+    </div>
+
+    <div class="bg-white p-8 shadow-lg print:shadow-none print:p-0 min-h-[29.7cm] mx-auto w-full" style="width: 210mm;">
+        <!-- Standard A4 Width approx 210mm -->
+
+        <h1 class="text-3xl font-bold text-center mb-8 border-b-2 border-black pb-4">{{ minute.topic }}</h1>
+
+        <table class="w-full border-collapse border border-black text-center text-sm">
+            <colgroup>
+                <col class="w-1/6" />
+                <col class="w-1/3" />
+                <col class="w-1/6" />
+                <col class="w-1/3" />
+            </colgroup>
+            <tr>
+                <th class="border border-black bg-gray-100 py-2 font-bold">날짜</th>
+                <td class="border border-black px-2 py-2">{{ minute.date.strftime('%Y-%m-%d') }}</td>
+                <th class="border border-black bg-gray-100 py-2 font-bold">시간</th>
+                <td class="border border-black px-2 py-2">{{ minute.time or '' }}</td>
+            </tr>
+            <tr>
+                <th class="border border-black bg-gray-100 py-2 font-bold">회의장소</th>
+                <td class="border border-black px-2 py-2">{{ minute.location or '' }}</td>
+                <th class="border border-black bg-gray-100 py-2 font-bold">기록자</th>
+                <td class="border border-black px-2 py-2">{{ minute.writer.username }}</td>
+            </tr>
+            <tr>
+                <th class="border border-black bg-gray-100 py-2 font-bold">참석자</th>
+                <td colspan="3" class="border border-black px-2 py-2 text-left">{{ minute.attendees or '' }}</td>
+            </tr>
+
+            <!-- Content Header -->
+            <tr>
+                <th colspan="4" class="border border-black bg-gray-100 py-2 font-bold text-left px-4">회의내용</th>
+            </tr>
+            <!-- Content Body -->
+            <tr>
+                <td colspan="4"
+                    class="border border-black p-6 text-left align-top whitespace-pre-line leading-relaxed h-[600px]">
+                    {{ minute.content }}
+
+                    {% if minute.files %}
+                    <div class="mt-8 border-t border-gray-200 pt-4">
+                        <p class="font-bold mb-2 text-sm text-gray-700">첨부파일:</p>
+                        <ul class="list-disc list-inside text-sm">
+                            {% for file in minute.files %}
+                            <li>
+                                <a href="{{ file.filepath }}" target="_blank" class="text-blue-600 hover:underline">{{
+                                    file.filename }}</a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+
+        .bg-white,
+        .bg-white * {
+            visibility: visible;
+        }
+
+        .bg-white {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        /* Remove base styles that might interfere */
+        #sidebar,
+        header,
+        .print\:hidden {
+            display: none !important;
+        }
+
+        /* Ensure table borders print */
+        table {
+            border-collapse: collapse !important;
+        }
+
+        td,
+        th {
+            border: 1px solid black !important;
+        }
+    }
+</style>
+{% endblock %}

@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 import models
-from typing import Optional
+from typing import Optional, List
 from datetime import date, datetime, timedelta
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -829,3 +829,85 @@ def delete_task(task_id: int, request: Request, db: Session = Depends(get_db), c
     return RedirectResponse(url="/tasks", status_code=303)
 
 
+
+# --- Meeting Minutes Routes ---
+
+@app.get("/meeting_minutes", response_class=HTMLResponse)
+def read_meeting_minutes(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login")
+    
+    minutes = db.query(models.MeetingMinutes).order_by(models.MeetingMinutes.date.desc()).all()
+    
+    return templates.TemplateResponse("meeting_minutes.html", {
+        "request": request,
+        "user": current_user,
+        "minutes": minutes
+    })
+
+@app.post("/meeting_minutes", response_class=RedirectResponse)
+def create_meeting_minute(request: Request, 
+                          topic: str = Form(...), 
+                          date_str: str = Form(...),
+                          time: str = Form(None),
+                          location: str = Form(None),
+                          attendees: str = Form(None),
+                          content: str = Form(...),
+                          files: List[UploadFile] = File(None),
+                          db: Session = Depends(get_db),
+                          current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
+    
+    # date_str from input type="date" is YYYY-MM-DD
+    m_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    
+    new_minute = models.MeetingMinutes(
+        topic=topic,
+        date=m_date,
+        time=time,
+        location=location,
+        attendees=attendees,
+        content=content,
+        writer_id=current_user.id
+    )
+    db.add(new_minute)
+    db.commit()
+    db.refresh(new_minute)
+
+    # Handle file uploads
+    if files:
+        upload_dir = "uploads/meeting_minutes"
+        if not os.path.exists(upload_dir):
+            os.makedirs(upload_dir)
+            
+        for file in files:
+            if file.filename: # check if filename is not empty
+                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                filename = f"{timestamp}_{file.filename}"
+                filepath = os.path.join(upload_dir, filename)
+                
+                with open(filepath, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+                
+                new_file = models.MeetingMinuteFile(
+                    filename=file.filename,
+                    filepath=f"/uploads/meeting_minutes/{filename}",
+                    meeting_minute_id=new_minute.id
+                )
+                db.add(new_file)
+        db.commit()
+    
+    return RedirectResponse(url="/meeting_minutes", status_code=303)
+
+@app.get("/meeting_minutes/{minute_id}", response_class=HTMLResponse)
+def read_meeting_minute_detail(request: Request, minute_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login")
+    
+    minute = db.query(models.MeetingMinutes).filter(models.MeetingMinutes.id == minute_id).first()
+    if not minute:
+        return RedirectResponse(url="/meeting_minutes")
+        
+    return templates.TemplateResponse("meeting_minute_detail.html", {
+        "request": request,
+        "user": current_user,
+        "minute": minute
+    })
