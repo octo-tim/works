@@ -13,7 +13,10 @@ class User(Base):
     role = Column(String, default="user") # "admin", "user"
 
     tasks_assigned = relationship("Task", back_populates="assignee")
-
+    
+    # Chat relationships
+    messages_sent = relationship("ChatMessage", foreign_keys="ChatMessage.sender_id", back_populates="sender")
+    messages_received = relationship("ChatMessage", foreign_keys="ChatMessage.receiver_id", back_populates="receiver")
 
 class Client(Base):
     __tablename__ = "clients"
@@ -158,3 +161,17 @@ class MeetingMinuteFile(Base):
     meeting_minute_id = Column(Integer, ForeignKey("meeting_minutes.id"))
 
     meeting_minute = relationship("MeetingMinutes", back_populates="files")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id"))
+    receiver_id = Column(Integer, ForeignKey("users.id"))
+    content = Column(Text)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    is_read = Column(Boolean, default=False)
+
+    sender = relationship("User", foreign_keys=[sender_id], back_populates="messages_sent")
+    receiver = relationship("User", foreign_keys=[receiver_id], back_populates="messages_received")
