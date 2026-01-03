@@ -311,8 +311,6 @@
                 modal.style.opacity = '1';
                 modal.style.zIndex = '9999';
 
-                // Debug Alert: Confirm success
-                alert("Popup code finished. Display: " + modal.style.display + ", Classes: " + modal.className);
             } else {
                 alert("Error: Modal element not found!");
                 throw new Error("Edit Modal element 'editProjectModal' not found in DOM");
@@ -401,9 +399,11 @@
 </div>
 
 <!-- Edit Project Modal -->
-<div id="editProjectModal" style="z-index: 9999;"
-    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+<div id="editProjectModal"
+    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; display: none; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.5);"
+    class="backdrop-blur-sm hidden">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
+        style="position: relative; z-index: 10000; min-width: 300px; min-height: 200px;">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">프로젝트 수정</h3>
             <button onclick="document.getElementById('editProjectModal').classList.add('hidden')"
