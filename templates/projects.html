@@ -232,12 +232,16 @@
                 }
             };
 
-            setValue('edit_name', ds.name);
-            setValue('edit_description', ds.description);
-            setValue('edit_status', ds.status);
-            setValue('edit_department', ds.department);
-            setValue('edit_start_date', ds.startDate);
-            setValue('edit_end_date', ds.endDate);
+            setValue('edit_name', ds.name || '');
+            setValue('edit_description', ds.description || '');
+            setValue('edit_status', ds.status || 'Scheduled');
+            setValue('edit_department', ds.department || '');
+            // data-start-date는 startDate로, data-end-date는 endDate로 접근
+            // 혹시 모를 경우를 대비해 getAttribute로도 시도
+            const startDate = ds.startDate || el.getAttribute('data-start-date') || '';
+            const endDate = ds.endDate || el.getAttribute('data-end-date') || '';
+            setValue('edit_start_date', startDate);
+            setValue('edit_end_date', endDate);
 
             // Handle Assignees
             let assignee_ids = [];
@@ -304,13 +308,14 @@
             const modal = document.getElementById('editProjectModal');
             if (modal) {
                 console.log("Opening modal...", modal);
-                // Force visibility using inline styles to override any Tailwind/CSS issues
-                modal.classList.remove('hidden'); // Keep this
+                // Remove hidden class and set display to flex
+                modal.classList.remove('hidden');
                 modal.style.display = 'flex';
                 modal.style.visibility = 'visible';
                 modal.style.opacity = '1';
                 modal.style.zIndex = '9999';
-
+                // Ensure backdrop is visible
+                modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
             } else {
                 alert("Error: Modal element not found!");
                 throw new Error("Edit Modal element 'editProjectModal' not found in DOM");
@@ -400,13 +405,15 @@
 
 <!-- Edit Project Modal -->
 <div id="editProjectModal"
-    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; display: none; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.5);"
-    class="backdrop-blur-sm hidden">
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm"
+    style="z-index: 9999;"
+    onclick="if(event.target === this) { this.classList.add('hidden'); this.style.display = 'none'; }">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
-        style="position: relative; z-index: 10000; min-width: 300px; min-height: 200px;">
+        style="position: relative; z-index: 10000; min-width: 300px; min-height: 200px;"
+        onclick="event.stopPropagation();">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">프로젝트 수정</h3>
-            <button onclick="document.getElementById('editProjectModal').classList.add('hidden')"
+            <button onclick="document.getElementById('editProjectModal').classList.add('hidden'); document.getElementById('editProjectModal').style.display = 'none';"
                 class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         <form id="editProjectForm" method="post" class="space-y-4">
@@ -484,14 +491,12 @@
                         class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">수정</button>
                     <!-- Link separate delete logic manually or via js logic -->
                     <button type="button"
-                        onclick="if(confirm('정말 삭제하시겠습니까?')) { document.getElementById('deleteForm').submit(); }"
+                        onclick="if(confirm('정말 삭제하시겠습니까?')) { document.getElementById('deleteProjectForm').submit(); }"
                         class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition">삭제</button>
                 </div>
         </form>
         <!-- Hidden Delete Form (Helper) -->
-        <form id="deleteForm" method="post" action="">
-            <input type="hidden" name="_method" value="DELETE">
-            <!-- Assuming backend supports this or just post to delete endpoint -->
+        <form id="deleteProjectForm" method="post" action="">
         </form>
     </div>
 </div>
