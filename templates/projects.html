@@ -301,8 +301,12 @@
             // Show Modal
             const modal = document.getElementById('editProjectModal');
             if (modal) {
+                console.log("Opening modal...", modal);
                 modal.classList.remove('hidden');
+                // Force z-index just in case
+                modal.style.zIndex = '9999';
             } else {
+                alert("Error: Modal element not found!");
                 throw new Error("Edit Modal element 'editProjectModal' not found in DOM");
             }
 
@@ -321,6 +325,7 @@
 {% endblock %}
 
 {% block modals %}
+
 <!-- Project Modal -->
 <div id="newProjectModal"
     class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm z-[100]">
