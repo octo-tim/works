@@ -308,11 +308,22 @@
             if (id) {
                 const setAction = (formId, url) => {
                     const form = document.getElementById(formId);
-                    if (form) form.action = url;
+                    if (form) {
+                        form.action = url;
+                        console.log(`Set ${formId} action to: ${url}`);
+                    } else {
+                        console.warn(`Form ${formId} not found`);
+                    }
                 };
                 setAction('editProjectForm', "/projects/" + id + "/update");
                 setAction('uploadForm', "/projects/" + id + "/upload");
                 setAction('deleteProjectForm', "/projects/" + id + "/delete");
+                
+                // Verify form action was set
+                const editForm = document.getElementById('editProjectForm');
+                if (editForm) {
+                    console.log("Edit form action after setting:", editForm.action);
+                }
             }
 
             // Show Modal
@@ -337,6 +348,21 @@
                 document.body.appendChild(modalClone);
                 modal = document.getElementById('editProjectModal');
                 console.log("Modal moved to body, new parent:", modal.parentElement);
+                
+                // Re-set form actions after moving modal (forms are now new elements)
+                const id = ds.id;
+                if (id) {
+                    const setAction = (formId, url) => {
+                        const form = document.getElementById(formId);
+                        if (form) {
+                            form.action = url;
+                            console.log(`Re-set ${formId} action to: ${url} after modal move`);
+                        }
+                    };
+                    setAction('editProjectForm', "/projects/" + id + "/update");
+                    setAction('uploadForm', "/projects/" + id + "/upload");
+                    setAction('deleteProjectForm', "/projects/" + id + "/delete");
+                }
             }
             
             // Remove hidden class and any conflicting classes
@@ -559,7 +585,7 @@
             <button onclick="closeEditProjectModal();"
                 class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
-        <form id="editProjectForm" method="post" class="space-y-4">
+        <form id="editProjectForm" method="post" action="" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트명</label>
                 <input type="text" name="name" id="edit_name" required
@@ -631,7 +657,8 @@
 
                 <div class="flex gap-2 pt-2">
                     <button type="submit" id="updateBtn"
-                        class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">저장</button>
+                        class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition"
+                        onclick="const form = document.getElementById('editProjectForm'); console.log('Saving project - Form action:', form.action); console.log('Department value:', document.getElementById('edit_department')?.value); if(!form.action) { event.preventDefault(); alert('프로젝트 ID를 찾을 수 없습니다.'); return false; }">저장</button>
                     <!-- Link separate delete logic manually or via js logic -->
                     <button type="button"
                         onclick="if(confirm('정말 삭제하시겠습니까?')) { document.getElementById('deleteProjectForm').submit(); }"
