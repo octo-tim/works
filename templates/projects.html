@@ -738,8 +738,9 @@
                 </div>
 
                 <div class="flex gap-2 pt-2">
-                    <button type="submit" id="updateBtn"
-                        class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">저장</button>
+                    <button type="button" id="updateBtn"
+                        class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition"
+                        onclick="const form = document.getElementById('editProjectForm'); const deptSelect = document.getElementById('edit_department'); if (!form || !form.action) { alert('프로젝트 ID를 찾을 수 없습니다.'); return; } console.log('=== SAVE BUTTON CLICKED ==='); console.log('Form action:', form.action); console.log('Department value:', deptSelect?.value); const formData = new FormData(form); console.log('FormData entries:'); for (let [key, value] of formData.entries()) { console.log(`  ${key}: ${value}`); } if (!formData.has('department')) { console.warn('WARNING: department field not found in form data!'); } form.submit();">저장</button>
                     <!-- Link separate delete logic manually or via js logic -->
                     <button type="button"
                         onclick="if(confirm('정말 삭제하시겠습니까?')) { document.getElementById('deleteProjectForm').submit(); }"
