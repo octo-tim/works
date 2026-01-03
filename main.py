@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, Request, Form, status, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, Request, Form, status, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 import shutil
@@ -809,129 +809,8 @@ async def upload_task_file(task_id: int, file: UploadFile = File(...), db: Sessi
     return RedirectResponse(url="/tasks", status_code=303)
 
 
-# --- Chat Functionality ---
 
-class ConnectionManager:
-    def __init__(self):
-        # active_connections: user_id -> WebSocket
-        self.active_connections: dict[int, WebSocket] = {}
 
-    async def connect(self, websocket: WebSocket, user_id: int):
-        await websocket.accept()
-        self.active_connections[user_id] = websocket
-
-    def disconnect(self, user_id: int):
-        if user_id in self.active_connections:
-            del self.active_connections[user_id]
-
-    async def send_personal_message(self, message: str, user_id: int):
-        if user_id in self.active_connections:
-            await self.active_connections[user_id].send_text(message)
-
-manager = ConnectionManager()
-
-@app.get("/chat", response_class=HTMLResponse)
-def read_chat_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login")
-    
-    # Get all other users to chat with
-    users = db.query(models.User).filter(models.User.id != current_user.id).all()
-    
-    return templates.TemplateResponse("chat.html", {
-        "request": request,
-        "user": current_user,
-        "users": users
-    })
-
-@app.get("/chat/history/{other_user_id}")
-def get_chat_history(other_user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return {"error": "Not authenticated"}
-    
-    # Fetch messages between current_user and other_user
-    # (sent by me AND received by other) OR (sent by other AND received by me)
-    messages = db.query(models.ChatMessage).filter(
-        ((models.ChatMessage.sender_id == current_user.id) & (models.ChatMessage.receiver_id == other_user_id)) |
-        ((models.ChatMessage.sender_id == other_user_id) & (models.ChatMessage.receiver_id == current_user.id))
-    ).order_by(models.ChatMessage.timestamp).all()
-    
-    return [{
-        "id": m.id,
-        "content": m.content,
-        "sender_id": m.sender_id,
-        "timestamp": m.timestamp.isoformat(),
-        "is_read": m.is_read
-    } for m in messages]
-
-@app.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: int, db: Session = Depends(get_db)):
-    # Note: In a real app, validate token in ws params or headers. 
-    # Here assuming user_id passed is self (which is insecure without token check, but simple for MVP).
-    # To be safer, we can pass token in query param.
-    
-    # For MVP verification, we'll try to get token from cookie if possible or just trust the path param if cookie handling in WS is tricky.
-    # Actually, browsers send cookies with WS handshake.
-    
-    # Let's do a quick token validation
-    token = websocket.cookies.get("access_token")
-    current_user_id = None
-    if token:
-        try:
-            if token.startswith("Bearer "): token = token[7:]
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            username = payload.get("sub")
-            if username:
-                user = db.query(models.User).filter(models.User.username == username).first()
-                if user:
-                    current_user_id = user.id
-        except:
-            pass
-    
-    # If validation failed or mismatched, close
-    if current_user_id is None or current_user_id != user_id:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
-
-    await manager.connect(websocket, user_id)
-    try:
-        while True:
-            data = await websocket.receive_json()
-            # data schema: { "receiver_id": int, "content": str }
-            receiver_id = int(data.get("receiver_id"))
-            content = data.get("content")
-            
-            # Save to DB
-            new_msg = models.ChatMessage(
-                sender_id=user_id,
-                receiver_id=receiver_id,
-                content=content,
-                timestamp=datetime.utcnow()
-            )
-            db.add(new_msg)
-            db.commit()
-            
-            # Send to receiver if online
-            # We send a JSON string
-            import json
-            payload = json.dumps({
-                "sender_id": user_id,
-                "content": content,
-                "timestamp": new_msg.timestamp.isoformat()
-            })
-            await manager.send_personal_message(payload, receiver_id)
-            
-            # Also echo back to sender (so they see it confirmed, though UI can optimistically add)
-            # Actually, usually getting it back confirms save.
-            await manager.send_personal_message(payload, user_id)
-            
-    except WebSocketDisconnect:
-        manager.disconnect(user_id)
-        filename=file.filename,
-        filepath=f"/uploads/tasks/{filename}",
-        task_id=task_id
-    )
-    db.add(task_file)
-    db.commit()
-    return RedirectResponse(url="/tasks", status_code=303)
 
 @app.post("/projects/{project_id}/delete", response_class=RedirectResponse)
 def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
