@@ -82,14 +82,22 @@ def upload_data():
                 department=p.department,
                 start_date=p.start_date,
                 end_date=p.end_date,
-                creator_id=remote_creator_id,
-                # Copy file metadata loosely
-                filenames=p.filenames,
-                filepaths=p.filepaths 
+                creator_id=remote_creator_id
             )
             remote_db.add(new_p)
             remote_db.flush() # get ID
             remote_project = new_p
+            
+            # Sync Files
+            for pf in p.files:
+                print(f" -> Adding file: {pf.filename}")
+                new_pf = models.ProjectFile(
+                    filename=pf.filename,
+                    filepath=pf.filepath,
+                    uploaded_at=pf.uploaded_at,
+                    project_id=remote_project.id
+                )
+                remote_db.add(new_pf)
         
         # Sync Assignees
         # Clear existing? Or merge? Let's merge/set

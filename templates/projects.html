@@ -209,6 +209,119 @@
 </div>
 
 <!-- Project Modal -->
+
+
+<script>
+    function projectOpenEditModal(el) {
+        try {
+            if (!el || !el.dataset) {
+                throw new Error("Invalid element or missing dataset");
+            }
+
+            const ds = el.dataset;
+
+            // Helper to safely set value
+            const setValue = (id, val) => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.value = val === 'None' || val === null ? '' : val;
+                } else {
+                    console.warn(`Input with id '${id}' not found`);
+                }
+            };
+
+            setValue('edit_name', ds.name);
+            setValue('edit_description', ds.description);
+            setValue('edit_status', ds.status);
+            setValue('edit_department', ds.department);
+            setValue('edit_start_date', ds.startDate);
+            setValue('edit_end_date', ds.endDate);
+
+            // Handle Assignees
+            let assignee_ids = [];
+            try {
+                // If it's a string looking like a list, try to parse it
+                assignee_ids = JSON.parse(ds.assigneeIds || '[]');
+            } catch (e) {
+                console.warn('Error parsing assigneeIds', e);
+            }
+
+            const assigneeSelect = document.getElementById('edit_assignee_ids');
+            if (assigneeSelect) {
+                Array.from(assigneeSelect.options).forEach(o => o.selected = false);
+                if (assignee_ids && Array.isArray(assignee_ids)) {
+                    Array.from(assigneeSelect.options).forEach(option => {
+                        option.selected = assignee_ids.includes(parseInt(option.value));
+                    });
+                }
+            }
+
+            // Handle Files
+            let filenames = [];
+            let filepaths = [];
+            try {
+                filenames = JSON.parse(ds.fileNames || '[]');
+                filepaths = JSON.parse(ds.filePaths || '[]');
+            } catch (e) {
+                console.warn('Error parsing file info', e);
+            }
+
+            const fileList = document.getElementById('fileList');
+            if (fileList) {
+                fileList.innerHTML = '';
+                if (filenames && filenames.length > 0) {
+                    filenames.forEach((name, index) => {
+                        const li = document.createElement('li');
+                        const link = document.createElement('a');
+                        link.href = filepaths[index] || '#';
+                        link.textContent = name;
+                        link.target = "_blank";
+                        link.className = "text-blue-600 hover:underline flex items-center";
+                        link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
+                        li.appendChild(link);
+                        fileList.appendChild(li);
+                    });
+                } else {
+                    fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
+                }
+            }
+
+            // Set Form Actions using project ID
+            const id = ds.id;
+            if (id) {
+                const setAction = (formId, url) => {
+                    const form = document.getElementById(formId);
+                    if (form) form.action = url;
+                };
+                setAction('editProjectForm', "/projects/" + id + "/update");
+                setAction('uploadForm', "/projects/" + id + "/upload");
+                setAction('deleteProjectForm', "/projects/" + id + "/delete");
+            }
+
+            // Show Modal
+            const modal = document.getElementById('editProjectModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+            } else {
+                throw new Error("Edit Modal element 'editProjectModal' not found in DOM");
+            }
+
+        } catch (e) {
+            alert('Project Edit Error: ' + e.message);
+            console.error(e);
+        }
+    }
+
+    function deleteProject() {
+        if (confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
+            document.getElementById('deleteProjectForm').submit();
+        }
+    }
+</script>
+{% endblock %}
+
+{% block modals %}
+<!-- Project Modal -->
 <div id="newProjectModal"
     class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
@@ -337,142 +450,36 @@
                     </div>
                 </div>
 
-                <div class="flex gap-2">
-                    <button type="button" onclick="deleteProject()"
-                        class="w-1/3 bg-red-100 text-red-600 font-bold py-2 rounded-lg hover:bg-red-200 transition">삭제</button>
-                    <button type="submit"
-                        class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">저장</button>
+                <!-- File Management Section -->
+                <div class="border-t pt-2 mt-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">첨부 파일</label>
+
+                    <!-- Existing Files List -->
+                    <div id="existingFilesList" class="space-y-1 mb-3 text-sm text-gray-600">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Upload Form (visually integrated) -->
+                    <div class="flex items-center gap-2">
+                        <input type="file" name="files" multiple
+                            class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" formaction="" id="updateBtn"
+                        class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">수정</button>
+                    <!-- Link separate delete logic manually or via js logic -->
+                    <button type="button"
+                        onclick="if(confirm('정말 삭제하시겠습니까?')) { document.getElementById('deleteForm').submit(); }"
+                        class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition">삭제</button>
                 </div>
         </form>
-
-        <!-- Delete Form (Hidden) -->
-        <form id="deleteProjectForm" method="post" class="hidden"></form>
-
-        <!-- Divider -->
-        <hr class="my-6 border-gray-200">
-
-        <!-- File Upload Section -->
-        <div>
-            <h4 class="font-bold text-gray-800 mb-2">첨부 파일</h4>
-            <ul id="fileList" class="mb-4 space-y-2 text-sm text-gray-600">
-                <!-- Dynamically populated -->
-            </ul>
-
-            <form id="uploadForm" method="post" enctype="multipart/form-data" class="flex gap-2">
-                <input type="file" name="file" required
-                    class="flex-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                <button type="submit"
-                    class="bg-gray-800 text-white text-xs px-3 py-2 rounded hover:bg-gray-700">업로드</button>
-            </form>
-        </div>
+        <!-- Hidden Delete Form (Helper) -->
+        <form id="deleteForm" method="post" action="">
+            <input type="hidden" name="_method" value="DELETE">
+            <!-- Assuming backend supports this or just post to delete endpoint -->
+        </form>
     </div>
 </div>
-
-<script>
-    function projectOpenEditModal(el) {
-        try {
-            if (!el || !el.dataset) {
-                throw new Error("Invalid element or missing dataset");
-            }
-
-            const ds = el.dataset;
-
-            // Helper to safely set value
-            const setValue = (id, val) => {
-                const input = document.getElementById(id);
-                if (input) {
-                    input.value = val === 'None' || val === null ? '' : val;
-                } else {
-                    console.warn(`Input with id '${id}' not found`);
-                }
-            };
-
-            setValue('edit_name', ds.name);
-            setValue('edit_description', ds.description);
-            setValue('edit_status', ds.status);
-            setValue('edit_department', ds.department);
-            setValue('edit_start_date', ds.startDate);
-            setValue('edit_end_date', ds.endDate);
-
-            // Handle Assignees
-            let assignee_ids = [];
-            try {
-                // If it's a string looking like a list, try to parse it
-                assignee_ids = JSON.parse(ds.assigneeIds || '[]');
-            } catch (e) {
-                console.warn('Error parsing assigneeIds', e);
-            }
-
-            const assigneeSelect = document.getElementById('edit_assignee_ids');
-            if (assigneeSelect) {
-                Array.from(assigneeSelect.options).forEach(o => o.selected = false);
-                if (assignee_ids && Array.isArray(assignee_ids)) {
-                    Array.from(assigneeSelect.options).forEach(option => {
-                        option.selected = assignee_ids.includes(parseInt(option.value));
-                    });
-                }
-            }
-
-            // Handle Files
-            let filenames = [];
-            let filepaths = [];
-            try {
-                filenames = JSON.parse(ds.fileNames || '[]');
-                filepaths = JSON.parse(ds.filePaths || '[]');
-            } catch (e) {
-                console.warn('Error parsing file info', e);
-            }
-
-            const fileList = document.getElementById('fileList');
-            if (fileList) {
-                fileList.innerHTML = '';
-                if (filenames && filenames.length > 0) {
-                    filenames.forEach((name, index) => {
-                        const li = document.createElement('li');
-                        const link = document.createElement('a');
-                        link.href = filepaths[index] || '#';
-                        link.textContent = name;
-                        link.target = "_blank";
-                        link.className = "text-blue-600 hover:underline flex items-center";
-                        link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
-                        li.appendChild(link);
-                        fileList.appendChild(li);
-                    });
-                } else {
-                    fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
-                }
-            }
-
-            // Set Form Actions using project ID
-            const id = ds.id;
-            if (id) {
-                const setAction = (formId, url) => {
-                    const form = document.getElementById(formId);
-                    if (form) form.action = url;
-                };
-                setAction('editProjectForm', "/projects/" + id + "/update");
-                setAction('uploadForm', "/projects/" + id + "/upload");
-                setAction('deleteProjectForm', "/projects/" + id + "/delete");
-            }
-
-            // Show Modal
-            const modal = document.getElementById('editProjectModal');
-            if (modal) {
-                modal.classList.remove('hidden');
-            } else {
-                throw new Error("Edit Modal element 'editProjectModal' not found in DOM");
-            }
-
-        } catch (e) {
-            alert('Project Edit Error: ' + e.message);
-            console.error(e);
-        }
-    }
-
-    function deleteProject() {
-        if (confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
-            document.getElementById('deleteProjectForm').submit();
-        }
-    }
-</script>
 {% endblock %}

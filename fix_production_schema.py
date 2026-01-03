@@ -38,6 +38,7 @@ def fix_schema():
                     print(f" -> Added column: {col_name}")
                 except Exception as e:
                     # Check if error is "Duplicate column"
+                    conn.rollback() # Rollback the failed transaction so we can continue
                     if "already exists" in str(e) or "duplicate column" in str(e):
                          print(f" -> Column '{col_name}' already exists. Skipping.")
                     else:
