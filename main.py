@@ -1,57 +1,42 @@
-from fastapi import FastAPI, Depends, Request, Form, status, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Depends, Request, Form, status, UploadFile, File, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import shutil
 import os
+import traceback
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 import models
 from typing import Optional, List
 from datetime import date, datetime, timedelta
-from passlib.context import CryptContext
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+import config
+import utils
 
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-very-secure")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 400
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
 
 # Dependency
 def get_db():
+    """데이터베이스 세션 의존성"""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-def get_current_user(request: Request, db: Session = Depends(get_db)):
+
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[models.User]:
+    """현재 로그인한 사용자 가져오기"""
     token = request.cookies.get("access_token")
     if not token:
         return None
     try:
         if token.startswith("Bearer "):
             token = token[7:]
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             return None
@@ -64,152 +49,153 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     return user
 
 
+def require_auth(current_user: Optional[models.User] = Depends(get_current_user)):
+    """인증이 필요한 라우트를 위한 의존성"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다")
+    return current_user
+
+
+def require_admin(current_user: models.User = Depends(require_auth)):
+    """관리자 권한이 필요한 라우트를 위한 의존성"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다")
+    return current_user
+
+
+# 데이터베이스 초기화
 try:
     models.Base.metadata.create_all(bind=engine)
 except Exception as e:
     print(f"Startup DB Error: {e}")
-    # We continue, so the app starts and can show the error on request
 
+app = FastAPI(title="비즈니스 일정 관리 시스템", version="1.0.0")
 
-app = FastAPI()
-
-# Add JSONResponse import if not present, but using HTMLResponse for user visibility
-from fastapi.responses import JSONResponse
-import traceback
-
+# 전역 예외 핸들러
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     error_msg = "".join(traceback.format_exception(None, exc, exc.__traceback__))
     print(f"Global Error: {error_msg}")
+    # 프로덕션에서는 상세 에러를 숨기는 것이 좋습니다
+    if os.getenv("DEBUG", "False").lower() == "true":
+        return HTMLResponse(
+            status_code=500,
+            content=f"<h1>Internal Server Error</h1><pre>{error_msg}</pre>"
+        )
     return HTMLResponse(
         status_code=500,
-        content=f"<h1>Internal Server Error</h1><pre>{error_msg}</pre>"
+        content="<h1>Internal Server Error</h1><p>서버 오류가 발생했습니다. 관리자에게 문의하세요.</p>"
     )
 
+# 정적 파일 및 템플릿 설정
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if not os.path.exists("uploads"):
     os.makedirs("uploads")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 templates = Jinja2Templates(directory="templates")
 
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# Dummy Data Generator
 def populate_db(db: Session):
-    # 1. Admin Creation (Always ensure Admin exists and has correct password)
-    admin_user = db.query(models.User).filter(models.User.username == "윤경식").first()
+    """초기 데이터베이스 데이터 생성"""
+    # 관리자 사용자 생성/업데이트
+    if not config.ADMIN_PASSWORD:
+        print("경고: ADMIN_PASSWORD 환경변수가 설정되지 않았습니다. 관리자 계정이 생성되지 않습니다.")
+        return
+    
+    admin_user = db.query(models.User).filter(models.User.username == config.ADMIN_USERNAME).first()
     if not admin_user:
         admin_user = models.User(
-            username="윤경식", 
-            password_hash=get_password_hash("k0349001!"),
-            department="System",
+            username=config.ADMIN_USERNAME,
+            password_hash=utils.get_password_hash(config.ADMIN_PASSWORD),
+            department=config.ADMIN_DEPARTMENT,
             role="admin"
         )
         db.add(admin_user)
         db.commit()
-    else:
-        # Ensure password is correct even if user exists
-        admin_user.password_hash = get_password_hash("k0349001!")
+        print(f"관리자 사용자 생성: {config.ADMIN_USERNAME}")
+    elif config.ADMIN_PASSWORD:
+        # 비밀번호가 환경변수로 제공된 경우에만 업데이트
+        admin_user.password_hash = utils.get_password_hash(config.ADMIN_PASSWORD)
         db.commit()
-
-    # 2. Check if Dummy Data Exists (Prevent duplicate dummy data)
-    # SAMPLE DATA REMOVED: Users and Clients will be created manually or via admin panel.
-    return
 
 @app.on_event("startup")
 def on_startup():
-    print("DEBUG: SERVER STARTING - VERIFYING VERSION v1")
+    """애플리케이션 시작 시 실행되는 초기화 함수"""
+    print("서버 시작 중...")
     try:
         db = SessionLocal()
         try:
-            # Migration: Check for 'creator_id' in projects and tasks
             from sqlalchemy import text
+            
+            # 마이그레이션: creator_id 컬럼 추가
             try:
-                # Check Project
                 db.execute(text("SELECT creator_id FROM projects LIMIT 1"))
             except Exception:
                 db.rollback()
-                print("Migrating: Adding creator_id to projects")
+                print("마이그레이션: projects 테이블에 creator_id 컬럼 추가")
                 db.execute(text("ALTER TABLE projects ADD COLUMN creator_id INTEGER REFERENCES users(id)"))
                 db.commit()
             
             try:
-                # Check Task
                 db.execute(text("SELECT creator_id FROM tasks LIMIT 1"))
             except Exception:
                 db.rollback()
-                print("Migrating: Adding creator_id to tasks")
+                print("마이그레이션: tasks 테이블에 creator_id 컬럼 추가")
                 db.execute(text("ALTER TABLE tasks ADD COLUMN creator_id INTEGER REFERENCES users(id)"))
                 db.commit()
             
-            try:
-                # Migration: Add columns blindly (Ignore if exists)
-                # This works for both SQLite and Postgres (Postgres throws generic error if exists)
-                columns_to_add = ["email", "phone", "position"]
-                for col in columns_to_add:
-                    try:
-                        db.execute(text(f"ALTER TABLE users ADD COLUMN {col} VARCHAR"))
-                        db.commit()
-                        print(f"Migrating: Added {col} to users")
-                    except Exception as e:
-                        db.rollback()
-                        # print(f"Migrating: {col} likely exists or error: {e}")
-                        pass
-                
-                # Migration: Translate Department Names
-                # users
-                db.execute(text("UPDATE users SET department = '시스템사업부' WHERE department = 'System'"))
-                db.execute(text("UPDATE users SET department = '유통사업부' WHERE department = 'Distribution'"))
-                db.execute(text("UPDATE users SET department = '경영지원팀' WHERE department = 'Management'"))
-                
-                # projects
-                db.execute(text("UPDATE projects SET department = '시스템사업부' WHERE department = 'System'"))
-                db.execute(text("UPDATE projects SET department = '유통사업부' WHERE department = 'Distribution'"))
-                db.execute(text("UPDATE projects SET department = '경영지원팀' WHERE department = 'Management'"))
-                
-                # tasks
-                db.execute(text("UPDATE tasks SET department = '시스템사업부' WHERE department = 'System'"))
-                db.execute(text("UPDATE tasks SET department = '유통사업부' WHERE department = 'Distribution'"))
-                db.execute(text("UPDATE tasks SET department = '경영지원팀' WHERE department = 'Management'"))
-
-                db.commit()
-            except Exception as e:
-                print(f"Migration Error (Users/Dept): {e}")
-                db.rollback()
-
+            # 마이그레이션: 사용자 테이블에 추가 컬럼 추가
+            columns_to_add = ["email", "phone", "position"]
+            for col in columns_to_add:
+                try:
+                    db.execute(text(f"ALTER TABLE users ADD COLUMN {col} VARCHAR"))
+                    db.commit()
+                    print(f"마이그레이션: users 테이블에 {col} 컬럼 추가")
+                except Exception:
+                    db.rollback()
+                    # 컬럼이 이미 존재하는 경우 무시
+            
+            # 마이그레이션: 부서명 한글화
+            for eng, kor in config.DEPARTMENT_MAPPING.items():
+                db.execute(text(f"UPDATE users SET department = '{kor}' WHERE department = '{eng}'"))
+                db.execute(text(f"UPDATE projects SET department = '{kor}' WHERE department = '{eng}'"))
+                db.execute(text(f"UPDATE tasks SET department = '{kor}' WHERE department = '{eng}'"))
+            db.commit()
+            
             populate_db(db)
         finally:
             db.close()
+        print("서버 시작 완료")
     except Exception as e:
-        print(f"Startup Population Error: {e}")
+        print(f"시작 오류: {e}")
 
-# --- Debug Route (Remove later) ---
+# 개발용 디버그 라우트 (프로덕션에서는 제거 권장)
 @app.get("/reset_admin", response_class=HTMLResponse)
 def reset_admin(db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.username == "윤경식").first()
-    msg = ""
+    """관리자 계정 리셋 (개발용)"""
+    if not config.ADMIN_PASSWORD:
+        return HTMLResponse(
+            status_code=400,
+            content="<h1>오류</h1><p>ADMIN_PASSWORD 환경변수가 설정되지 않았습니다.</p>"
+        )
+    
+    user = db.query(models.User).filter(models.User.username == config.ADMIN_USERNAME).first()
     if not user:
         user = models.User(
-            username="윤경식", 
-            password_hash=get_password_hash("k0349001!"),
-            department="System",
+            username=config.ADMIN_USERNAME,
+            password_hash=utils.get_password_hash(config.ADMIN_PASSWORD),
+            department=config.ADMIN_DEPARTMENT,
             role="admin"
         )
         db.add(user)
-        msg = "Admin user created."
+        msg = "관리자 사용자가 생성되었습니다."
     else:
-        user.password_hash = get_password_hash("k0349001!")
-        msg = "Admin password updated to 'k0349001!'"
+        user.password_hash = utils.get_password_hash(config.ADMIN_PASSWORD)
+        msg = f"관리자 비밀번호가 업데이트되었습니다."
     
     db.commit()
-    return f"Done: {msg} <a href='/login'>Go to Login</a>"
+    return HTMLResponse(content=f"<h1>완료</h1><p>{msg}</p><a href='/login'>로그인 페이지로 이동</a>")
 
 @app.get("/health/db", response_class=HTMLResponse)
 def health_check_db(db: Session = Depends(get_db)):
@@ -234,13 +220,14 @@ def login_page(request: Request):
 
 @app.post("/login")
 def login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    """사용자 로그인"""
     user = db.query(models.User).filter(models.User.username == username).first()
-    if not user or not verify_password(password, user.password_hash):
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
+    if not user or not utils.verify_password(password, user.password_hash):
+        return templates.TemplateResponse("login.html", {"request": request, "error": "사용자명 또는 비밀번호가 올바르지 않습니다."})
     
-    access_token = create_access_token(data={"sub": user.username})
+    access_token = utils.create_access_token(data={"sub": user.username})
     response = RedirectResponse(url="/", status_code=303)
-    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, samesite="lax")
     return response
 
 @app.get("/signup", response_class=HTMLResponse)
@@ -249,22 +236,23 @@ def signup_page(request: Request):
 
 @app.post("/signup")
 def signup(request: Request, username: str = Form(...), password: str = Form(...), department: str = Form(...), db: Session = Depends(get_db)):
+    """사용자 회원가입"""
     try:
         if db.query(models.User).filter(models.User.username == username).first():
-            return templates.TemplateResponse("signup.html", {"request": request, "error": "Username already exists"})
+            return templates.TemplateResponse("signup.html", {"request": request, "error": "이미 존재하는 사용자명입니다."})
         
         new_user = models.User(
             username=username,
-            password_hash=get_password_hash(password),
+            password_hash=utils.get_password_hash(password),
             department=department,
-            role="admin" if username == "윤경식" else "user"
+            role="admin" if username == config.ADMIN_USERNAME else "user"
         )
         db.add(new_user)
         db.commit()
         return RedirectResponse(url="/login", status_code=303)
     except Exception as e:
-        print(f"Signup Error: {e}") # Log to server console
-        return templates.TemplateResponse("signup.html", {"request": request, "error": f"Signup failed: {str(e)}"})
+        print(f"회원가입 오류: {e}")
+        return templates.TemplateResponse("signup.html", {"request": request, "error": f"회원가입 실패: {str(e)}"})
 
 @app.get("/logout")
 def logout(request: Request):
@@ -287,24 +275,22 @@ def read_root(request: Request,
     if not current_user:
         return RedirectResponse(url="/login")
     
-    # Default to current month if not specified
+    # 기본값: 현재 월
     if target_month is None:
         target_month = datetime.now().month
     
     query = db.query(models.Task)
     
-    # Department Filtering Logic
+    # 부서별 필터링 로직
     if current_user.role == "admin":
         if department:
-             query = query.join(models.User).filter(models.User.department == department)
-        # If no department selected, show all (Admin privilege)
+            query = query.join(models.User).filter(models.User.department == department)
     else:
-        # Regular users: Force filter by their own department
-        # Ignore the 'department' query param if provided (security)
-        department = current_user.department # For UI reflection if needed, or just force query
+        # 일반 사용자는 자신의 부서 데이터만 조회
+        department = current_user.department
         query = query.join(models.User).filter(models.User.department == current_user.department)
     
-    # Handle int conversion for empty strings
+    # 담당자 및 카테고리 필터
     a_id = int(assignee_id) if assignee_id and assignee_id.isdigit() else None
     cat_id = int(category_id) if category_id and category_id.isdigit() else None
     if cat_id:
@@ -375,11 +361,27 @@ def read_root(request: Request,
         "selected_department": department, # Pass back to UI
         "selected_month": target_month,
         "goals": {
-            "annual_2026": db.query(models.AnnualGoal).filter(models.AnnualGoal.year == 2026).first(),
-            "monthly_obj_system": db.query(models.MonthlyObjective).filter(models.MonthlyObjective.year == 2026, models.MonthlyObjective.month == target_month, models.MonthlyObjective.division == 'System').first(),
-            "monthly_obj_dist": db.query(models.MonthlyObjective).filter(models.MonthlyObjective.year == 2026, models.MonthlyObjective.month == target_month, models.MonthlyObjective.division == 'Distribution').first(),
-            "monthly_perf_system": db.query(models.MonthlyPerformance).filter(models.MonthlyPerformance.year == 2026, models.MonthlyPerformance.month == target_month, models.MonthlyPerformance.division == 'System').first(),
-            "monthly_perf_dist": db.query(models.MonthlyPerformance).filter(models.MonthlyPerformance.year == 2026, models.MonthlyPerformance.month == target_month, models.MonthlyPerformance.division == 'Distribution').first()
+            "annual_2026": db.query(models.AnnualGoal).filter(models.AnnualGoal.year == config.TARGET_YEAR).first(),
+            "monthly_obj_system": db.query(models.MonthlyObjective).filter(
+                models.MonthlyObjective.year == config.TARGET_YEAR,
+                models.MonthlyObjective.month == target_month,
+                models.MonthlyObjective.division == 'System'
+            ).first(),
+            "monthly_obj_dist": db.query(models.MonthlyObjective).filter(
+                models.MonthlyObjective.year == config.TARGET_YEAR,
+                models.MonthlyObjective.month == target_month,
+                models.MonthlyObjective.division == 'Distribution'
+            ).first(),
+            "monthly_perf_system": db.query(models.MonthlyPerformance).filter(
+                models.MonthlyPerformance.year == config.TARGET_YEAR,
+                models.MonthlyPerformance.month == target_month,
+                models.MonthlyPerformance.division == 'System'
+            ).first(),
+            "monthly_perf_dist": db.query(models.MonthlyPerformance).filter(
+                models.MonthlyPerformance.year == config.TARGET_YEAR,
+                models.MonthlyPerformance.month == target_month,
+                models.MonthlyPerformance.division == 'Distribution'
+            ).first()
         }
     })
 
@@ -423,76 +425,84 @@ def update_monthly_performance(request: Request, year: int = Form(...), month: i
 
 
 @app.get("/octovision", response_class=HTMLResponse)
-@app.get("/octovision", response_class=HTMLResponse)
 def read_octovision(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login")
-    # Helper to safe convert string to int/float for summing
-    def safe_float(val):
-        try:
-            return float(val.replace(',', ''))
-        except (ValueError, AttributeError):
-            return 0.0
-
-    perf_sys = db.query(models.MonthlyPerformance).filter(models.MonthlyPerformance.year == 2026, models.MonthlyPerformance.division == 'System').all()
-    perf_dist = db.query(models.MonthlyPerformance).filter(models.MonthlyPerformance.year == 2026, models.MonthlyPerformance.division == 'Distribution').all()
+    """옥토비전 페이지"""
+    if not current_user:
+        return RedirectResponse(url="/login")
     
-    # Calculate Totals
-    total_goal_sys = sum(safe_float(p.goal_value) for p in perf_sys)
-    total_actual_sys = sum(safe_float(p.actual_value) for p in perf_sys)
-    total_goal_dist = sum(safe_float(p.goal_value) for p in perf_dist)
-    total_actual_dist = sum(safe_float(p.actual_value) for p in perf_dist)
-
-    # Format totals back to string (optional: int if no decimals)
-    total_goal_sys_str = f"{int(total_goal_sys):,}" 
-    total_actual_sys_str = f"{int(total_actual_sys):,}"
-    total_goal_dist_str = f"{int(total_goal_dist):,}"
-    total_actual_dist_str = f"{int(total_actual_dist):,}"
+    perf_sys = db.query(models.MonthlyPerformance).filter(
+        models.MonthlyPerformance.year == config.TARGET_YEAR,
+        models.MonthlyPerformance.division == 'System'
+    ).all()
+    perf_dist = db.query(models.MonthlyPerformance).filter(
+        models.MonthlyPerformance.year == config.TARGET_YEAR,
+        models.MonthlyPerformance.division == 'Distribution'
+    ).all()
+    
+    # 총계 계산
+    total_goal_sys = sum(utils.safe_float(p.goal_value) for p in perf_sys)
+    total_actual_sys = sum(utils.safe_float(p.actual_value) for p in perf_sys)
+    total_goal_dist = sum(utils.safe_float(p.goal_value) for p in perf_dist)
+    total_actual_dist = sum(utils.safe_float(p.actual_value) for p in perf_dist)
 
     return templates.TemplateResponse("octovision.html", {
         "request": request,
         "user": current_user,
         "goals": {
-            "annual_2026": db.query(models.AnnualGoal).filter(models.AnnualGoal.year == 2026).first(),
-            "objectives_system": {g.month: g.content for g in db.query(models.MonthlyObjective).filter(models.MonthlyObjective.year == 2026, models.MonthlyObjective.division == 'System').all()},
-            "objectives_dist": {g.month: g.content for g in db.query(models.MonthlyObjective).filter(models.MonthlyObjective.year == 2026, models.MonthlyObjective.division == 'Distribution').all()},
+            "annual_2026": db.query(models.AnnualGoal).filter(models.AnnualGoal.year == config.TARGET_YEAR).first(),
+            "objectives_system": {
+                g.month: g.content for g in db.query(models.MonthlyObjective).filter(
+                    models.MonthlyObjective.year == config.TARGET_YEAR,
+                    models.MonthlyObjective.division == 'System'
+                ).all()
+            },
+            "objectives_dist": {
+                g.month: g.content for g in db.query(models.MonthlyObjective).filter(
+                    models.MonthlyObjective.year == config.TARGET_YEAR,
+                    models.MonthlyObjective.division == 'Distribution'
+                ).all()
+            },
             "performance_system": {g.month: g for g in perf_sys},
             "performance_dist": {g.month: g for g in perf_dist},
             "totals": {
-                "sys_goal": total_goal_sys_str,
-                "sys_actual": total_actual_sys_str,
-                "dist_goal": total_goal_dist_str,
-                "dist_actual": total_actual_dist_str
+                "sys_goal": f"{int(total_goal_sys):,}",
+                "sys_actual": f"{int(total_actual_sys):,}",
+                "dist_goal": f"{int(total_goal_dist):,}",
+                "dist_actual": f"{int(total_actual_dist):,}"
             },
-            # Group schedules by month
-            "schedules_system": group_schedules_by_month(db.query(models.KeySchedule).filter(models.KeySchedule.division == 'System').all()),
-            "schedules_dist": group_schedules_by_month(db.query(models.KeySchedule).filter(models.KeySchedule.division == 'Distribution').all())
+            "schedules_system": group_schedules_by_month(
+                db.query(models.KeySchedule).filter(models.KeySchedule.division == 'System').all()
+            ),
+            "schedules_dist": group_schedules_by_month(
+                db.query(models.KeySchedule).filter(models.KeySchedule.division == 'Distribution').all()
+            )
         }
     })
 
 def group_schedules_by_month(schedules):
+    """일정을 월별로 그룹화"""
     grouped = {}
     for s in schedules:
-        if s.date.year == 2026:
+        if s.date.year == config.TARGET_YEAR:
             if s.date.month not in grouped:
                 grouped[s.date.month] = []
             grouped[s.date.month].append(s)
-    # Sort by date
+    # 날짜순 정렬
     for m in grouped:
         grouped[m].sort(key=lambda x: x.date)
     return grouped
 
 @app.post("/goals/schedule", response_class=RedirectResponse)
 def update_key_schedule(request: Request, date_str: str = Form(...), division: str = Form(...), content: str = Form(...), db: Session = Depends(get_db)):
-    # date_str is expected to be YYYY-MM-DD from input
-    sched_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    """주요 일정 추가"""
+    sched_date = utils.parse_date(date_str, "%Y-%m-%d")
+    if not sched_date:
+        return RedirectResponse(url=request.headers.get("referer", "/"), status_code=303)
     
-    # We create a new entry for every input. Or do we update distinct ones? 
-    # Since it's a list of schedules, and UI might just append. 
-    # For now, let's just ADD new one.
     schedule = models.KeySchedule(date=sched_date, division=division, content=content)
     db.add(schedule)
     db.commit()
-    return RedirectResponse(url=request.headers.get("referer"), status_code=303)
+    return RedirectResponse(url=request.headers.get("referer", "/"), status_code=303)
 
 @app.post("/tasks/create", response_class=RedirectResponse)
 def create_task(title: str = Form(...), 
@@ -504,47 +514,48 @@ def create_task(title: str = Form(...),
                 assignee_ids: List[int] = Form([]),
                 category_id: int = Form(None),
                 department: str = Form(None),
-                db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+                db: Session = Depends(get_db),
+                current_user: models.User = Depends(get_current_user)):
+    """업무 생성"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
     
-    date_obj = None
-    start_date_obj = None
-    if due_date:
-        date_obj = datetime.strptime(due_date, "%Y-%m-%d").date()
-    if start_date:
-        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-
-    if project_id == 0: project_id = None
-    if project_id == 0: project_id = None
-    if category_id == 0: category_id = None
+    start_date_obj = utils.parse_date(start_date, "%Y-%m-%d")
+    due_date_obj = utils.parse_date(due_date, "%Y-%m-%d")
+    
+    # 0을 None으로 변환
+    project_id = None if project_id == 0 else project_id
+    category_id = None if category_id == 0 else category_id
 
     new_task = models.Task(
         title=title,
         description=description,
         status=status,
         start_date=start_date_obj,
-        due_date=date_obj,
+        due_date=due_date_obj,
         project_id=project_id,
         category_id=category_id,
         department=department,
-        creator_id=current_user.id if current_user else None
+        creator_id=current_user.id
     )
     db.add(new_task)
     db.commit()
     
-    # Handle multiple assignees
+    # 다중 담당자 처리
     if assignee_ids:
         users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
         new_task.assignees = users
-        # Legacy support
+        # 레거시 지원
         if users:
             new_task.assignee_id = users[0].id
         db.commit()
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/", status_code=303)
 
 @app.post("/tasks/update_status/{task_id}")
-@app.post("/tasks/update_status/{task_id}")
 def update_task_status(task_id: int, status: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
+    """업무 상태 업데이트"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
     task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if task:
         task.status = status
@@ -553,11 +564,8 @@ def update_task_status(task_id: int, status: str = Form(...), db: Session = Depe
 
 
 @app.get("/admin", response_class=HTMLResponse)
-@app.get("/admin", response_class=HTMLResponse)
-def read_admin(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login")
-    if current_user.role != "admin":
-        return RedirectResponse(url="/", status_code=303)
+def read_admin(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
+    """관리자 페이지"""
     users = db.query(models.User).all()
     categories = db.query(models.Category).all()
     return templates.TemplateResponse("admin.html", {
@@ -568,17 +576,18 @@ def read_admin(request: Request, db: Session = Depends(get_db), current_user: mo
     })
 
 @app.post("/admin/users", response_class=RedirectResponse)
-@app.post("/admin/users", response_class=RedirectResponse)
 def create_user(username: str = Form(...), 
                 department: str = Form(None),
                 email: str = Form(None),
                 phone: str = Form(None),
                 position: str = Form(None),
-                password: str = Form(...), # Require password for new users
-                db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
-    if current_user.role != "admin":
-        return RedirectResponse(url="/", status_code=303)
+                password: str = Form(...),
+                db: Session = Depends(get_db),
+                current_user: models.User = Depends(require_admin)):
+    """사용자 생성"""
+    # 중복 사용자명 체크
+    if db.query(models.User).filter(models.User.username == username).first():
+        return RedirectResponse(url="/admin?error=duplicate_username", status_code=303)
     
     new_user = models.User(
         username=username,
@@ -586,7 +595,7 @@ def create_user(username: str = Form(...),
         email=email,
         phone=phone,
         position=position,
-        password_hash=get_password_hash(password)
+        password_hash=utils.get_password_hash(password)
     )
     db.add(new_user)
     db.commit()
@@ -599,95 +608,82 @@ def update_user(user_id: int,
                 email: str = Form(None),
                 phone: str = Form(None),
                 position: str = Form(None),
-                password: str = Form(None), # Optional for updates
-                db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
-    if current_user.role != "admin":
-        return RedirectResponse(url="/", status_code=303)
-
+                password: str = Form(None),
+                db: Session = Depends(get_db),
+                current_user: models.User = Depends(require_admin)):
+    """사용자 정보 업데이트"""
     user = db.query(models.User).filter(models.User.id == user_id).first()
-    if user:
-        user.username = username
-        user.department = department
-        user.email = email
-        user.phone = phone
-        user.position = position
-        
-        if password and password.strip():
-            user.password_hash = get_password_hash(password)
-            
-        db.commit()
-        
+    if not user:
+        return RedirectResponse(url="/admin", status_code=303)
+    
+    # 사용자명 중복 체크 (자신 제외)
+    existing_user = db.query(models.User).filter(
+        models.User.username == username,
+        models.User.id != user_id
+    ).first()
+    if existing_user:
+        return RedirectResponse(url="/admin?error=duplicate_username", status_code=303)
+    
+    user.username = username
+    user.department = department
+    user.email = email
+    user.phone = phone
+    user.position = position
+    
+    if password and password.strip():
+        user.password_hash = utils.get_password_hash(password)
+    
+    db.commit()
     return RedirectResponse(url="/admin", status_code=303)
 
 @app.post("/admin/users/{user_id}/delete", response_class=RedirectResponse)
-def delete_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
-    if current_user.role != "admin":
-        return RedirectResponse(url="/", status_code=303)
-    
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
+    """사용자 삭제"""
     user_to_delete = db.query(models.User).filter(models.User.id == user_id).first()
-    if user_to_delete:
-        # Prevent deleting the admin user itself if it's the one logged in (optional but good practice)
-        if user_to_delete.id == current_user.id:
-             # Ideally show error, but for now just redirect
-             return RedirectResponse(url="/admin", status_code=303)
+    if not user_to_delete:
+        return RedirectResponse(url="/admin", status_code=303)
+    
+    # 자신을 삭제하는 것 방지
+    if user_to_delete.id == current_user.id:
+        return RedirectResponse(url="/admin?error=cannot_delete_self", status_code=303)
 
-        # 1. Unlink from Created Projects/Tasks (Set creator_id = NULL)
-        db.query(models.Project).filter(models.Project.creator_id == user_id).update({"creator_id": None})
-        db.query(models.Task).filter(models.Task.creator_id == user_id).update({"creator_id": None})
-        
-        # 2. Unlink from Assigned Tasks (Legacy assignee_id = NULL)
-        db.query(models.Task).filter(models.Task.assignee_id == user_id).update({"assignee_id": None})
-        
-        # 3. Remove from M2M Associations
-        # We need to manually delete from association tables or let SQLAlchemy cascade if configured. 
-        # Since we didn't set cascade="all, delete", we should manually clear.
-        # However, deleting the User object might fail if foreign keys enforce constraint. 
-        # Let's remove them from the relationships.
-        
-        # Determine strictness. SQLite by default might not enforce FK unless enabled.
-        # But cleanest is to clear associations. 
-        # In SQLAlchemy ORM, removing the user object usually requires removing it from collections.
-        
-        # But easier: Execute DELETE on association tables
-        db.execute(models.project_assignees.delete().where(models.project_assignees.c.user_id == user_id))
-        db.execute(models.task_assignees.delete().where(models.task_assignees.c.user_id == user_id))
-        
-        # 4. Delete the User
-        db.delete(user_to_delete)
-        db.commit()
-        
+    # 1. 생성한 프로젝트/업무에서 creator_id 제거
+    db.query(models.Project).filter(models.Project.creator_id == user_id).update({"creator_id": None})
+    db.query(models.Task).filter(models.Task.creator_id == user_id).update({"creator_id": None})
+    
+    # 2. 할당된 업무에서 assignee_id 제거 (레거시)
+    db.query(models.Task).filter(models.Task.assignee_id == user_id).update({"assignee_id": None})
+    
+    # 3. 다대다 관계에서 제거
+    db.execute(models.project_assignees.delete().where(models.project_assignees.c.user_id == user_id))
+    db.execute(models.task_assignees.delete().where(models.task_assignees.c.user_id == user_id))
+    
+    # 4. 사용자 삭제
+    db.delete(user_to_delete)
+    db.commit()
+    
     return RedirectResponse(url="/admin", status_code=303)
 
 @app.post("/admin/categories", response_class=RedirectResponse)
-def create_category(name: str = Form(...), color: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
-    if current_user.role != "admin":
-        return RedirectResponse(url="/", status_code=303)
+def create_category(name: str = Form(...), color: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
+    """카테고리 생성"""
+    # 중복 체크
+    if db.query(models.Category).filter(models.Category.name == name).first():
+        return RedirectResponse(url="/admin?error=duplicate_category", status_code=303)
+    
     db.add(models.Category(name=name, color=color))
     db.commit()
     return RedirectResponse(url="/admin", status_code=303)
 
 @app.get("/projects", response_class=HTMLResponse)
-@app.get("/projects", response_class=HTMLResponse)
 def read_projects(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login")
-    # Group projects by status
-    projects = db.query(models.Project).all()
-    scheduled = [p for p in projects if p.status == 'Scheduled' or p.status == '예정'] 
-    # Handling both English/Korean in case db was populated differently or previous data exists. 
-    # For now ensuring defaults are English or Korean as User decided.
-    # The requirement said "예정. 진행. 완료로 구분". I will use these strings for display or standard Enum.
-    # Let's align with the Korean UI request. I will stick to "Scheduled", "In Progress", "Completed" internally for consistency or just use Korean?
-    # The user asked: "예정. 진행. 완료로 구분하여 볼수 있도록 구성".
-    # I'll use English internally "Scheduled", "In Progress", "Completed" but display mapping in template.
+    """프로젝트 목록 페이지"""
+    if not current_user:
+        return RedirectResponse(url="/login")
     
-    # Actually, in populate_db I used "Scheduled", "In Progress". 
+    projects = db.query(models.Project).all()
     scheduled = [p for p in projects if p.status == 'Scheduled']
     inprogress = [p for p in projects if p.status == 'In Progress']
-    completed = [p for p in projects if p.status == 'Completed']
-    
     completed = [p for p in projects if p.status == 'Completed']
     
     users = db.query(models.User).all()
@@ -707,11 +703,15 @@ def create_project(name: str = Form(...), description: str = Form(None),
                    status: str = Form(...),
                    department: str = Form(None),
                    assignee_ids: List[int] = Form([]),
-                   db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+                   db: Session = Depends(get_db),
+                   current_user: models.User = Depends(get_current_user)):
+    """프로젝트 생성"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
     
-    # Handle YYYY-MM input from type="month"
-    s_date = datetime.strptime(start_date, "%Y-%m").date() if start_date else None
-    e_date = datetime.strptime(end_date, "%Y-%m").date() if end_date else None
+    # YYYY-MM 형식 처리
+    s_date = utils.parse_date(start_date, "%Y-%m") if start_date else None
+    e_date = utils.parse_date(end_date, "%Y-%m") if end_date else None
     
     new_project = models.Project(
         name=name, 
@@ -720,12 +720,12 @@ def create_project(name: str = Form(...), description: str = Form(None),
         end_date=e_date, 
         status=status, 
         department=department,
-        creator_id=current_user.id if current_user else None
+        creator_id=current_user.id
     )
     db.add(new_project)
     db.commit()
     
-    # Handle assignees
+    # 담당자 처리
     if assignee_ids:
         users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
         new_project.assignees = users
@@ -740,15 +740,18 @@ def update_project(project_id: int,
                    status: str = Form(...),
                    department: str = Form(None),
                    assignee_ids: List[int] = Form([]),
-                   db: Session = Depends(get_db)):
+                   db: Session = Depends(get_db),
+                   current_user: models.User = Depends(get_current_user)):
+    """프로젝트 업데이트"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
     
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if not project:
-         return RedirectResponse(url="/projects", status_code=303)
+        return RedirectResponse(url="/projects", status_code=303)
 
-    # Handle YYYY-MM input from type="month"
-    s_date = datetime.strptime(start_date, "%Y-%m").date() if start_date else None
-    e_date = datetime.strptime(end_date, "%Y-%m").date() if end_date else None
+    s_date = utils.parse_date(start_date, "%Y-%m") if start_date else None
+    e_date = utils.parse_date(end_date, "%Y-%m") if end_date else None
     
     project.name = name
     project.description = description
@@ -757,8 +760,7 @@ def update_project(project_id: int,
     project.status = status
     project.department = department
     
-    # Update Assignees
-    # We replace the list entirely
+    # 담당자 목록 전체 교체
     if assignee_ids:
         users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
         project.assignees = users
@@ -770,25 +772,31 @@ def update_project(project_id: int,
 
 
 @app.post("/projects/{project_id}/upload")
-@app.post("/projects/{project_id}/upload")
-def upload_file(project_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
+async def upload_file(project_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """프로젝트 파일 업로드"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if not project:
-         return RedirectResponse(url="/projects", status_code=303)
+        return RedirectResponse(url="/projects", status_code=303)
 
+    # 파일 검증
+    file_content = await file.read()
+    is_valid, error_msg = utils.validate_file_upload(file.filename, len(file_content))
+    if not is_valid:
+        return RedirectResponse(url=f"/projects?error={error_msg}", status_code=303)
+    
     upload_dir = "uploads"
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
 
-    # Prevent overwriting or collision by simple logic (or just UUID, but let's keep name for simplicity and risk override)
-    # Or better, prepend timestamp
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     filename = f"{timestamp}_{file.filename}"
     filepath = os.path.join(upload_dir, filename)
 
     with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(file_content)
 
     new_file = models.ProjectFile(
         filename=file.filename,
@@ -802,9 +810,11 @@ def upload_file(project_id: int, file: UploadFile = File(...), db: Session = Dep
 
 
 @app.get("/tasks", response_class=HTMLResponse)
-@app.get("/tasks", response_class=HTMLResponse)
 def read_tasks_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login")
+    """업무 목록 페이지"""
+    if not current_user:
+        return RedirectResponse(url="/login")
+    
     users = db.query(models.User).all()
     categories = db.query(models.Category).all()
     projects = db.query(models.Project).all()
@@ -834,17 +844,21 @@ def create_task_page(request: Request,
                 project_id: int = Form(0),
                 category_id: int = Form(0),
                 department: str = Form(None),
-                db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+                db: Session = Depends(get_db),
+                current_user: models.User = Depends(get_current_user)):
+    """업무 생성 (업무 페이지)"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
     
     new_task = models.Task(
         title=title,
         description=description,
         status=status,
-        due_date=datetime.strptime(due_date, '%Y-%m-%d').date() if due_date else None,
-        project_id=project_id if project_id != 0 else None,
-        category_id=category_id if category_id != 0 else None,
+        due_date=utils.parse_date(due_date, '%Y-%m-%d'),
+        project_id=None if project_id == 0 else project_id,
+        category_id=None if category_id == 0 else category_id,
         department=department,
-        creator_id=current_user.id if current_user else None
+        creator_id=current_user.id
     )
     db.add(new_task)
     db.commit()
@@ -852,7 +866,8 @@ def create_task_page(request: Request,
     if assignee_ids:
         users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
         new_task.assignees = users
-        if users: new_task.assignee_id = users[0].id
+        if users:
+            new_task.assignee_id = users[0].id
         db.commit()
     return RedirectResponse(url="/tasks", status_code=303)
 
@@ -868,35 +883,54 @@ def update_task_details(task_id: int,
                         project_id: int = Form(0),
                         category_id: int = Form(0),
                         department: str = Form(None),
-                        db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
+                        db: Session = Depends(get_db),
+                        current_user: models.User = Depends(get_current_user)):
+    """업무 상세 정보 업데이트"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
     task = db.query(models.Task).filter(models.Task.id == task_id).first()
-    if task:
-        task.title = title
-        task.description = description
-        task.status = status
-        
-        # Update assignees
-        if assignee_ids:
-            users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
-            task.assignees = users
-            if users: task.assignee_id = users[0].id
-        else:
-            task.assignees = []
-            task.assignee_id = None
+    if not task:
+        return RedirectResponse(url="/tasks", status_code=303)
+    
+    task.title = title
+    task.description = description
+    task.status = status
+    
+    # 담당자 업데이트
+    if assignee_ids:
+        users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
+        task.assignees = users
+        if users:
+            task.assignee_id = users[0].id
+    else:
+        task.assignees = []
+        task.assignee_id = None
 
-        task.start_date = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
-        task.due_date = datetime.strptime(due_date, '%Y-%m-%d').date() if due_date else None
-        task.project_id = project_id if project_id != 0 else None
-        task.category_id = category_id if category_id != 0 else None
-        task.department = department
-        db.commit()
+    task.start_date = utils.parse_date(start_date, '%Y-%m-%d')
+    task.due_date = utils.parse_date(due_date, '%Y-%m-%d')
+    task.project_id = None if project_id == 0 else project_id
+    task.category_id = None if category_id == 0 else category_id
+    task.department = department
+    db.commit()
     return RedirectResponse(url="/tasks", status_code=303)
 
 @app.post("/tasks/{task_id}/upload", response_class=RedirectResponse)
-@app.post("/tasks/{task_id}/upload", response_class=RedirectResponse)
 async def upload_task_file(task_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
+    """업무 파일 업로드"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        return RedirectResponse(url="/tasks", status_code=303)
+    
+    # 파일 검증
+    file_content = await file.read()
+    is_valid, error_msg = utils.validate_file_upload(file.filename, len(file_content))
+    if not is_valid:
+        return RedirectResponse(url=f"/tasks?error={error_msg}", status_code=303)
+    
     upload_dir = "uploads/tasks"
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
@@ -906,12 +940,11 @@ async def upload_task_file(task_id: int, file: UploadFile = File(...), db: Sessi
     filepath = os.path.join(upload_dir, filename)
     
     with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
+        buffer.write(file_content)
     
     task_file = models.TaskFile(
         filename=file.filename,
-        filepath=f"/uploads/{filename}",
+        filepath=f"/uploads/tasks/{filename}",
         task_id=task_id
     )
     db.add(task_file)
@@ -962,7 +995,7 @@ def read_meeting_minutes(request: Request, db: Session = Depends(get_db), curren
     })
 
 @app.post("/meeting_minutes", response_class=RedirectResponse)
-def create_meeting_minute(request: Request, 
+async def create_meeting_minute(request: Request, 
                           topic: str = Form(...), 
                           date_str: str = Form(...),
                           time: str = Form(None),
@@ -972,10 +1005,13 @@ def create_meeting_minute(request: Request,
                           files: List[UploadFile] = File(None),
                           db: Session = Depends(get_db),
                           current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
+    """회의록 생성"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
     
-    # date_str from input type="date" is YYYY-MM-DD
-    m_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    m_date = utils.parse_date(date_str, "%Y-%m-%d")
+    if not m_date:
+        return RedirectResponse(url="/meeting_minutes?error=invalid_date", status_code=303)
     
     new_minute = models.MeetingMinutes(
         topic=topic,
@@ -990,20 +1026,25 @@ def create_meeting_minute(request: Request,
     db.commit()
     db.refresh(new_minute)
 
-    # Handle file uploads
+    # 파일 업로드 처리
     if files:
         upload_dir = "uploads/meeting_minutes"
         if not os.path.exists(upload_dir):
             os.makedirs(upload_dir)
             
         for file in files:
-            if file.filename: # check if filename is not empty
+            if file.filename:
+                file_content = await file.read()
+                is_valid, error_msg = utils.validate_file_upload(file.filename, len(file_content))
+                if not is_valid:
+                    continue  # 잘못된 파일은 건너뛰기
+                
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
                 filename = f"{timestamp}_{file.filename}"
                 filepath = os.path.join(upload_dir, filename)
                 
                 with open(filepath, "wb") as buffer:
-                    shutil.copyfileobj(file.file, buffer)
+                    buffer.write(file_content)
                 
                 new_file = models.MeetingMinuteFile(
                     filename=file.filename,
