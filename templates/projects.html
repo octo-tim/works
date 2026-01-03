@@ -585,7 +585,7 @@
             <button onclick="closeEditProjectModal();"
                 class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
-        <form id="editProjectForm" method="post" action="" class="space-y-4">
+        <form id="editProjectForm" method="post" action="" class="space-y-4" onsubmit="const form = this; const deptSelect = document.getElementById('edit_department'); console.log('Form submitting - Action:', form.action); console.log('Department value:', deptSelect?.value); console.log('All form fields:', Array.from(form.elements).filter(el => el.name).map(el => `${el.name}=${el.value || ''}`).join(', ')); if(!form.action) { event.preventDefault(); alert('프로젝트 ID를 찾을 수 없습니다.'); return false; } return true;">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트명</label>
                 <input type="text" name="name" id="edit_name" required
@@ -648,17 +648,12 @@
                         <!-- Populated by JS -->
                     </div>
 
-                    <!-- Upload Form (visually integrated) -->
-                    <div class="flex items-center gap-2">
-                        <input type="file" name="files" multiple
-                            class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                    </div>
+                    <!-- Note: File upload is handled separately via uploadForm -->
                 </div>
 
                 <div class="flex gap-2 pt-2">
                     <button type="submit" id="updateBtn"
-                        class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition"
-                        onclick="const form = document.getElementById('editProjectForm'); console.log('Saving project - Form action:', form.action); console.log('Department value:', document.getElementById('edit_department')?.value); if(!form.action) { event.preventDefault(); alert('프로젝트 ID를 찾을 수 없습니다.'); return false; }">저장</button>
+                        class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">저장</button>
                     <!-- Link separate delete logic manually or via js logic -->
                     <button type="button"
                         onclick="if(confirm('정말 삭제하시겠습니까?')) { document.getElementById('deleteProjectForm').submit(); }"
