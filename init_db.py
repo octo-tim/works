@@ -49,21 +49,18 @@ categories = ["기획", "디자인", "개발", "테스트"]
 for name in categories:
     db.add(models.Category(name=name))
 
-# Create Clients
-clients = ["ClientA", "ClientB", "ClientC"]
-for name in clients:
-    db.add(models.Client(name=name, contact_info="Manager Kim"))
+
 
 db.commit()
 
 # Create Projects
-client_a = db.query(models.Client).filter_by(name="ClientA").first()
+
 project1 = models.Project(
     name="Mobile App Redesign",
     description="Redesigning the main mobile application",
     status="In Progress",
     start_date=datetime.date(2025, 1, 1),
-    client_id=client_a.id
+
 )
 db.add(project1)
 

@@ -24,19 +24,15 @@ class User(Base):
     password_hash = Column(String)
     department = Column(String) # "System", "Distribution", "Management" (Admin)
     role = Column(String, default="user") # "admin", "user"
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    position = Column(String, nullable=True) # e.g. "Manager", "Designer"
 
     tasks_assigned = relationship("Task", foreign_keys="Task.assignee_id", back_populates="assignee")
     
 
 
-class Client(Base):
-    __tablename__ = "clients"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
-    contact_info = Column(String, nullable=True)
-
-    projects = relationship("Project", back_populates="client")
 
 
 class Category(Base):
@@ -59,11 +55,8 @@ class Project(Base):
     end_date = Column(Date, nullable=True)
     status = Column(String, default="Scheduled") # Scheduled, In Progress, Completed
     department = Column(String, nullable=True) # "System", "Distribution"
-    department = Column(String, nullable=True) # "System", "Distribution"
-    client_id = Column(Integer, ForeignKey("clients.id"), nullable=True)
     creator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    client = relationship("Client", back_populates="projects")
     creator = relationship("User", foreign_keys=[creator_id])
     assignees = relationship("User", secondary=project_assignees, backref="projects_assigned")
     tasks = relationship("Task", back_populates="project")

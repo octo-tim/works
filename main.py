@@ -120,45 +120,12 @@ def populate_db(db: Session):
         db.commit()
 
     # 2. Check if Dummy Data Exists (Prevent duplicate dummy data)
-    # Check for a known dummy user like 'Kim Manager'
-    if db.query(models.User).filter(models.User.username == "Kim Manager").first():
-        return
-
-    # Users
-    user1 = models.User(username="Kim Manager")
-    user2 = models.User(username="Lee Designer")
-    db.add_all([user1, user2])
-    db.commit()
-
-    # Clients
-    client1 = models.Client(name="Samsung Electronics", contact_info="02-1234-5678")
-    client2 = models.Client(name="Naver", contact_info="031-1234-5678")
-    db.add_all([client1, client2])
-    db.commit()
-
-    # Categories
-    cat1 = models.Category(name="Development", color="#3B82F6") # Blue
-    cat2 = models.Category(name="Design", color="#EC4899") # Pink
-    cat3 = models.Category(name="Meeting", color="#10B981") # Green
-    db.add_all([cat1, cat2, cat3])
-    db.commit()
-
-    # Projects
-    proj1 = models.Project(name="Website Redesign", description="Renewal project", start_date=date(2023, 10, 1), end_date=date(2023, 12, 31), status="In Progress", client_id=client1.id)
-    proj2 = models.Project(name="Mobile App MVP", description="MVP development", start_date=date(2023, 11, 1), end_date=date(2024, 1, 31), status="Scheduled", client_id=client2.id)
-    db.add_all([proj1, proj2])
-    db.commit()
-
-    # Tasks
-    task1 = models.Task(title="Design Mockup", status="Done", due_date=date(2023, 10, 15), project_id=proj1.id, assignee_id=user2.id, category_id=cat2.id)
-    task2 = models.Task(title="Frontend Setup", status="In Progress", due_date=date(2023, 10, 20), project_id=proj1.id, assignee_id=user1.id, category_id=cat1.id)
-    task3 = models.Task(title="API Specs", status="Todo", due_date=date(2023, 10, 25), project_id=proj2.id, assignee_id=user1.id, category_id=cat1.id)
-    task4 = models.Task(title="Client Meeting", status="Todo", due_date=date(2023, 10, 12), project_id=None, assignee_id=user1.id, category_id=cat3.id) # Inbox
-    db.add_all([task1, task2, task3, task4])
-    db.commit()
+    # SAMPLE DATA REMOVED: Users and Clients will be created manually or via admin panel.
+    return
 
 @app.on_event("startup")
-def startup_event():
+def on_startup():
+    print("DEBUG: SERVER STARTING - VERIFYING VERSION v1")
     try:
         db = SessionLocal()
         try:
@@ -181,7 +148,43 @@ def startup_event():
                 print("Migrating: Adding creator_id to tasks")
                 db.execute(text("ALTER TABLE tasks ADD COLUMN creator_id INTEGER REFERENCES users(id)"))
                 db.commit()
+            
+            try:
+                # Check User new columns
+                user_cols = db.execute(text("PRAGMA table_info(users)")).fetchall()
+                col_names = [c[1] for c in user_cols]
                 
+                if 'email' not in col_names:
+                    print("Migrating: Adding email to users")
+                    db.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR"))
+                if 'phone' not in col_names:
+                    print("Migrating: Adding phone to users")
+                    db.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR"))
+                if 'position' not in col_names:
+                    print("Migrating: Adding position to users")
+                    db.execute(text("ALTER TABLE users ADD COLUMN position VARCHAR"))
+                
+                # Migration: Translate Department Names
+                # users
+                db.execute(text("UPDATE users SET department = '시스템사업부' WHERE department = 'System'"))
+                db.execute(text("UPDATE users SET department = '유통사업부' WHERE department = 'Distribution'"))
+                db.execute(text("UPDATE users SET department = '경영지원팀' WHERE department = 'Management'"))
+                
+                # projects
+                db.execute(text("UPDATE projects SET department = '시스템사업부' WHERE department = 'System'"))
+                db.execute(text("UPDATE projects SET department = '유통사업부' WHERE department = 'Distribution'"))
+                db.execute(text("UPDATE projects SET department = '경영지원팀' WHERE department = 'Management'"))
+                
+                # tasks
+                db.execute(text("UPDATE tasks SET department = '시스템사업부' WHERE department = 'System'"))
+                db.execute(text("UPDATE tasks SET department = '유통사업부' WHERE department = 'Distribution'"))
+                db.execute(text("UPDATE tasks SET department = '경영지원팀' WHERE department = 'Management'"))
+
+                db.commit()
+            except Exception as e:
+                print(f"Migration Error (Users/Dept): {e}")
+                db.rollback()
+
             populate_db(db)
         finally:
             db.close()
@@ -276,7 +279,6 @@ def logout(request: Request):
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request, 
               assignee_id: Optional[str] = None, 
-              client_id: Optional[str] = None, 
               category_id: Optional[str] = None,
               department: Optional[str] = None, 
               target_month: Optional[int] = None,
@@ -305,21 +307,9 @@ def read_root(request: Request,
     
     # Handle int conversion for empty strings
     a_id = int(assignee_id) if assignee_id and assignee_id.isdigit() else None
-    c_id = int(client_id) if client_id and client_id.isdigit() else None
     cat_id = int(category_id) if category_id and category_id.isdigit() else None
-
-    if a_id:
-        query = query.filter(models.Task.assignee_id == a_id)
-
     if cat_id:
         query = query.filter(models.Task.category_id == cat_id)
-        
-    if c_id:
-        # Filter tasks by client via project
-        query = query.join(models.Project).filter(models.Project.client_id == c_id)
-        # Note: This will exclude Inbox tasks (project_id=None). 
-        # If we want to include inbox tasks that are somehow related to client (impossible with current schema), we'd need a different approach.
-        # But per schema, inbox tasks have no project, thus no client.
 
     tasks = query.all()
 
@@ -347,9 +337,7 @@ def read_root(request: Request,
         
         event = {
             "title": f"[{t.assignee.username if t.assignee else '미지정'}] {t.title}",
-            "backgroundColor": color,
-            "borderColor": color,
-             "url": f"javascript:openEditModal('{t.id}', '{t.title}', '{t.description or ''}', '{t.status}', '{t.start_date or ''}', '{t.due_date or ''}', '{t.project_id or 0}', '{t.category_id or 0}', {[u.id for u in t.assignees]}, {[f.filename for f in t.files]}, {[f.filepath for f in t.files]})"
+            "url": f"javascript:openEditModal('{t.id}', '{t.title}', '{t.description or ''}', '{t.status}', '{t.department or ''}', {[u.id for u in t.assignees]}, '{t.start_date or ''}', '{t.due_date or ''}', '{t.project_id or 0}', '{t.category_id or 0}', {[f.filename for f in t.files]}, {[f.filepath for f in t.files]})"
         }
 
         if start:
@@ -371,7 +359,6 @@ def read_root(request: Request,
         calendar_events.append(event)
 
     users = db.query(models.User).all()
-    clients = db.query(models.Client).all()
     categories = db.query(models.Category).all()
 
     return templates.TemplateResponse("dashboard.html", {
@@ -382,11 +369,9 @@ def read_root(request: Request,
         "tasks_done": tasks_done,
         "calendar_events": calendar_events, # Pass to template
         "users": users,
-        "clients": clients,
         "categories": categories,
         "projects": db.query(models.Project).all(), # Pass projects for modal
         "selected_assignee": a_id,
-        "selected_client": c_id,
         "selected_category": cat_id,
         "selected_department": department, # Pass back to UI
         "selected_month": target_month,
@@ -575,55 +560,107 @@ def read_admin(request: Request, db: Session = Depends(get_db), current_user: mo
     if current_user.role != "admin":
         return RedirectResponse(url="/", status_code=303)
     users = db.query(models.User).all()
-    clients = db.query(models.Client).all()
     categories = db.query(models.Category).all()
     return templates.TemplateResponse("admin.html", {
         "request": request, 
         "user": current_user,
         "users": users, 
-        "clients": clients, 
         "categories": categories
     })
 
 @app.post("/admin/users", response_class=RedirectResponse)
 @app.post("/admin/users", response_class=RedirectResponse)
-def create_user(username: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
-    if current_user.role != "admin":
-        return RedirectResponse(url="/", status_code=303)
-    db.add(models.User(username=username))
-    db.commit()
-    return RedirectResponse(url="/admin", status_code=303)
-
-@app.post("/admin/clients", response_class=RedirectResponse)
-@app.post("/admin/clients", response_class=RedirectResponse)
-def create_client(name: str = Form(...), contact_info: str = Form(None), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user: return RedirectResponse(url="/login", status_code=303)
-    if current_user.role != "admin":
-        return RedirectResponse(url="/", status_code=303)
-    db.add(models.Client(name=name, contact_info=contact_info))
-    db.commit()
-    return RedirectResponse(url="/admin", status_code=303)
-
-@app.post("/admin/clients/{client_id}/delete", response_class=RedirectResponse)
-def delete_client(client_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def create_user(username: str = Form(...), 
+                department: str = Form(None),
+                email: str = Form(None),
+                phone: str = Form(None),
+                position: str = Form(None),
+                password: str = Form(...), # Require password for new users
+                db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login", status_code=303)
     if current_user.role != "admin":
         return RedirectResponse(url="/", status_code=303)
     
-    client = db.query(models.Client).filter(models.Client.id == client_id).first()
-    if client:
-        # Dissociate from projects first
-        projects = db.query(models.Project).filter(models.Project.client_id == client_id).all()
-        for p in projects:
-            p.client_id = None
+    new_user = models.User(
+        username=username,
+        department=department,
+        email=email,
+        phone=phone,
+        position=position,
+        password_hash=get_password_hash(password)
+    )
+    db.add(new_user)
+    db.commit()
+    return RedirectResponse(url="/admin", status_code=303)
+
+@app.post("/admin/users/{user_id}/update", response_class=RedirectResponse)
+def update_user(user_id: int, 
+                username: str = Form(...),
+                department: str = Form(None),
+                email: str = Form(None),
+                phone: str = Form(None),
+                position: str = Form(None),
+                password: str = Form(None), # Optional for updates
+                db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
+    if current_user.role != "admin":
+        return RedirectResponse(url="/", status_code=303)
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        user.username = username
+        user.department = department
+        user.email = email
+        user.phone = phone
+        user.position = position
         
-        db.delete(client)
+        if password and password.strip():
+            user.password_hash = get_password_hash(password)
+            
         db.commit()
         
     return RedirectResponse(url="/admin", status_code=303)
 
-@app.post("/admin/categories", response_class=RedirectResponse)
+@app.post("/admin/users/{user_id}/delete", response_class=RedirectResponse)
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
+    if current_user.role != "admin":
+        return RedirectResponse(url="/", status_code=303)
+    
+    user_to_delete = db.query(models.User).filter(models.User.id == user_id).first()
+    if user_to_delete:
+        # Prevent deleting the admin user itself if it's the one logged in (optional but good practice)
+        if user_to_delete.id == current_user.id:
+             # Ideally show error, but for now just redirect
+             return RedirectResponse(url="/admin", status_code=303)
+
+        # 1. Unlink from Created Projects/Tasks (Set creator_id = NULL)
+        db.query(models.Project).filter(models.Project.creator_id == user_id).update({"creator_id": None})
+        db.query(models.Task).filter(models.Task.creator_id == user_id).update({"creator_id": None})
+        
+        # 2. Unlink from Assigned Tasks (Legacy assignee_id = NULL)
+        db.query(models.Task).filter(models.Task.assignee_id == user_id).update({"assignee_id": None})
+        
+        # 3. Remove from M2M Associations
+        # We need to manually delete from association tables or let SQLAlchemy cascade if configured. 
+        # Since we didn't set cascade="all, delete", we should manually clear.
+        # However, deleting the User object might fail if foreign keys enforce constraint. 
+        # Let's remove them from the relationships.
+        
+        # Determine strictness. SQLite by default might not enforce FK unless enabled.
+        # But cleanest is to clear associations. 
+        # In SQLAlchemy ORM, removing the user object usually requires removing it from collections.
+        
+        # But easier: Execute DELETE on association tables
+        db.execute(models.project_assignees.delete().where(models.project_assignees.c.user_id == user_id))
+        db.execute(models.task_assignees.delete().where(models.task_assignees.c.user_id == user_id))
+        
+        # 4. Delete the User
+        db.delete(user_to_delete)
+        db.commit()
+        
+    return RedirectResponse(url="/admin", status_code=303)
+
 @app.post("/admin/categories", response_class=RedirectResponse)
 def create_category(name: str = Form(...), color: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login", status_code=303)
@@ -652,8 +689,9 @@ def read_projects(request: Request, db: Session = Depends(get_db), current_user:
     inprogress = [p for p in projects if p.status == 'In Progress']
     completed = [p for p in projects if p.status == 'Completed']
     
+    completed = [p for p in projects if p.status == 'Completed']
+    
     users = db.query(models.User).all()
-    clients = db.query(models.Client).all()
 
     return templates.TemplateResponse("projects.html", {
         "request": request,
@@ -661,14 +699,13 @@ def read_projects(request: Request, db: Session = Depends(get_db), current_user:
         "scheduled": scheduled, 
         "inprogress": inprogress, 
         "completed": completed,
-        "clients": clients,
         "users": users
     })
 
 @app.post("/projects", response_class=RedirectResponse)
 def create_project(name: str = Form(...), description: str = Form(None), 
-                    start_date: str = Form(None), end_date: str = Form(None), 
-                   status: str = Form(...), client_id: int = Form(None),
+                   start_date: str = Form(None), end_date: str = Form(None), 
+                   status: str = Form(...),
                    department: str = Form(None),
                    assignee_ids: List[int] = Form([]),
                    db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -677,15 +714,12 @@ def create_project(name: str = Form(...), description: str = Form(None),
     s_date = datetime.strptime(start_date, "%Y-%m").date() if start_date else None
     e_date = datetime.strptime(end_date, "%Y-%m").date() if end_date else None
     
-    if client_id == 0: client_id = None
-
     new_project = models.Project(
         name=name, 
         description=description, 
         start_date=s_date, 
         end_date=e_date, 
         status=status, 
-        client_id=client_id,
         department=department,
         creator_id=current_user.id if current_user else None
     )
@@ -704,7 +738,7 @@ def create_project(name: str = Form(...), description: str = Form(None),
 def update_project(project_id: int,
                    name: str = Form(...), description: str = Form(None), 
                    start_date: str = Form(None), end_date: str = Form(None), 
-                   status: str = Form(...), client_id: int = Form(None),
+                   status: str = Form(...),
                    department: str = Form(None),
                    assignee_ids: List[int] = Form([]),
                    db: Session = Depends(get_db)):
@@ -717,16 +751,11 @@ def update_project(project_id: int,
     s_date = datetime.strptime(start_date, "%Y-%m").date() if start_date else None
     e_date = datetime.strptime(end_date, "%Y-%m").date() if end_date else None
     
-    if client_id == 0: client_id = None
-
     project.name = name
     project.description = description
     project.start_date = s_date
     project.end_date = e_date
     project.status = status
-    project.client_id = client_id
-    project.department = department
-    
     project.department = department
     
     # Update Assignees

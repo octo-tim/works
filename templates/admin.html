@@ -15,58 +15,65 @@
             </span>
             사용자 관리
         </h3>
-        <div class="flex gap-4 mb-4">
-            <form action="/admin/users" method="post" class="flex-1 flex gap-2">
-                <input type="text" name="username" placeholder="사용자 이름" required
-                    class="flex-1 border rounded-lg px-3 py-2 text-sm">
-                <button type="submit"
-                    class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">추가</button>
-            </form>
-        </div>
-        <div class="flex flex-wrap gap-2">
-            {% for u in users %}
-            <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">{{ u.username }}</span>
-            {% endfor %}
-        </div>
-    </section>
-
-    <!-- Clients Management -->
-    <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h3 class="text-lg font-bold text-gray-700 mb-4 flex items-center">
-            <span class="bg-purple-100 text-purple-600 p-2 rounded-lg mr-3">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
-                    </path>
-                </svg>
-            </span>
-            거래처 관리
-        </h3>
-        <div class="flex gap-4 mb-4">
-            <form action="/admin/clients" method="post" class="flex-1 flex gap-2">
-                <input type="text" name="name" placeholder="거래처명" required
-                    class="flex-1 border rounded-lg px-3 py-2 text-sm">
-                <input type="text" name="contact_info" placeholder="연락처"
-                    class="flex-1 border rounded-lg px-3 py-2 text-sm">
-                <button type="submit"
-                    class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700">추가</button>
-            </form>
-        </div>
-        <ul class="space-y-2">
-            {% for c in clients %}
-            <li class="flex justify-between items-center text-sm border-b border-gray-50 pb-2 last:border-0">
-                <div>
-                    <span class="font-medium text-gray-700">{{ c.name }}</span>
-                    <span class="text-gray-400 ml-2 text-xs">{{ c.contact_info or '-' }}</span>
+        <div class="flex flex-col gap-4 mb-4">
+            <form action="/admin/users" method="post" class="flex flex-col gap-2">
+                <div class="flex gap-2">
+                    <input type="text" name="username" placeholder="사용자 이름" required
+                        class="flex-1 border rounded-lg px-3 py-2 text-sm">
+                    <select name="department" class="border rounded-lg px-3 py-2 text-sm w-40">
+                        <option value="시스템사업부">시스템사업부</option>
+                        <option value="유통사업부">유통사업부</option>
+                        <option value="경영지원팀">경영지원팀</option>
+                    </select>
                 </div>
-                <form action="/admin/clients/{{ c.id }}/delete" method="post"
-                    onsubmit="return confirm('정말 삭제하시겠습니까?');">
+                <div class="flex gap-2">
+                    <input type="email" name="email" placeholder="이메일"
+                        class="flex-1 border rounded-lg px-3 py-2 text-sm">
+                    <input type="text" name="phone" placeholder="연락처"
+                        class="flex-1 border rounded-lg px-3 py-2 text-sm">
+                    <input type="text" name="position" placeholder="직급"
+                        class="w-32 border rounded-lg px-3 py-2 text-sm">
+                    <input type="password" name="password" placeholder="비밀번호" required
+                        class="w-32 border rounded-lg px-3 py-2 text-sm">
+                    <button type="submit"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 whitespace-nowrap">추가</button>
+                </div>
+            </form>
+        </div>
+        <ul class="w-full space-y-2">
+            {% for u in users %}
+            <li
+                class="flex justify-between items-center text-sm border-b border-gray-50 pb-2 last:border-0 hover:bg-gray-50 p-2 rounded transition group">
+                <div class="cursor-pointer flex-1"
+                    onclick="openEditUserModal('{{ u.id }}', '{{ u.username }}', '{{ u.department or '' }}', '{{ u.email or '' }}', '{{ u.phone or '' }}', '{{ u.position or '' }}')">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-gray-800 group-hover:text-blue-600 transition">{{ u.username
+                            }}</span>
+                        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{{ u.department or '미지정'
+                            }}</span>
+                        {% if u.position %}
+                        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{{ u.position }}</span>
+                        {% endif %}
+                        <span class="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition">✎ 수정</span>
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1">
+                        {{ u.email or '-' }} | {{ u.phone or '-' }}
+                    </div>
+                </div>
+                {% if u.username != user.username %} <!-- Prevent deleting self -->
+                <form action="/admin/users/{{ u.id }}/delete" method="post"
+                    onsubmit="return confirm('정말 삭제하시겠습니까? (할당된 업무는 해제됩니다)');">
                     <button type="submit" class="text-red-500 hover:text-red-700 text-sm">삭제</button>
                 </form>
+                {% else %}
+                <span class="text-gray-300 text-xs italic">본인 (삭제 불가)</span>
+                {% endif %}
             </li>
             {% endfor %}
         </ul>
     </section>
+
+
 
     <!-- Categories Management -->
     <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -100,4 +107,66 @@
         </div>
     </section>
 </div>
+
+<!-- Edit User Modal -->
+<div id="editUserModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">사용자 정보 수정</h3>
+            <button onclick="document.getElementById('editUserModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <form id="editUserForm" method="post" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">사용자 이름</label>
+                <input type="text" name="username" id="edit_username" required
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">사업부</label>
+                <select name="department" id="edit_department" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <option value="시스템사업부">시스템사업부</option>
+                    <option value="유통사업부">유통사업부</option>
+                    <option value="경영지원팀">경영지원팀</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+                <input type="email" name="email" id="edit_email"
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">연락처</label>
+                <input type="text" name="phone" id="edit_phone"
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">직급</label>
+                <input type="text" name="position" id="edit_position"
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">비밀번호 변경 (비워두면 변경 안 함)</label>
+                <input type="password" name="password" id="edit_password" placeholder="새 비밀번호 입력"
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <button type="submit"
+                class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">저장</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openEditUserModal(id, username, department, email, phone, position) {
+        document.getElementById('edit_username').value = username;
+        document.getElementById('edit_department').value = department;
+        document.getElementById('edit_email').value = email;
+        document.getElementById('edit_phone').value = phone;
+        document.getElementById('edit_position').value = position;
+
+        document.getElementById('editUserForm').action = "/admin/users/" + id + "/update";
+        document.getElementById('editUserModal').classList.remove('hidden');
+    }
+</script>
 {% endblock %}

@@ -26,7 +26,7 @@
                         <tr>
                             <th scope="col" class="px-6 py-3">업무명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
-                            <th scope="col" class="px-6 py-3">프로젝트/거래처</th>
+                            <th scope="col" class="px-6 py-3">프로젝트</th>
                             <th scope="col" class="px-6 py-3">담당자/마감일</th>
                             <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">설명</th>
@@ -34,15 +34,8 @@
                     </thead>
                     <tbody>
                         {% for t in scheduled %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ [u.id for u in t.assignees]|tojson }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', '{{ t.department or '' }}', [
-                            {%- for f in t.files -%}
-                                '{{ f.filename }}'{%- if not loop.last -%}, {%- endif -%}
-                            {%- endfor -%}
-                            ], [
-                            {%- for f in t.files -%}
-                                '{{ f.filepath }}'{%- if not loop.last -%}, {%- endif -%}
-                            {%- endfor -%}
-                            ])">
+                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
+                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.category_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
                             <td class="px-6 py-4">
                                 {% if t.department == 'System' %}
@@ -61,9 +54,7 @@
                                     class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold mb-1 block w-fit">{{
                                     t.project.name }}</span>
                                 {% endif %}
-                                {% if t.project and t.project.client %}
-                                <span class="text-xs text-gray-500">{{ t.project.client.name }}</span>
-                                {% endif %}
+
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex flex-col">
@@ -105,7 +96,7 @@
                         <tr>
                             <th scope="col" class="px-6 py-3">업무명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
-                            <th scope="col" class="px-6 py-3">프로젝트/거래처</th>
+                            <th scope="col" class="px-6 py-3">프로젝트</th>
                             <th scope="col" class="px-6 py-3">담당자/마감일</th>
                             <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">설명</th>
@@ -113,15 +104,8 @@
                     </thead>
                     <tbody>
                         {% for t in inprogress %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ t.assignee_id or 0 }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', '{{ t.department or '' }}', [
-                            {%- for f in t.files -%}
-                                '{{ f.filename }}'{%- if not loop.last -%}, {%- endif -%}
-                            {%- endfor -%}
-                            ], [
-                            {%- for f in t.files -%}
-                                '{{ f.filepath }}'{%- if not loop.last -%}, {%- endif -%}
-                            {%- endfor -%}
-                            ])">
+                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
+                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.category_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
                             <td class="px-6 py-4">
                                 {% if t.department == 'System' %}
@@ -139,9 +123,6 @@
                                 <span
                                     class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold mb-1 block w-fit">{{
                                     t.project.name }}</span>
-                                {% endif %}
-                                {% if t.project and t.project.client %}
-                                <span class="text-xs text-gray-500">{{ t.project.client.name }}</span>
                                 {% endif %}
                             </td>
                             <td class="px-6 py-4">
@@ -184,7 +165,7 @@
                         <tr>
                             <th scope="col" class="px-6 py-3">업무명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
-                            <th scope="col" class="px-6 py-3">프로젝트/거래처</th>
+                            <th scope="col" class="px-6 py-3">프로젝트</th>
                             <th scope="col" class="px-6 py-3">담당자/마감일</th>
                             <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">설명</th>
@@ -192,15 +173,8 @@
                     </thead>
                     <tbody>
                         {% for t in completed %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ t.assignee_id or 0 }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', '{{ t.department or '' }}', [
-                            {%- for f in t.files -%}
-                                '{{ f.filename }}'{%- if not loop.last -%}, {%- endif -%}
-                            {%- endfor -%}
-                            ], [
-                            {%- for f in t.files -%}
-                                '{{ f.filepath }}'{%- if not loop.last -%}, {%- endif -%}
-                            {%- endfor -%}
-                            ])">
+                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
+                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.category_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
                             <td class="px-6 py-4">
                                 {% if t.department == 'System' %}
@@ -218,9 +192,6 @@
                                 <span
                                     class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold mb-1 block w-fit">{{
                                     t.project.name }}</span>
-                                {% endif %}
-                                {% if t.project and t.project.client %}
-                                <span class="text-xs text-gray-500">{{ t.project.client.name }}</span>
                                 {% endif %}
                             </td>
                             <td class="px-6 py-4">
@@ -438,11 +409,7 @@
         const select = document.getElementById('edit_assignee_ids');
         Array.from(select.options).forEach(o => o.selected = false);
         // assignee_ids comes as a JSON string from python, we might need to parse if it's not js array already
-        // But jinja |tojson outputs valid JS array if not quoted in string.
-        // Wait, I passed it as string '{{ ...|tojson }}' so it needs parsing if it comes as string.
-        // But simpler: passed as argument. Let's check format.
-        // It renders as '[1, 2]'. If put inside quotes '...' it becomes string "[1, 2]".
-        // So I should JSON.parse if it's string.
+
         let ids = [];
         try {
             ids = typeof assignee_ids === 'string' ? JSON.parse(assignee_ids) : assignee_ids;

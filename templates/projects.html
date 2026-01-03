@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="h-full flex flex-col">
+
+<div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-gray-800">프로젝트</h2>
-        <button onclick="document.getElementById('projectModal').classList.remove('hidden')"
+        <button onclick="document.getElementById('newProjectModal').classList.remove('hidden')"
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm text-sm font-medium">
             + 새 프로젝트
         </button>
@@ -26,7 +27,7 @@
                         <tr>
                             <th scope="col" class="px-6 py-3">프로젝트명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
-                            <th scope="col" class="px-6 py-3">거래처</th>
+
                             <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">기간</th>
                             <th scope="col" class="px-6 py-3">설명</th>
@@ -34,9 +35,17 @@
                     </thead>
                     <tbody>
                         {% for p in scheduled %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                            onclick='openEditModal({{ p.id|tojson }}, {{ p.name|tojson }}, {{ (p.description or "")|tojson }}, {{ (p.client_id or 0)|tojson }}, {{ p.status|tojson }}, {{ (p.department or "")|tojson }}, {{ [u.id for u in p.assignees]|tojson }}, {{ (p.start_date.strftime("%Y-%m") if p.start_date else "")|tojson }}, {{ (p.end_date.strftime("%Y-%m") if p.end_date else "")|tojson }}, {{ p.files|map(attribute="filename")|list|tojson }}, {{ p.files|map(attribute="filepath")|list|tojson }})'>
-                            <td class="px-6 py-4 font-medium text-gray-900">{{ p.name }}</td>
+                        <tr class="bg-white border-b hover:bg-gray-50">
+                            <td class="px-6 py-4 font-medium text-blue-600 hover:underline cursor-pointer"
+                                onclick="projectOpenEditModal(this)" data-id="{{ p.id }}" data-name="{{ p.name|e }}"
+                                data-description="{{ (p.description or '')|e }}" data-status="{{ p.status|e }}"
+                                data-department="{{ (p.department or '')|e }}"
+                                data-assignee-ids='{{ p.assignees|map(attribute="id")|list|tojson|forceescape }}'
+                                data-start-date="{{ p.start_date.strftime('%Y-%m') if p.start_date else '' }}"
+                                data-end-date="{{ p.end_date.strftime('%Y-%m') if p.end_date else '' }}"
+                                data-file-names='{{ p.files|map(attribute="filename")|list|tojson|forceescape }}'
+                                data-file-paths='{{ p.files|map(attribute="filepath")|list|tojson|forceescape }}'>
+                                {{ p.name }}</td>
                             <td class="px-6 py-4">
                                 {% if p.department == 'System' %}
                                 <span
@@ -48,14 +57,7 @@
                                 <span class="text-gray-400">-</span>
                                 {% endif %}
                             </td>
-                            <td class="px-6 py-4">
-                                {% if p.client %}
-                                <span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-bold">{{
-                                    p.client.name }}</span>
-                                {% else %}
-                                <span class="text-gray-400">-</span>
-                                {% endif %}
-                            </td>
+
                             <td class="px-6 py-4">
                                 {{ p.start_date.strftime('%Y-%m') if p.start_date else '' }} ~ {{
                                 p.end_date.strftime('%Y-%m') if p.end_date else '' }}
@@ -86,7 +88,7 @@
                         <tr>
                             <th scope="col" class="px-6 py-3">프로젝트명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
-                            <th scope="col" class="px-6 py-3">거래처</th>
+
                             <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">기간</th>
                             <th scope="col" class="px-6 py-3">설명</th>
@@ -94,9 +96,17 @@
                     </thead>
                     <tbody>
                         {% for p in inprogress %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                            onclick='openEditModal({{ p.id|tojson }}, {{ p.name|tojson }}, {{ (p.description or "")|tojson }}, {{ (p.client_id or 0)|tojson }}, {{ p.status|tojson }}, {{ (p.start_date.strftime("%Y-%m") if p.start_date else "")|tojson }}, {{ (p.end_date.strftime("%Y-%m") if p.end_date else "")|tojson }}, {{ p.files|map(attribute="filename")|list|tojson }}, {{ p.files|map(attribute="filepath")|list|tojson }})'>
-                            <td class="px-6 py-4 font-medium text-gray-900">{{ p.name }}</td>
+                        <tr class="bg-white border-b hover:bg-gray-50">
+                            <td class="px-6 py-4 font-medium text-blue-600 hover:underline cursor-pointer"
+                                onclick="projectOpenEditModal(this)" data-id="{{ p.id }}" data-name="{{ p.name|e }}"
+                                data-description="{{ (p.description or '')|e }}" data-status="{{ p.status|e }}"
+                                data-department="{{ (p.department or '')|e }}"
+                                data-assignee-ids='{{ p.assignees|map(attribute="id")|list|tojson|forceescape }}'
+                                data-start-date="{{ p.start_date.strftime('%Y-%m') if p.start_date else '' }}"
+                                data-end-date="{{ p.end_date.strftime('%Y-%m') if p.end_date else '' }}"
+                                data-file-names='{{ p.files|map(attribute="filename")|list|tojson|forceescape }}'
+                                data-file-paths='{{ p.files|map(attribute="filepath")|list|tojson|forceescape }}'>
+                                {{ p.name }}</td>
                             <td class="px-6 py-4">
                                 {% if p.department == 'System' %}
                                 <span
@@ -108,14 +118,7 @@
                                 <span class="text-gray-400">-</span>
                                 {% endif %}
                             </td>
-                            <td class="px-6 py-4">
-                                {% if p.client %}
-                                <span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-bold">{{
-                                    p.client.name }}</span>
-                                {% else %}
-                                <span class="text-gray-400">-</span>
-                                {% endif %}
-                            </td>
+
                             <td class="px-6 py-4">
                                 <span class="text-xs text-gray-500">{{ p.creator.username if p.creator else '시스템'
                                     }}</span>
@@ -150,7 +153,7 @@
                         <tr>
                             <th scope="col" class="px-6 py-3">프로젝트명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
-                            <th scope="col" class="px-6 py-3">거래처</th>
+
                             <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">기간</th>
                             <th scope="col" class="px-6 py-3">설명</th>
@@ -158,28 +161,30 @@
                     </thead>
                     <tbody>
                         {% for p in completed %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                            onclick='openEditModal({{ p.id|tojson }}, {{ p.name|tojson }}, {{ (p.description or "")|tojson }}, {{ (p.client_id or 0)|tojson }}, {{ p.status|tojson }}, {{ (p.start_date.strftime("%Y-%m") if p.start_date else "")|tojson }}, {{ (p.end_date.strftime("%Y-%m") if p.end_date else "")|tojson }}, {{ p.files|map(attribute="filename")|list|tojson }}, {{ p.files|map(attribute="filepath")|list|tojson }})'>
-                            <td class="px-6 py-4 font-medium text-gray-900">{{ p.name }}</td>
+                        <tr class="bg-white border-b hover:bg-gray-50">
+                            <td class="px-6 py-4 font-medium text-blue-600 hover:underline cursor-pointer"
+                                onclick="projectOpenEditModal(this)" data-id="{{ p.id }}" data-name="{{ p.name|e }}"
+                                data-description="{{ (p.description or '')|e }}" data-status="{{ p.status|e }}"
+                                data-department="{{ (p.department or '')|e }}"
+                                data-assignee-ids='{{ p.assignees|map(attribute="id")|list|tojson|forceescape }}'
+                                data-start-date="{{ p.start_date.strftime('%Y-%m') if p.start_date else '' }}"
+                                data-end-date="{{ p.end_date.strftime('%Y-%m') if p.end_date else '' }}"
+                                data-file-names='{{ p.files|map(attribute="filename")|list|tojson|forceescape }}'
+                                data-file-paths='{{ p.files|map(attribute="filepath")|list|tojson|forceescape }}'>
+                                {{ p.name }}</td>
                             <td class="px-6 py-4">
-                                {% if p.department == 'System' %}
+                                {% if p.department == '시스템사업부' %}
                                 <span
                                     class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
-                                {% elif p.department == 'Distribution' %}
+                                {% elif p.department == '유통사업부' %}
                                 <span
                                     class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
                                 {% else %}
-                                <span class="text-gray-400">-</span>
+                                <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full font-bold">{{
+                                    p.department or '-' }}</span>
                                 {% endif %}
                             </td>
-                            <td class="px-6 py-4">
-                                {% if p.client %}
-                                <span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-bold">{{
-                                    p.client.name }}</span>
-                                {% else %}
-                                <span class="text-gray-400">-</span>
-                                {% endif %}
-                            </td>
+
                             <td class="px-6 py-4">
                                 <span class="text-xs text-gray-500">{{ p.creator.username if p.creator else '시스템'
                                     }}</span>
@@ -204,12 +209,12 @@
 </div>
 
 <!-- Project Modal -->
-<div id="projectModal"
+<div id="newProjectModal"
     class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">새 프로젝트</h3>
-            <button onclick="document.getElementById('projectModal').classList.add('hidden')"
+            <button onclick="document.getElementById('newProjectModal').classList.add('hidden')"
                 class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         <form action="/projects" method="post" class="space-y-4">
@@ -224,21 +229,14 @@
                     class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
             </div>
             <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">거래처</label>
-                    <select name="client_id" class="w-full border rounded-lg px-3 py-2 text-sm">
-                        <option value="0">내부 프로젝트 (거래처 없음)</option>
-                        {% for c in clients %}
-                        <option value="{{ c.id }}">{{ c.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">사업부</label>
                     <select name="department" class="w-full border rounded-lg px-3 py-2 text-sm">
                         <option value="">미지정</option>
-                        <option value="System">시스템사업부</option>
-                        <option value="Distribution">유통사업부</option>
+                        <option value="시스템사업부">시스템사업부</option>
+                        <option value="유통사업부">유통사업부</option>
+                        <option value="경영지원팀">경영지원팀</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -297,21 +295,14 @@
                     class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
             </div>
             <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">거래처</label>
-                    <select name="client_id" id="edit_client_id" class="w-full border rounded-lg px-3 py-2 text-sm">
-                        <option value="0">내부 프로젝트 (거래처 없음)</option>
-                        {% for c in clients %}
-                        <option value="{{ c.id }}">{{ c.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">사업부</label>
                     <select name="department" id="edit_department" class="w-full border rounded-lg px-3 py-2 text-sm">
                         <option value="">미지정</option>
-                        <option value="System">시스템사업부</option>
-                        <option value="Distribution">유통사업부</option>
+                        <option value="시스템사업부">시스템사업부</option>
+                        <option value="유통사업부">유통사업부</option>
+                        <option value="경영지원팀">경영지원팀</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -378,50 +369,104 @@
 </div>
 
 <script>
-    function openEditModal(id, name, description, client_id, status, department, assignee_ids, start_date, end_date, filenames, filepaths) {
-        document.getElementById('edit_name').value = name;
-        document.getElementById('edit_description').value = description;
-        document.getElementById('edit_client_id').value = client_id;
-        document.getElementById('edit_status').value = status;
-        document.getElementById('edit_department').value = department;
+    function projectOpenEditModal(el) {
+        try {
+            if (!el || !el.dataset) {
+                throw new Error("Invalid element or missing dataset");
+            }
 
-        // Handle Multiple Select
-        const select = document.getElementById('edit_assignee_ids');
-        Array.from(select.options).forEach(o => o.selected = false);
-        if (assignee_ids) {
-            Array.from(select.options).forEach(option => {
-                option.selected = assignee_ids.includes(parseInt(option.value));
-            });
+            const ds = el.dataset;
+
+            // Helper to safely set value
+            const setValue = (id, val) => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.value = val === 'None' || val === null ? '' : val;
+                } else {
+                    console.warn(`Input with id '${id}' not found`);
+                }
+            };
+
+            setValue('edit_name', ds.name);
+            setValue('edit_description', ds.description);
+            setValue('edit_status', ds.status);
+            setValue('edit_department', ds.department);
+            setValue('edit_start_date', ds.startDate);
+            setValue('edit_end_date', ds.endDate);
+
+            // Handle Assignees
+            let assignee_ids = [];
+            try {
+                // If it's a string looking like a list, try to parse it
+                assignee_ids = JSON.parse(ds.assigneeIds || '[]');
+            } catch (e) {
+                console.warn('Error parsing assigneeIds', e);
+            }
+
+            const assigneeSelect = document.getElementById('edit_assignee_ids');
+            if (assigneeSelect) {
+                Array.from(assigneeSelect.options).forEach(o => o.selected = false);
+                if (assignee_ids && Array.isArray(assignee_ids)) {
+                    Array.from(assigneeSelect.options).forEach(option => {
+                        option.selected = assignee_ids.includes(parseInt(option.value));
+                    });
+                }
+            }
+
+            // Handle Files
+            let filenames = [];
+            let filepaths = [];
+            try {
+                filenames = JSON.parse(ds.fileNames || '[]');
+                filepaths = JSON.parse(ds.filePaths || '[]');
+            } catch (e) {
+                console.warn('Error parsing file info', e);
+            }
+
+            const fileList = document.getElementById('fileList');
+            if (fileList) {
+                fileList.innerHTML = '';
+                if (filenames && filenames.length > 0) {
+                    filenames.forEach((name, index) => {
+                        const li = document.createElement('li');
+                        const link = document.createElement('a');
+                        link.href = filepaths[index] || '#';
+                        link.textContent = name;
+                        link.target = "_blank";
+                        link.className = "text-blue-600 hover:underline flex items-center";
+                        link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
+                        li.appendChild(link);
+                        fileList.appendChild(li);
+                    });
+                } else {
+                    fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
+                }
+            }
+
+            // Set Form Actions using project ID
+            const id = ds.id;
+            if (id) {
+                const setAction = (formId, url) => {
+                    const form = document.getElementById(formId);
+                    if (form) form.action = url;
+                };
+                setAction('editProjectForm', "/projects/" + id + "/update");
+                setAction('uploadForm', "/projects/" + id + "/upload");
+                setAction('deleteProjectForm', "/projects/" + id + "/delete");
+            }
+
+            // Show Modal
+            const modal = document.getElementById('editProjectModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+            } else {
+                throw new Error("Edit Modal element 'editProjectModal' not found in DOM");
+            }
+
+        } catch (e) {
+            alert('Project Edit Error: ' + e.message);
+            console.error(e);
         }
-
-        document.getElementById('edit_start_date').value = start_date;
-        document.getElementById('edit_end_date').value = end_date;
-
-        document.getElementById('editProjectForm').action = "/projects/" + id + "/update";
-        document.getElementById('uploadForm').action = "/projects/" + id + "/upload";
-        document.getElementById('deleteProjectForm').action = "/projects/" + id + "/delete";
-
-        // Populate File List
-        const fileList = document.getElementById('fileList');
-        fileList.innerHTML = '';
-
-        if (filenames && filenames.length > 0) {
-            filenames.forEach((name, index) => {
-                const li = document.createElement('li');
-                const link = document.createElement('a');
-                link.href = filepaths[index]; // Use filepath
-                link.textContent = name;
-                link.target = "_blank";
-                link.className = "text-blue-600 hover:underline flex items-center";
-                link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
-                li.appendChild(link);
-                fileList.appendChild(li);
-            });
-        } else {
-            fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
-        }
-
-        document.getElementById('editProjectModal').classList.remove('hidden');
     }
 
     function deleteProject() {
