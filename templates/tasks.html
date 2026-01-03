@@ -305,11 +305,15 @@
 
 <!-- Edit Task Modal -->
 <div id="editTaskModal"
-    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
+    style="z-index: 2147483647; display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; margin: 0; padding: 0;"
+    onclick="if(event.target === this) { closeEditTaskModal(); }">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
+        style="position: relative; z-index: 2147483647;"
+        onclick="event.stopPropagation();">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">업무 수정</h3>
-            <button onclick="document.getElementById('editTaskModal').classList.add('hidden')"
+            <button onclick="closeEditTaskModal();"
                 class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         <form id="editTaskForm" method="post" class="space-y-4">
@@ -407,57 +411,142 @@
 
 <script>
     function openEditModal(id, title, description, status, assignee_ids, start_date, due_date, project_id, category_id, department, filenames, filepaths) {
-        document.getElementById('edit_title').value = title;
-        document.getElementById('edit_description').value = description;
-        document.getElementById('edit_status').value = status;
+        // Helper function to safely set value
+        const setValue = (id, value) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.value = value || '';
+            } else {
+                console.warn(`Element with id '${id}' not found`);
+            }
+        };
+
+        setValue('edit_title', title);
+        setValue('edit_description', description);
+        setValue('edit_status', status);
 
         // Handle Multiple Select
         const select = document.getElementById('edit_assignee_ids');
-        Array.from(select.options).forEach(o => o.selected = false);
-        // assignee_ids comes as a JSON string from python, we might need to parse if it's not js array already
+        if (select) {
+            Array.from(select.options).forEach(o => o.selected = false);
+            // assignee_ids comes as a JSON string from python, we might need to parse if it's not js array already
 
-        let ids = [];
-        try {
-            ids = typeof assignee_ids === 'string' ? JSON.parse(assignee_ids) : assignee_ids;
-        } catch (e) { ids = []; }
+            let ids = [];
+            try {
+                ids = typeof assignee_ids === 'string' ? JSON.parse(assignee_ids) : assignee_ids;
+            } catch (e) { 
+                ids = []; 
+            }
 
-        if (ids) {
-            Array.from(select.options).forEach(option => {
-                option.selected = ids.includes(parseInt(option.value));
-            });
+            if (ids && Array.isArray(ids)) {
+                Array.from(select.options).forEach(option => {
+                    option.selected = ids.includes(parseInt(option.value));
+                });
+            }
+        } else {
+            console.warn("edit_assignee_ids select not found");
         }
 
-        document.getElementById('edit_start_date').value = start_date;
-        document.getElementById('edit_due_date').value = due_date;
-        document.getElementById('edit_project_id').value = project_id;
-        document.getElementById('edit_category_id').value = category_id;
-        document.getElementById('edit_department').value = department;
+        setValue('edit_start_date', start_date);
+        setValue('edit_due_date', due_date);
+        setValue('edit_project_id', project_id);
+        setValue('edit_category_id', category_id);
+        setValue('edit_department', department);
 
-        document.getElementById('editTaskForm').action = "/tasks/" + id + "/update";
-        document.getElementById('taskUploadForm').action = "/tasks/" + id + "/upload";
-        document.getElementById('deleteTaskForm').action = "/tasks/" + id + "/delete";
+        // Set form actions
+        const editForm = document.getElementById('editTaskForm');
+        const uploadForm = document.getElementById('taskUploadForm');
+        const deleteForm = document.getElementById('deleteTaskForm');
+        
+        if (editForm) {
+            editForm.action = "/tasks/" + id + "/update";
+        }
+        if (uploadForm) {
+            uploadForm.action = "/tasks/" + id + "/upload";
+        }
+        if (deleteForm) {
+            deleteForm.action = "/tasks/" + id + "/delete";
+        }
 
         // Populate File List
         const fileList = document.getElementById('taskFileList');
-        fileList.innerHTML = '';
+        if (fileList) {
+            fileList.innerHTML = '';
 
-        if (filenames && filenames.length > 0) {
-            filenames.forEach((name, index) => {
-                const li = document.createElement('li');
-                const link = document.createElement('a');
-                link.href = filepaths[index]; // Use filepath
-                link.textContent = name;
-                link.target = "_blank";
-                link.className = "text-blue-600 hover:underline flex items-center";
-                link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
-                li.appendChild(link);
-                fileList.appendChild(li);
-            });
-        } else {
-            fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
+            if (filenames && filenames.length > 0) {
+                filenames.forEach((name, index) => {
+                    const li = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.href = filepaths[index] || '#'; // Use filepath
+                    link.textContent = name;
+                    link.target = "_blank";
+                    link.className = "text-blue-600 hover:underline flex items-center";
+                    link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
+                    li.appendChild(link);
+                    fileList.appendChild(li);
+                });
+            } else {
+                fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
+            }
         }
 
-        document.getElementById('editTaskModal').classList.remove('hidden');
+        // Show modal
+        let modal = document.getElementById('editTaskModal');
+        if (!modal) {
+            console.error("editTaskModal not found");
+            return;
+        }
+        
+        // Move modal to body if needed
+        if (modal.parentElement !== document.body) {
+            console.log("Moving editTaskModal to body");
+            const modalClone = modal.cloneNode(true);
+            modal.remove();
+            document.body.appendChild(modalClone);
+            modal = document.getElementById('editTaskModal');
+        }
+        
+        // Remove hidden class and add flex
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        
+        // Apply styling
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.setProperty('visibility', 'visible', 'important');
+        modal.style.setProperty('opacity', '1', 'important');
+        modal.style.setProperty('z-index', '2147483647', 'important');
+        modal.style.setProperty('background-color', 'rgba(0, 0, 0, 0.5)', 'important');
+        modal.style.setProperty('position', 'fixed', 'important');
+        modal.style.setProperty('top', '0', 'important');
+        modal.style.setProperty('left', '0', 'important');
+        modal.style.setProperty('width', '100vw', 'important');
+        modal.style.setProperty('height', '100vh', 'important');
+        modal.style.setProperty('align-items', 'center', 'important');
+        modal.style.setProperty('justify-content', 'center', 'important');
+        modal.style.setProperty('pointer-events', 'auto', 'important');
+        modal.style.setProperty('margin', '0', 'important');
+        modal.style.setProperty('padding', '0', 'important');
+        
+        // Ensure inner content is visible
+        const modalContent = modal.querySelector('div.bg-white');
+        if (modalContent) {
+            modalContent.style.setProperty('position', 'relative', 'important');
+            modalContent.style.setProperty('z-index', '2147483647', 'important');
+            modalContent.style.setProperty('background-color', 'white', 'important');
+            modalContent.style.setProperty('opacity', '1', 'important');
+            modalContent.style.setProperty('visibility', 'visible', 'important');
+        }
+        
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditTaskModal() {
+        const modal = document.getElementById('editTaskModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.setProperty('display', 'none', 'important');
+            document.body.style.overflow = '';
+        }
     }
 
     function deleteTask() {
