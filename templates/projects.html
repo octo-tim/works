@@ -312,11 +312,14 @@
                         form.action = url;
                         console.log(`Set ${formId} action to: ${url}`);
                     } else {
-                        console.warn(`Form ${formId} not found`);
+                        // uploadForm은 선택적이므로 경고를 info로 변경
+                        if (formId !== 'uploadForm') {
+                            console.warn(`Form ${formId} not found`);
+                        }
                     }
                 };
                 setAction('editProjectForm', "/projects/" + id + "/update");
-                setAction('uploadForm', "/projects/" + id + "/upload");
+                setAction('uploadForm', "/projects/" + id + "/upload"); // 선택적
                 setAction('deleteProjectForm', "/projects/" + id + "/delete");
                 
                 // Verify form action was set and attach submit handler
@@ -389,35 +392,43 @@
                         if (form) {
                             form.action = url;
                             console.log(`Re-set ${formId} action to: ${url} after modal move`);
+                        } else {
+                            // uploadForm은 선택적이므로 경고를 출력하지 않음
+                            if (formId !== 'uploadForm') {
+                                console.warn(`Form ${formId} not found after modal move`);
+                            }
                         }
                     };
                     setAction('editProjectForm', "/projects/" + id + "/update");
-                    setAction('uploadForm', "/projects/" + id + "/upload");
+                    setAction('uploadForm', "/projects/" + id + "/upload"); // 선택적
                     setAction('deleteProjectForm', "/projects/" + id + "/delete");
                     
                     // Re-attach onsubmit event handler after modal move
                     const editForm = document.getElementById('editProjectForm');
                     if (editForm) {
-                        // Remove any existing event listeners
-                        editForm.onsubmit = null;
-                        // Add new event listener
-                        editForm.addEventListener('submit', function(event) {
+                        // Remove any existing event listeners by cloning and replacing
+                        const newForm = editForm.cloneNode(true);
+                        editForm.parentNode.replaceChild(newForm, editForm);
+                        const freshForm = document.getElementById('editProjectForm');
+                        
+                        // Re-set action after cloning
+                        freshForm.action = "/projects/" + id + "/update";
+                        
+                        // Add event listener to fresh form
+                        freshForm.addEventListener('submit', function(event) {
                             const form = this;
                             const deptSelect = document.getElementById('edit_department');
-                            console.log('=== FORM SUBMIT EVENT TRIGGERED ===');
+                            console.log('=== FORM SUBMIT EVENT TRIGGERED (after modal move) ===');
                             console.log('Form submitting - Action:', form.action);
                             console.log('Department select element:', deptSelect);
                             console.log('Department value:', deptSelect?.value);
-                            console.log('Department value type:', typeof deptSelect?.value);
                             
                             // Get all form data
                             const formData = new FormData(form);
                             console.log('FormData entries:');
                             for (let [key, value] of formData.entries()) {
-                                console.log(`  ${key}: ${value} (type: ${typeof value})`);
+                                console.log(`  ${key}: ${value}`);
                             }
-                            
-                            console.log('All form fields:', Array.from(form.elements).filter(el => el.name).map(el => `${el.name}=${el.value || ''}`).join(', '));
                             
                             if(!form.action) {
                                 event.preventDefault();
@@ -433,7 +444,7 @@
                             console.log('Form will submit to:', form.action);
                             return true;
                         }, false);
-                        console.log('Re-attached onsubmit handler to editProjectForm after modal move');
+                        console.log('Re-attached onsubmit handler to editProjectForm after modal move and form clone');
                     } else {
                         console.error('editProjectForm not found after modal move!');
                     }
