@@ -753,12 +753,16 @@ def update_project(project_id: int,
     s_date = utils.parse_date(start_date, "%Y-%m") if start_date else None
     e_date = utils.parse_date(end_date, "%Y-%m") if end_date else None
     
+    # Department 처리: 빈 문자열을 None으로 변환
+    department_value = department if department and department.strip() else None
+    print(f"[DEBUG] Updating project {project_id}: department received = '{department}', processed = '{department_value}'")
+    
     project.name = name
     project.description = description
     project.start_date = s_date
     project.end_date = e_date
     project.status = status
-    project.department = department
+    project.department = department_value
     
     # 담당자 목록 전체 교체
     if assignee_ids:

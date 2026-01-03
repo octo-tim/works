@@ -319,10 +319,42 @@
                 setAction('uploadForm', "/projects/" + id + "/upload");
                 setAction('deleteProjectForm', "/projects/" + id + "/delete");
                 
-                // Verify form action was set
+                // Verify form action was set and attach submit handler
                 const editForm = document.getElementById('editProjectForm');
                 if (editForm) {
                     console.log("Edit form action after setting:", editForm.action);
+                    // Remove any existing event listeners
+                    editForm.onsubmit = null;
+                    // Add new event listener
+                    editForm.addEventListener('submit', function(event) {
+                        const form = this;
+                        const deptSelect = document.getElementById('edit_department');
+                        console.log('=== FORM SUBMIT EVENT TRIGGERED (initial) ===');
+                        console.log('Form submitting - Action:', form.action);
+                        console.log('Department select element:', deptSelect);
+                        console.log('Department value:', deptSelect?.value);
+                        
+                        // Get all form data
+                        const formData = new FormData(form);
+                        console.log('FormData entries:');
+                        for (let [key, value] of formData.entries()) {
+                            console.log(`  ${key}: ${value}`);
+                        }
+                        
+                        if(!form.action) {
+                            event.preventDefault();
+                            alert('프로젝트 ID를 찾을 수 없습니다.');
+                            return false;
+                        }
+                        
+                        // Verify department is included
+                        if (!formData.has('department')) {
+                            console.warn('WARNING: department field not found in form data!');
+                        }
+                        
+                        console.log('Form will submit to:', form.action);
+                        return true;
+                    }, false);
                 }
             }
 
@@ -366,20 +398,44 @@
                     // Re-attach onsubmit event handler after modal move
                     const editForm = document.getElementById('editProjectForm');
                     if (editForm) {
-                        editForm.onsubmit = function(event) {
+                        // Remove any existing event listeners
+                        editForm.onsubmit = null;
+                        // Add new event listener
+                        editForm.addEventListener('submit', function(event) {
                             const form = this;
                             const deptSelect = document.getElementById('edit_department');
+                            console.log('=== FORM SUBMIT EVENT TRIGGERED ===');
                             console.log('Form submitting - Action:', form.action);
+                            console.log('Department select element:', deptSelect);
                             console.log('Department value:', deptSelect?.value);
+                            console.log('Department value type:', typeof deptSelect?.value);
+                            
+                            // Get all form data
+                            const formData = new FormData(form);
+                            console.log('FormData entries:');
+                            for (let [key, value] of formData.entries()) {
+                                console.log(`  ${key}: ${value} (type: ${typeof value})`);
+                            }
+                            
                             console.log('All form fields:', Array.from(form.elements).filter(el => el.name).map(el => `${el.name}=${el.value || ''}`).join(', '));
+                            
                             if(!form.action) {
                                 event.preventDefault();
                                 alert('프로젝트 ID를 찾을 수 없습니다.');
                                 return false;
                             }
+                            
+                            // Verify department is included
+                            if (!formData.has('department')) {
+                                console.warn('WARNING: department field not found in form data!');
+                            }
+                            
+                            console.log('Form will submit to:', form.action);
                             return true;
-                        };
+                        }, false);
                         console.log('Re-attached onsubmit handler to editProjectForm after modal move');
+                    } else {
+                        console.error('editProjectForm not found after modal move!');
                     }
                 }
             }
@@ -604,7 +660,7 @@
             <button onclick="closeEditProjectModal();"
                 class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
-        <form id="editProjectForm" method="post" action="" class="space-y-4" onsubmit="const form = this; const deptSelect = document.getElementById('edit_department'); console.log('Form submitting - Action:', form.action); console.log('Department value:', deptSelect?.value); console.log('All form fields:', Array.from(form.elements).filter(el => el.name).map(el => `${el.name}=${el.value || ''}`).join(', ')); if(!form.action) { event.preventDefault(); alert('프로젝트 ID를 찾을 수 없습니다.'); return false; } return true;">
+        <form id="editProjectForm" method="post" action="" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트명</label>
                 <input type="text" name="name" id="edit_name" required
