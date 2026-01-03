@@ -445,6 +445,34 @@
                             return true;
                         }, false);
                         console.log('Re-attached onsubmit handler to editProjectForm after modal move and form clone');
+                        
+                        // Re-attach save button onclick event after form clone
+                        const saveBtn = document.getElementById('updateBtn');
+                        if (saveBtn) {
+                            saveBtn.onclick = function() {
+                                const form = document.getElementById('editProjectForm');
+                                const deptSelect = document.getElementById('edit_department');
+                                if (!form || !form.action) {
+                                    alert('프로젝트 ID를 찾을 수 없습니다.');
+                                    return;
+                                }
+                                console.log('=== SAVE BUTTON CLICKED (after modal move) ===');
+                                console.log('Form action:', form.action);
+                                console.log('Department value:', deptSelect?.value);
+                                const formData = new FormData(form);
+                                console.log('FormData entries:');
+                                for (let [key, value] of formData.entries()) {
+                                    console.log(`  ${key}: ${value}`);
+                                }
+                                if (!formData.has('department')) {
+                                    console.warn('WARNING: department field not found in form data!');
+                                }
+                                form.submit();
+                            };
+                            console.log('Re-attached save button onclick handler after modal move');
+                        } else {
+                            console.warn('Save button (updateBtn) not found after modal move');
+                        }
                     } else {
                         console.error('editProjectForm not found after modal move!');
                     }
