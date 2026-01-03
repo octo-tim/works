@@ -468,7 +468,7 @@
 
     // Explicitly attach to window to avoid scope issues
     window.openTaskModal = function() {
-        const modal = document.getElementById('taskModal');
+        let modal = document.getElementById('taskModal');
         if (!modal) {
             console.error("Task modal not found");
             alert("업무 생성 팝업을 찾을 수 없습니다. 페이지를 새로고침해주세요.");
@@ -476,10 +476,24 @@
         }
         
         console.log("Opening task modal...");
+        console.log("Modal found:", modal);
+        console.log("Modal parent:", modal.parentElement);
+        
+        // Move modal to body if it's not already there (ensures highest z-index context)
+        if (modal.parentElement !== document.body) {
+            console.log("Moving modal to body for better z-index stacking");
+            const modalClone = modal.cloneNode(true);
+            modal.remove();
+            document.body.appendChild(modalClone);
+            modal = document.getElementById('taskModal');
+            console.log("Modal moved to body, new parent:", modal.parentElement);
+        }
+        
         // Remove hidden class
         modal.classList.remove('hidden');
         // Add flex class
         modal.classList.add('flex');
+        console.log("Removed 'hidden' class, added 'flex' class");
         
         // Force display with inline style
         modal.style.setProperty('display', 'flex', 'important');
@@ -498,8 +512,45 @@
         modal.style.setProperty('margin', '0', 'important');
         modal.style.setProperty('padding', '0', 'important');
         
+        // Ensure inner content is visible
+        const modalContent = modal.querySelector('div.bg-white');
+        if (modalContent) {
+            modalContent.style.setProperty('position', 'relative', 'important');
+            modalContent.style.setProperty('z-index', '2147483647', 'important');
+            modalContent.style.setProperty('background-color', 'white', 'important');
+            modalContent.style.setProperty('opacity', '1', 'important');
+            modalContent.style.setProperty('visibility', 'visible', 'important');
+            modalContent.style.setProperty('display', 'block', 'important');
+            console.log("Modal content styled:", modalContent);
+        }
+        
         // Lock body scroll
         document.body.style.overflow = 'hidden';
+        
+        // Check computed styles
+        const computedStyle = window.getComputedStyle(modal);
+        console.log("Modal final computed style.display:", computedStyle.display);
+        console.log("Modal final computed z-index:", computedStyle.zIndex);
+        console.log("Modal final classes:", modal.className);
+        
+        // Double check after a short delay
+        setTimeout(() => {
+            const finalComputedStyle = window.getComputedStyle(modal);
+            console.log("After timeout - computed display:", finalComputedStyle.display);
+            console.log("After timeout - computed z-index:", finalComputedStyle.zIndex);
+            if (finalComputedStyle.display === 'none' || finalComputedStyle.visibility === 'hidden') {
+                console.error("Modal is still hidden! Forcing display again...");
+                modal.style.setProperty('display', 'flex', 'important');
+                modal.style.setProperty('visibility', 'visible', 'important');
+            }
+            
+            // Check if modal is actually visible on screen
+            const rect = modal.getBoundingClientRect();
+            console.log("Modal bounding rect:", rect);
+            if (rect.width === 0 || rect.height === 0) {
+                console.error("Modal has zero dimensions!");
+            }
+        }, 100);
         
         console.log("Task modal should now be visible");
     };
