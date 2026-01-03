@@ -359,36 +359,7 @@
                         return true;
                     }, false);
                     
-                    // Set up save button onclick event handler
-                    const saveBtn = document.getElementById('updateBtn');
-                    if (saveBtn) {
-                        // Remove existing onclick
-                        saveBtn.onclick = null;
-                        // Set new onclick handler
-                        saveBtn.onclick = function() {
-                            const form = document.getElementById('editProjectForm');
-                            const deptSelect = document.getElementById('edit_department');
-                            if (!form || !form.action) {
-                                alert('프로젝트 ID를 찾을 수 없습니다.');
-                                return;
-                            }
-                            console.log('=== SAVE BUTTON CLICKED (initial) ===');
-                            console.log('Form action:', form.action);
-                            console.log('Department value:', deptSelect?.value);
-                            const formData = new FormData(form);
-                            console.log('FormData entries:');
-                            for (let [key, value] of formData.entries()) {
-                                console.log(`  ${key}: ${value}`);
-                            }
-                            if (!formData.has('department')) {
-                                console.warn('WARNING: department field not found in form data!');
-                            }
-                            form.submit();
-                        };
-                        console.log('Set up save button onclick handler (initial)');
-                    } else {
-                        console.warn('Save button (updateBtn) not found initially');
-                    }
+                    // Save button handler will be set up after modal is shown
                 }
             }
 
@@ -501,126 +472,94 @@
                         }, false);
                         console.log('Re-attached onsubmit handler to editProjectForm after modal move and form clone');
                         
-                        // Re-attach save button onclick event after form clone
-                        const saveBtn = document.getElementById('updateBtn');
-                        if (saveBtn) {
-                            saveBtn.onclick = function() {
-                                const form = document.getElementById('editProjectForm');
-                                const deptSelect = document.getElementById('edit_department');
-                                if (!form || !form.action) {
-                                    alert('프로젝트 ID를 찾을 수 없습니다.');
-                                    return;
-                                }
-                                console.log('=== SAVE BUTTON CLICKED (after modal move) ===');
-                                console.log('Form action:', form.action);
-                                console.log('Department value:', deptSelect?.value);
-                                const formData = new FormData(form);
-                                console.log('FormData entries:');
-                                for (let [key, value] of formData.entries()) {
-                                    console.log(`  ${key}: ${value}`);
-                                }
-                                if (!formData.has('department')) {
-                                    console.warn('WARNING: department field not found in form data!');
-                                }
-                                form.submit();
-                            };
-                            console.log('Re-attached save button onclick handler after modal move');
-                        } else {
-                            console.warn('Save button (updateBtn) not found after modal move');
-                        }
+                        // Save button handler will be set up after modal is shown
                     } else {
                         console.error('editProjectForm not found after modal move!');
                     }
                 }
             }
             
-            // Set up save button click handler directly on the button
-            // This will be called after modal is shown
-            setTimeout(function() {
-                const saveBtn = document.getElementById('updateBtn');
-                if (saveBtn) {
-                    // Remove any existing onclick handlers
-                    saveBtn.onclick = null;
-                    saveBtn.removeEventListener('click', window.handleSaveButtonClickDirect);
-                    
-                    // Create handler function
-                    window.handleSaveButtonClickDirect = function(event) {
-                        console.log('=== SAVE BUTTON CLICKED (direct handler) ===');
-                        event.preventDefault();
-                        event.stopPropagation();
-                        
-                        const form = document.getElementById('editProjectForm');
-                        const deptSelect = document.getElementById('edit_department');
-                        
-                        if (!form || !form.action) {
-                            alert('프로젝트 ID를 찾을 수 없습니다.');
-                            return false;
+            // Set up save button click handler - do this after modal is fully displayed
+            // Use requestAnimationFrame to ensure DOM is ready
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    const saveBtn = document.getElementById('updateBtn');
+                    if (saveBtn) {
+                        // Remove all existing handlers
+                        saveBtn.onclick = null;
+                        if (window.handleSaveButtonClickDirect) {
+                            saveBtn.removeEventListener('click', window.handleSaveButtonClickDirect, true);
                         }
                         
-                        console.log('Form action:', form.action);
-                        console.log('Form method:', form.method);
-                        console.log('Department select element:', deptSelect);
-                        console.log('Department value:', deptSelect?.value);
-                        
-                        // Verify department field exists
-                        if (!deptSelect) {
-                            console.error('ERROR: edit_department element not found!');
-                            alert('사업부 필드를 찾을 수 없습니다.');
-                            return false;
-                        }
-                        
-                        const formData = new FormData(form);
-                        console.log('FormData entries BEFORE:');
-                        for (let [key, value] of formData.entries()) {
-                            console.log(`  ${key}: ${value}`);
-                        }
-                        
-                        // Ensure department is in form data
-                        if (!formData.has('department') || !formData.get('department')) {
-                            console.warn('Department not in form data, adding manually');
-                            formData.set('department', deptSelect.value);
-                        }
-                        
-                        console.log('FormData entries AFTER:');
-                        for (let [key, value] of formData.entries()) {
-                            console.log(`  ${key}: ${value}`);
-                        }
-                        
-                        // Submit using fetch
-                        console.log('Submitting form via fetch to:', form.action);
-                        fetch(form.action, {
-                            method: form.method,
-                            body: formData
-                        })
-                        .then(response => {
-                            console.log('Response status:', response.status);
-                            if (response.redirected) {
-                                console.log('Redirected to:', response.url);
-                                window.location.href = response.url;
-                            } else if (response.ok) {
-                                window.location.reload();
-                            } else {
-                                return response.text().then(text => {
-                                    console.error('Error response:', text);
-                                    alert('저장 중 오류가 발생했습니다.');
-                                });
+                        // Create handler function
+                        window.handleSaveButtonClickDirect = function(event) {
+                            console.log('=== SAVE BUTTON CLICKED ===');
+                            event.preventDefault();
+                            event.stopPropagation();
+                            
+                            const form = document.getElementById('editProjectForm');
+                            const deptSelect = document.getElementById('edit_department');
+                            
+                            if (!form || !form.action) {
+                                alert('프로젝트 ID를 찾을 수 없습니다.');
+                                return false;
                             }
-                        })
-                        .catch(error => {
-                            console.error('Error submitting form:', error);
-                            alert('저장 중 오류가 발생했습니다: ' + error.message);
-                        });
+                            
+                            if (!deptSelect) {
+                                console.error('ERROR: edit_department element not found!');
+                                alert('사업부 필드를 찾을 수 없습니다.');
+                                return false;
+                            }
+                            
+                            console.log('Form action:', form.action);
+                            console.log('Department value:', deptSelect.value);
+                            
+                            const formData = new FormData(form);
+                            
+                            // Always ensure department is set correctly
+                            formData.set('department', deptSelect.value);
+                            
+                            console.log('FormData entries:');
+                            for (let [key, value] of formData.entries()) {
+                                console.log(`  ${key}: ${value}`);
+                            }
+                            
+                            // Submit using fetch
+                            console.log('Submitting form via fetch to:', form.action);
+                            fetch(form.action, {
+                                method: form.method,
+                                body: formData
+                            })
+                            .then(response => {
+                                console.log('Response status:', response.status);
+                                if (response.redirected) {
+                                    console.log('Redirected to:', response.url);
+                                    window.location.href = response.url;
+                                } else if (response.ok) {
+                                    window.location.reload();
+                                } else {
+                                    return response.text().then(text => {
+                                        console.error('Error response:', text);
+                                        alert('저장 중 오류가 발생했습니다.');
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error submitting form:', error);
+                                alert('저장 중 오류가 발생했습니다: ' + error.message);
+                            });
+                            
+                            return false;
+                        };
                         
-                        return false;
-                    };
-                    
-                    // Attach handler
-                    saveBtn.addEventListener('click', window.handleSaveButtonClickDirect, true);
-                    console.log('Direct save button click handler attached');
-                } else {
-                    console.warn('Save button (updateBtn) not found when setting up handler');
-                }
-            }, 100); // Small delay to ensure modal is fully rendered
+                        // Attach handler with capture phase
+                        saveBtn.addEventListener('click', window.handleSaveButtonClickDirect, true);
+                        console.log('✓ Save button click handler attached');
+                    } else {
+                        console.error('✗ Save button (updateBtn) not found');
+                    }
+                });
+            });
             
             // Remove hidden class and any conflicting classes
             modal.classList.remove('hidden');
