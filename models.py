@@ -25,7 +25,7 @@ class User(Base):
     department = Column(String) # "System", "Distribution", "Management" (Admin)
     role = Column(String, default="user") # "admin", "user"
 
-    tasks_assigned = relationship("Task", back_populates="assignee")
+    tasks_assigned = relationship("Task", foreign_keys="Task.assignee_id", back_populates="assignee")
     
 
 
