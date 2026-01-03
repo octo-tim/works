@@ -317,7 +317,7 @@
 
             // Show Modal
             console.log("Attempting to show modal...");
-            const modal = document.getElementById('editProjectModal');
+            let modal = document.getElementById('editProjectModal');
             if (!modal) {
                 console.error("Modal element 'editProjectModal' not found in DOM");
                 alert("수정 팝업을 찾을 수 없습니다. 페이지를 새로고침해주세요.");
@@ -325,8 +325,19 @@
             }
             
             console.log("Modal found:", modal);
+            console.log("Modal parent:", modal.parentElement);
             console.log("Modal current classes:", modal.className);
             console.log("Modal current style.display:", modal.style.display);
+            
+            // Move modal to body if it's not already there (ensures highest z-index context)
+            if (modal.parentElement !== document.body) {
+                console.log("Moving modal to body for better z-index stacking");
+                const modalClone = modal.cloneNode(true);
+                modal.remove();
+                document.body.appendChild(modalClone);
+                modal = document.getElementById('editProjectModal');
+                console.log("Modal moved to body, new parent:", modal.parentElement);
+            }
             
             // Remove hidden class and any conflicting classes
             modal.classList.remove('hidden');
@@ -337,45 +348,76 @@
             
             // Force display with inline style (overrides Tailwind hidden class)
             // Use setProperty with important flag for maximum compatibility
+            // Set extremely high z-index to ensure it's on top of everything
             modal.style.setProperty('display', 'flex', 'important');
             modal.style.setProperty('visibility', 'visible', 'important');
             modal.style.setProperty('opacity', '1', 'important');
-            modal.style.setProperty('z-index', '99999', 'important');
+            modal.style.setProperty('z-index', '2147483647', 'important'); // Maximum z-index value
             modal.style.setProperty('background-color', 'rgba(0, 0, 0, 0.5)', 'important');
             modal.style.setProperty('position', 'fixed', 'important');
             modal.style.setProperty('top', '0', 'important');
             modal.style.setProperty('left', '0', 'important');
-            modal.style.setProperty('width', '100%', 'important');
-            modal.style.setProperty('height', '100%', 'important');
+            modal.style.setProperty('width', '100vw', 'important');
+            modal.style.setProperty('height', '100vh', 'important');
             modal.style.setProperty('align-items', 'center', 'important');
             modal.style.setProperty('justify-content', 'center', 'important');
             modal.style.setProperty('pointer-events', 'auto', 'important');
+            modal.style.setProperty('margin', '0', 'important');
+            modal.style.setProperty('padding', '0', 'important');
             
             // Ensure inner content is visible
             const modalContent = modal.querySelector('div.bg-white');
             if (modalContent) {
                 modalContent.style.setProperty('position', 'relative', 'important');
-                modalContent.style.setProperty('z-index', '100000', 'important');
+                modalContent.style.setProperty('z-index', '2147483647', 'important');
                 modalContent.style.setProperty('background-color', 'white', 'important');
                 modalContent.style.setProperty('opacity', '1', 'important');
                 modalContent.style.setProperty('visibility', 'visible', 'important');
+                modalContent.style.setProperty('display', 'block', 'important');
                 console.log("Modal content styled:", modalContent);
+                console.log("Modal content computed z-index:", window.getComputedStyle(modalContent).zIndex);
             }
             
             // Force body scroll lock
             document.body.style.overflow = 'hidden';
             
+            // Check all parent elements for z-index or overflow issues
+            let parent = modal.parentElement;
+            let depth = 0;
+            while (parent && parent !== document.body && depth < 10) {
+                const parentStyle = window.getComputedStyle(parent);
+                console.log(`Parent ${depth} (${parent.tagName}): z-index=${parentStyle.zIndex}, overflow=${parentStyle.overflow}, position=${parentStyle.position}`);
+                if (parseInt(parentStyle.zIndex) > 0 && parseInt(parentStyle.zIndex) >= parseInt(window.getComputedStyle(modal).zIndex)) {
+                    console.warn(`Parent has higher z-index: ${parentStyle.zIndex}`);
+                }
+                parent = parent.parentElement;
+                depth++;
+            }
+            
             console.log("Modal should now be visible");
-            console.log("Modal final style.display:", window.getComputedStyle(modal).display);
+            const computedStyle = window.getComputedStyle(modal);
+            console.log("Modal final computed style.display:", computedStyle.display);
+            console.log("Modal final computed z-index:", computedStyle.zIndex);
             console.log("Modal final classes:", modal.className);
             
             // Double check after a short delay
             setTimeout(() => {
-                const computedStyle = window.getComputedStyle(modal);
-                console.log("After timeout - computed display:", computedStyle.display);
-                if (computedStyle.display === 'none') {
+                const finalComputedStyle = window.getComputedStyle(modal);
+                console.log("After timeout - computed display:", finalComputedStyle.display);
+                console.log("After timeout - computed z-index:", finalComputedStyle.zIndex);
+                console.log("After timeout - computed visibility:", finalComputedStyle.visibility);
+                console.log("After timeout - computed opacity:", finalComputedStyle.opacity);
+                if (finalComputedStyle.display === 'none' || finalComputedStyle.visibility === 'hidden') {
                     console.error("Modal is still hidden! Forcing display again...");
                     modal.style.setProperty('display', 'flex', 'important');
+                    modal.style.setProperty('visibility', 'visible', 'important');
+                }
+                
+                // Check if modal is actually visible on screen
+                const rect = modal.getBoundingClientRect();
+                console.log("Modal bounding rect:", rect);
+                if (rect.width === 0 || rect.height === 0) {
+                    console.error("Modal has zero dimensions!");
                 }
             }, 100);
 
@@ -507,7 +549,7 @@
 <!-- Edit Project Modal -->
 <div id="editProjectModal"
     class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
-    style="z-index: 99999; display: none;"
+    style="z-index: 2147483647; display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; margin: 0; padding: 0;"
     onclick="if(event.target === this) { closeEditProjectModal(); }">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 m-4"
         style="position: relative; z-index: 100000; min-width: 300px; min-height: 200px; max-height: 90vh; overflow-y: auto;"
