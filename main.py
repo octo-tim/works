@@ -162,6 +162,24 @@ def startup_event():
     try:
         db = SessionLocal()
         try:
+            # Migration: Check for 'creator_id' in projects and tasks
+            from sqlalchemy import text
+            try:
+                # Check Project
+                db.execute(text("SELECT creator_id FROM projects LIMIT 1"))
+            except Exception:
+                print("Migrating: Adding creator_id to projects")
+                db.execute(text("ALTER TABLE projects ADD COLUMN creator_id INTEGER REFERENCES users(id)"))
+                db.commit()
+            
+            try:
+                # Check Task
+                db.execute(text("SELECT creator_id FROM tasks LIMIT 1"))
+            except Exception:
+                print("Migrating: Adding creator_id to tasks")
+                db.execute(text("ALTER TABLE tasks ADD COLUMN creator_id INTEGER REFERENCES users(id)"))
+                db.commit()
+                
             populate_db(db)
         finally:
             db.close()
@@ -329,7 +347,7 @@ def read_root(request: Request,
             "title": f"[{t.assignee.username if t.assignee else '미지정'}] {t.title}",
             "backgroundColor": color,
             "borderColor": color,
-            "url": f"javascript:openEditModal('{t.id}', '{t.title}', '{t.description or ''}', '{t.status}', '{t.assignee_id or 0}', '{t.start_date or ''}', '{t.due_date or ''}', '{t.project_id or 0}', '{t.category_id or 0}', {[f.filename for f in t.files]}, {[f.filepath for f in t.files]})"
+             "url": f"javascript:openEditModal('{t.id}', '{t.title}', '{t.description or ''}', '{t.status}', '{t.start_date or ''}', '{t.due_date or ''}', '{t.project_id or 0}', '{t.category_id or 0}', {[u.id for u in t.assignees]}, {[f.filename for f in t.files]}, {[f.filepath for f in t.files]})"
         }
 
         if start:
@@ -497,10 +515,10 @@ def create_task(title: str = Form(...),
                 start_date: str = Form(None),
                 due_date: str = Form(None),
                 project_id: int = Form(None),
-                assignee_id: int = Form(None),
+                assignee_ids: List[int] = Form([]),
                 category_id: int = Form(None),
                 department: str = Form(None),
-                db: Session = Depends(get_db)):
+                db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     
     date_obj = None
     start_date_obj = None
@@ -510,7 +528,7 @@ def create_task(title: str = Form(...),
         start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
 
     if project_id == 0: project_id = None
-    if assignee_id == 0: assignee_id = None
+    if project_id == 0: project_id = None
     if category_id == 0: category_id = None
 
     new_task = models.Task(
@@ -520,12 +538,21 @@ def create_task(title: str = Form(...),
         start_date=start_date_obj,
         due_date=date_obj,
         project_id=project_id,
-        assignee_id=assignee_id,
         category_id=category_id,
-        department=department
+        department=department,
+        creator_id=current_user.id if current_user else None
     )
     db.add(new_task)
     db.commit()
+    
+    # Handle multiple assignees
+    if assignee_ids:
+        users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
+        new_task.assignees = users
+        # Legacy support
+        if users:
+            new_task.assignee_id = users[0].id
+        db.commit()
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.post("/tasks/update_status/{task_id}")
@@ -576,6 +603,24 @@ def create_client(name: str = Form(...), contact_info: str = Form(None), db: Ses
     db.commit()
     return RedirectResponse(url="/admin", status_code=303)
 
+@app.post("/admin/clients/{client_id}/delete", response_class=RedirectResponse)
+def delete_client(client_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user: return RedirectResponse(url="/login", status_code=303)
+    if current_user.role != "admin":
+        return RedirectResponse(url="/", status_code=303)
+    
+    client = db.query(models.Client).filter(models.Client.id == client_id).first()
+    if client:
+        # Dissociate from projects first
+        projects = db.query(models.Project).filter(models.Project.client_id == client_id).all()
+        for p in projects:
+            p.client_id = None
+        
+        db.delete(client)
+        db.commit()
+        
+    return RedirectResponse(url="/admin", status_code=303)
+
 @app.post("/admin/categories", response_class=RedirectResponse)
 @app.post("/admin/categories", response_class=RedirectResponse)
 def create_category(name: str = Form(...), color: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -605,6 +650,7 @@ def read_projects(request: Request, db: Session = Depends(get_db), current_user:
     inprogress = [p for p in projects if p.status == 'In Progress']
     completed = [p for p in projects if p.status == 'Completed']
     
+    users = db.query(models.User).all()
     clients = db.query(models.Client).all()
 
     return templates.TemplateResponse("projects.html", {
@@ -613,15 +659,17 @@ def read_projects(request: Request, db: Session = Depends(get_db), current_user:
         "scheduled": scheduled, 
         "inprogress": inprogress, 
         "completed": completed,
-        "clients": clients
+        "clients": clients,
+        "users": users
     })
 
 @app.post("/projects", response_class=RedirectResponse)
 def create_project(name: str = Form(...), description: str = Form(None), 
-                   start_date: str = Form(None), end_date: str = Form(None), 
+                    start_date: str = Form(None), end_date: str = Form(None), 
                    status: str = Form(...), client_id: int = Form(None),
                    department: str = Form(None),
-                   db: Session = Depends(get_db)):
+                   assignee_ids: List[int] = Form([]),
+                   db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     
     # Handle YYYY-MM input from type="month"
     s_date = datetime.strptime(start_date, "%Y-%m").date() if start_date else None
@@ -636,10 +684,17 @@ def create_project(name: str = Form(...), description: str = Form(None),
         end_date=e_date, 
         status=status, 
         client_id=client_id,
-        department=department
+        department=department,
+        creator_id=current_user.id if current_user else None
     )
     db.add(new_project)
     db.commit()
+    
+    # Handle assignees
+    if assignee_ids:
+        users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
+        new_project.assignees = users
+        db.commit()
     return RedirectResponse(url="/projects", status_code=303)
 
 
@@ -649,6 +704,7 @@ def update_project(project_id: int,
                    start_date: str = Form(None), end_date: str = Form(None), 
                    status: str = Form(...), client_id: int = Form(None),
                    department: str = Form(None),
+                   assignee_ids: List[int] = Form([]),
                    db: Session = Depends(get_db)):
     
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
@@ -668,6 +724,16 @@ def update_project(project_id: int,
     project.status = status
     project.client_id = client_id
     project.department = department
+    
+    project.department = department
+    
+    # Update Assignees
+    # We replace the list entirely
+    if assignee_ids:
+        users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
+        project.assignees = users
+    else:
+        project.assignees = []
     
     db.commit()
     return RedirectResponse(url="/projects", status_code=303)
@@ -733,25 +799,31 @@ def create_task_page(request: Request,
                 title: str = Form(...), 
                 description: str = Form(None),
                 status: str = Form(...),
-                assignee_id: int = Form(0),
+                assignee_ids: List[int] = Form([]),
                 due_date: str = Form(None),
                 project_id: int = Form(0),
                 category_id: int = Form(0),
                 department: str = Form(None),
-                db: Session = Depends(get_db)):
+                db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     
     new_task = models.Task(
         title=title,
         description=description,
         status=status,
         due_date=datetime.strptime(due_date, '%Y-%m-%d').date() if due_date else None,
-        assignee_id=assignee_id if assignee_id != 0 else None,
         project_id=project_id if project_id != 0 else None,
         category_id=category_id if category_id != 0 else None,
-        department=department
+        department=department,
+        creator_id=current_user.id if current_user else None
     )
     db.add(new_task)
     db.commit()
+    
+    if assignee_ids:
+        users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
+        new_task.assignees = users
+        if users: new_task.assignee_id = users[0].id
+        db.commit()
     return RedirectResponse(url="/tasks", status_code=303)
 
 
@@ -760,7 +832,7 @@ def update_task_details(task_id: int,
                         title: str = Form(...),
                         description: str = Form(None),
                         status: str = Form(...),
-                        assignee_id: int = Form(0),
+                        assignee_ids: List[int] = Form([]),
                         start_date: str = Form(None),
                         due_date: str = Form(None),
                         project_id: int = Form(0),
@@ -773,7 +845,16 @@ def update_task_details(task_id: int,
         task.title = title
         task.description = description
         task.status = status
-        task.assignee_id = assignee_id if assignee_id != 0 else None
+        
+        # Update assignees
+        if assignee_ids:
+            users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
+            task.assignees = users
+            if users: task.assignee_id = users[0].id
+        else:
+            task.assignees = []
+            task.assignee_id = None
+
         task.start_date = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
         task.due_date = datetime.strptime(due_date, '%Y-%m-%d').date() if due_date else None
         task.project_id = project_id if project_id != 0 else None

@@ -28,12 +28,13 @@
                             <th scope="col" class="px-6 py-3">사업부</th>
                             <th scope="col" class="px-6 py-3">프로젝트/거래처</th>
                             <th scope="col" class="px-6 py-3">담당자/마감일</th>
+                            <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">설명</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for t in scheduled %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ t.assignee_id or 0 }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', '{{ t.department or '' }}', [
+                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer" onclick="openEditModal('{{ t.id }}', '{{ t.title }}', '{{ t.description or '' }}', '{{ t.status }}', '{{ [u.id for u in t.assignees]|tojson }}', '{{ t.start_date or '' }}', '{{ t.due_date or '' }}', '{{ t.project_id or 0 }}', '{{ t.category_id or 0 }}', '{{ t.department or '' }}', [
                             {%- for f in t.files -%}
                                 '{{ f.filename }}'{%- if not loop.last -%}, {%- endif -%}
                             {%- endfor -%}
@@ -66,8 +67,15 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex flex-col">
-                                    <span class="font-medium text-gray-800">{{ t.assignee.username if t.assignee else
-                                        '미지정' }}</span>
+                                    <span class="font-medium text-gray-800">
+                                        {% if t.assignees %}
+                                        {% for u in t.assignees %}
+                                        {{ u.username }}{% if not loop.last %}, {% endif %}
+                                        {% endfor %}
+                                        {% else %}
+                                        미지정
+                                        {% endif %}
+                                    </span>
                                     <span class="text-xs text-gray-500">{{ t.due_date }}</span>
                                 </div>
                             </td>
@@ -99,6 +107,7 @@
                             <th scope="col" class="px-6 py-3">사업부</th>
                             <th scope="col" class="px-6 py-3">프로젝트/거래처</th>
                             <th scope="col" class="px-6 py-3">담당자/마감일</th>
+                            <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">설명</th>
                         </tr>
                     </thead>
@@ -137,8 +146,15 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex flex-col">
-                                    <span class="font-medium text-gray-800">{{ t.assignee.username if t.assignee else
-                                        '미지정' }}</span>
+                                    <span class="font-medium text-gray-800">
+                                        {% if t.assignees %}
+                                        {% for u in t.assignees %}
+                                        {{ u.username }}{% if not loop.last %}, {% endif %}
+                                        {% endfor %}
+                                        {% else %}
+                                        미지정
+                                        {% endif %}
+                                    </span>
                                     <span class="text-xs text-gray-500">{{ t.due_date }}</span>
                                 </div>
                             </td>
@@ -170,6 +186,7 @@
                             <th scope="col" class="px-6 py-3">사업부</th>
                             <th scope="col" class="px-6 py-3">프로젝트/거래처</th>
                             <th scope="col" class="px-6 py-3">담당자/마감일</th>
+                            <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">설명</th>
                         </tr>
                     </thead>
@@ -208,8 +225,15 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex flex-col">
-                                    <span class="font-medium text-gray-800">{{ t.assignee.username if t.assignee else
-                                        '미지정' }}</span>
+                                    <span class="font-medium text-gray-800">
+                                        {% if t.assignees %}
+                                        {% for u in t.assignees %}
+                                        {{ u.username }}{% if not loop.last %}, {% endif %}
+                                        {% endfor %}
+                                        {% else %}
+                                        미지정
+                                        {% endif %}
+                                    </span>
                                     <span class="text-xs text-gray-500">{{ t.due_date }}</span>
                                 </div>
                             </td>
@@ -267,37 +291,37 @@
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">담당자 (다중 선택)</label>
+                        <select name="assignee_ids" multiple class="w-full border rounded-lg px-3 py-2 text-sm h-24">
+                            {% for u in users %}
+                            <option value="{{ u.id }}">{{ u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">업무 유형</label>
+                        <select name="category_id" class="w-full border rounded-lg px-3 py-2 text-sm h-24">
+                            <option value="0">없음</option>
+                            {% for c in categories %}
+                            <option value="{{ c.id }}">{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">담당자</label>
-                    <select name="assignee_id" class="w-full border rounded-lg px-3 py-2 text-sm">
-                        <option value="0">미지정</option>
-                        {% for u in users %}
-                        <option value="{{ u.id }}">{{ u.username }}</option>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트</label>
+                    <select name="project_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="0">Inbox (프로젝트 없음)</option>
+                        {% for p in projects %}
+                        <option value="{{ p.id }}">{{ p.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">업무 유형</label>
-                    <select name="category_id" class="w-full border rounded-lg px-3 py-2 text-sm">
-                        <option value="0">없음</option>
-                        {% for c in categories %}
-                        <option value="{{ c.id }}">{{ c.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트</label>
-                <select name="project_id" class="w-full border rounded-lg px-3 py-2 text-sm">
-                    <option value="0">Inbox (프로젝트 없음)</option>
-                    {% for p in projects %}
-                    <option value="{{ p.id }}">{{ p.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
 
-            <button type="submit"
-                class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">생성</button>
+                <button type="submit"
+                    class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">생성</button>
         </form>
     </div>
 </div>
@@ -344,9 +368,9 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">담당자</label>
-                    <select name="assignee_id" id="edit_assignee_id" class="w-full border rounded-lg px-3 py-2 text-sm">
-                        <option value="0">미지정</option>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">담당자 (다중 선택)</label>
+                    <select name="assignee_ids" id="edit_assignee_ids" multiple
+                        class="w-full border rounded-lg px-3 py-2 text-sm h-24">
                         {% for u in users %}
                         <option value="{{ u.id }}">{{ u.username }}</option>
                         {% endfor %}
@@ -354,7 +378,8 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">업무 유형</label>
-                    <select name="category_id" id="edit_category_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <select name="category_id" id="edit_category_id"
+                        class="w-full border rounded-lg px-3 py-2 text-sm h-24">
                         <option value="0">없음</option>
                         {% for c in categories %}
                         <option value="{{ c.id }}">{{ c.name }}</option>
@@ -404,11 +429,31 @@
 </div>
 
 <script>
-    function openEditModal(id, title, description, status, assignee_id, start_date, due_date, project_id, category_id, department, filenames, filepaths) {
+    function openEditModal(id, title, description, status, assignee_ids, start_date, due_date, project_id, category_id, department, filenames, filepaths) {
         document.getElementById('edit_title').value = title;
         document.getElementById('edit_description').value = description;
         document.getElementById('edit_status').value = status;
-        document.getElementById('edit_assignee_id').value = assignee_id;
+
+        // Handle Multiple Select
+        const select = document.getElementById('edit_assignee_ids');
+        Array.from(select.options).forEach(o => o.selected = false);
+        // assignee_ids comes as a JSON string from python, we might need to parse if it's not js array already
+        // But jinja |tojson outputs valid JS array if not quoted in string.
+        // Wait, I passed it as string '{{ ...|tojson }}' so it needs parsing if it comes as string.
+        // But simpler: passed as argument. Let's check format.
+        // It renders as '[1, 2]'. If put inside quotes '...' it becomes string "[1, 2]".
+        // So I should JSON.parse if it's string.
+        let ids = [];
+        try {
+            ids = typeof assignee_ids === 'string' ? JSON.parse(assignee_ids) : assignee_ids;
+        } catch (e) { ids = []; }
+
+        if (ids) {
+            Array.from(select.options).forEach(option => {
+                option.selected = ids.includes(parseInt(option.value));
+            });
+        }
+
         document.getElementById('edit_start_date').value = start_date;
         document.getElementById('edit_due_date').value = due_date;
         document.getElementById('edit_project_id').value = project_id;

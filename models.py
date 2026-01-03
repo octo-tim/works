@@ -3,6 +3,19 @@ from sqlalchemy.orm import relationship
 from database import Base
 import datetime
 
+from sqlalchemy import Table
+
+# Association tables
+project_assignees = Table('project_assignees', Base.metadata,
+    Column('project_id', Integer, ForeignKey('projects.id')),
+    Column('user_id', Integer, ForeignKey('users.id'))
+)
+
+task_assignees = Table('task_assignees', Base.metadata,
+    Column('task_id', Integer, ForeignKey('tasks.id')),
+    Column('user_id', Integer, ForeignKey('users.id'))
+)
+
 class User(Base):
     __tablename__ = "users"
 
@@ -46,9 +59,13 @@ class Project(Base):
     end_date = Column(Date, nullable=True)
     status = Column(String, default="Scheduled") # Scheduled, In Progress, Completed
     department = Column(String, nullable=True) # "System", "Distribution"
+    department = Column(String, nullable=True) # "System", "Distribution"
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=True)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     client = relationship("Client", back_populates="projects")
+    creator = relationship("User", foreign_keys=[creator_id])
+    assignees = relationship("User", secondary=project_assignees, backref="projects_assigned")
     tasks = relationship("Task", back_populates="project")
     files = relationship("ProjectFile", back_populates="project")
 
@@ -65,11 +82,14 @@ class Task(Base):
     due_date = Column(Date, nullable=True)
     
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
-    assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True) # Kept for backward compat, but we prefer 'assignees'
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
 
     project = relationship("Project", back_populates="tasks")
-    assignee = relationship("User", back_populates="tasks_assigned")
+    assignee = relationship("User", foreign_keys=[assignee_id]) # Legacy single assignee
+    creator = relationship("User", foreign_keys=[creator_id])
+    assignees = relationship("User", secondary=task_assignees, backref="tasks_multi_assigned")
     category = relationship("Category", back_populates="tasks")
     files = relationship("TaskFile", back_populates="task")
 
