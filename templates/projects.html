@@ -510,6 +510,32 @@
                 }
             }
             
+            // Ensure save button event handler is set up (in case modal wasn't moved)
+            const finalSaveBtn = document.getElementById('updateBtn');
+            if (finalSaveBtn) {
+                finalSaveBtn.onclick = function() {
+                    const form = document.getElementById('editProjectForm');
+                    const deptSelect = document.getElementById('edit_department');
+                    if (!form || !form.action) {
+                        alert('프로젝트 ID를 찾을 수 없습니다.');
+                        return;
+                    }
+                    console.log('=== SAVE BUTTON CLICKED (final setup) ===');
+                    console.log('Form action:', form.action);
+                    console.log('Department value:', deptSelect?.value);
+                    const formData = new FormData(form);
+                    console.log('FormData entries:');
+                    for (let [key, value] of formData.entries()) {
+                        console.log(`  ${key}: ${value}`);
+                    }
+                    if (!formData.has('department')) {
+                        console.warn('WARNING: department field not found in form data!');
+                    }
+                    form.submit();
+                };
+                console.log('Set up save button onclick handler (final setup)');
+            }
+            
             // Remove hidden class and any conflicting classes
             modal.classList.remove('hidden');
             // Add flex class explicitly
