@@ -168,6 +168,7 @@ def startup_event():
                 # Check Project
                 db.execute(text("SELECT creator_id FROM projects LIMIT 1"))
             except Exception:
+                db.rollback()
                 print("Migrating: Adding creator_id to projects")
                 db.execute(text("ALTER TABLE projects ADD COLUMN creator_id INTEGER REFERENCES users(id)"))
                 db.commit()
@@ -176,6 +177,7 @@ def startup_event():
                 # Check Task
                 db.execute(text("SELECT creator_id FROM tasks LIMIT 1"))
             except Exception:
+                db.rollback()
                 print("Migrating: Adding creator_id to tasks")
                 db.execute(text("ALTER TABLE tasks ADD COLUMN creator_id INTEGER REFERENCES users(id)"))
                 db.commit()
