@@ -544,7 +544,6 @@
             window.handleSaveButtonClick = function(event) {
                 const target = event.target;
                 if (target && target.id === 'updateBtn') {
-                    alert('SAVE BUTTON CLICKED!');
                     console.log('=== SAVE BUTTON CLICKED (event delegation) ===');
                     event.preventDefault();
                     event.stopPropagation();
@@ -558,7 +557,16 @@
                     }
                     
                     console.log('Form action:', form.action);
+                    console.log('Form method:', form.method);
+                    console.log('Department select element:', deptSelect);
                     console.log('Department value:', deptSelect?.value);
+                    
+                    // Verify department field exists and has value
+                    if (!deptSelect) {
+                        console.error('ERROR: edit_department element not found!');
+                        alert('사업부 필드를 찾을 수 없습니다.');
+                        return false;
+                    }
                     
                     const formData = new FormData(form);
                     console.log('FormData entries:');
@@ -567,11 +575,42 @@
                     }
                     
                     if (!formData.has('department')) {
-                        console.warn('WARNING: department field not found in form data!');
+                        console.error('ERROR: department field not found in form data!');
+                        // Manually add department to form data
+                        formData.append('department', deptSelect.value);
+                        console.log('Manually added department to form data:', deptSelect.value);
                     }
                     
-                    alert('FORM SUBMIT TRIGGERED!');
-                    form.submit();
+                    // Use fetch to submit form with all data
+                    console.log('Submitting form via fetch...');
+                    fetch(form.action, {
+                        method: form.method,
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => {
+                        console.log('Response status:', response.status);
+                        if (response.redirected) {
+                            console.log('Redirected to:', response.url);
+                            window.location.href = response.url;
+                        } else {
+                            return response.text();
+                        }
+                    })
+                    .then(data => {
+                        if (data) {
+                            console.log('Response data:', data);
+                        }
+                        // Reload page to see updated data
+                        window.location.reload();
+                    })
+                    .catch(error => {
+                        console.error('Error submitting form:', error);
+                        alert('저장 중 오류가 발생했습니다: ' + error.message);
+                    });
+                    
                     return false;
                 }
             };
