@@ -306,8 +306,11 @@
             const modal = document.getElementById('editProjectModal');
             if (modal) {
                 console.log("Opening modal...", modal);
-                modal.classList.remove('hidden');
-                // Force z-index just in case
+                // Force visibility using inline styles to override any Tailwind/CSS issues
+                modal.classList.remove('hidden'); // Keep this
+                modal.style.display = 'flex';
+                modal.style.visibility = 'visible';
+                modal.style.opacity = '1';
                 modal.style.zIndex = '9999';
             } else {
                 alert("Error: Modal element not found!");
