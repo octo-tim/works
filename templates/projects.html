@@ -272,23 +272,23 @@
                 console.warn('Error parsing file info', e);
             }
 
-            const fileList = document.getElementById('fileList');
+            const fileList = document.getElementById('existingFilesList');
             if (fileList) {
                 fileList.innerHTML = '';
                 if (filenames && filenames.length > 0) {
                     filenames.forEach((name, index) => {
-                        const li = document.createElement('li');
+                        const div = document.createElement('div');
                         const link = document.createElement('a');
                         link.href = filepaths[index] || '#';
                         link.textContent = name;
                         link.target = "_blank";
                         link.className = "text-blue-600 hover:underline flex items-center";
                         link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
-                        li.appendChild(link);
-                        fileList.appendChild(li);
+                        div.appendChild(link);
+                        fileList.appendChild(div);
                     });
                 } else {
-                    fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
+                    fileList.innerHTML = '<div class="text-gray-400 italic text-sm">첨부된 파일이 없습니다.</div>';
                 }
             }
 
@@ -306,20 +306,33 @@
 
             // Show Modal
             const modal = document.getElementById('editProjectModal');
-            if (modal) {
-                console.log("Opening modal...", modal);
-                // Remove hidden class and set display to flex
-                modal.classList.remove('hidden');
-                modal.style.display = 'flex';
-                modal.style.visibility = 'visible';
-                modal.style.opacity = '1';
-                modal.style.zIndex = '9999';
-                // Ensure backdrop is visible
-                modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-            } else {
+            if (!modal) {
                 alert("Error: Modal element not found!");
                 throw new Error("Edit Modal element 'editProjectModal' not found in DOM");
             }
+            
+            console.log("Opening modal...", modal);
+            // Remove hidden class first
+            modal.classList.remove('hidden');
+            // Force display with inline style (overrides Tailwind hidden class)
+            // Use both setProperty and direct assignment for maximum compatibility
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.zIndex = '9999';
+            modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100vw';
+            modal.style.height = '100vh';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            // Force body scroll lock
+            document.body.style.overflow = 'hidden';
+            
+            console.log("Modal display style:", modal.style.display);
+            console.log("Modal classes:", modal.className);
 
         } catch (e) {
             alert('Project Edit Error: ' + e.message);
@@ -330,6 +343,15 @@
     function deleteProject() {
         if (confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
             document.getElementById('deleteProjectForm').submit();
+        }
+    }
+
+    function closeEditProjectModal() {
+        const modal = document.getElementById('editProjectModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
         }
     }
 </script>
@@ -405,15 +427,15 @@
 
 <!-- Edit Project Modal -->
 <div id="editProjectModal"
-    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm"
-    style="z-index: 9999;"
-    onclick="if(event.target === this) { this.classList.add('hidden'); this.style.display = 'none'; }">
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
+    style="z-index: 9999; display: none;"
+    onclick="if(event.target === this) { closeEditProjectModal(); }">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
         style="position: relative; z-index: 10000; min-width: 300px; min-height: 200px;"
         onclick="event.stopPropagation();">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">프로젝트 수정</h3>
-            <button onclick="document.getElementById('editProjectModal').classList.add('hidden'); document.getElementById('editProjectModal').style.display = 'none';"
+            <button onclick="closeEditProjectModal();"
                 class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         <form id="editProjectForm" method="post" class="space-y-4">
