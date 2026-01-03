@@ -150,19 +150,18 @@ def on_startup():
                 db.commit()
             
             try:
-                # Check User new columns
-                user_cols = db.execute(text("PRAGMA table_info(users)")).fetchall()
-                col_names = [c[1] for c in user_cols]
-                
-                if 'email' not in col_names:
-                    print("Migrating: Adding email to users")
-                    db.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR"))
-                if 'phone' not in col_names:
-                    print("Migrating: Adding phone to users")
-                    db.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR"))
-                if 'position' not in col_names:
-                    print("Migrating: Adding position to users")
-                    db.execute(text("ALTER TABLE users ADD COLUMN position VARCHAR"))
+                # Migration: Add columns blindly (Ignore if exists)
+                # This works for both SQLite and Postgres (Postgres throws generic error if exists)
+                columns_to_add = ["email", "phone", "position"]
+                for col in columns_to_add:
+                    try:
+                        db.execute(text(f"ALTER TABLE users ADD COLUMN {col} VARCHAR"))
+                        db.commit()
+                        print(f"Migrating: Added {col} to users")
+                    except Exception as e:
+                        db.rollback()
+                        # print(f"Migrating: {col} likely exists or error: {e}")
+                        pass
                 
                 # Migration: Translate Department Names
                 # users

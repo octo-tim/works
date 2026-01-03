@@ -5,8 +5,14 @@ from sqlalchemy.orm import sessionmaker
 import models
 import database 
 
-# Local DB (Source)
-local_db = database.SessionLocal()
+# Local DB (Source) - Explicitly connect to SQLite
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+SQLITE_URL = "sqlite:///./sql_app.db"
+source_engine = create_engine(SQLITE_URL, connect_args={"check_same_thread": False})
+SourceSession = sessionmaker(bind=source_engine)
+local_db = SourceSession()
 
 def upload_data():
     # Get Remote DB URL (Target)
