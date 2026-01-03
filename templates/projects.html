@@ -310,6 +310,9 @@
                 modal.style.visibility = 'visible';
                 modal.style.opacity = '1';
                 modal.style.zIndex = '9999';
+
+                // Debug Alert: Confirm success
+                alert("Popup code finished. Display: " + modal.style.display + ", Classes: " + modal.className);
             } else {
                 alert("Error: Modal element not found!");
                 throw new Error("Edit Modal element 'editProjectModal' not found in DOM");
