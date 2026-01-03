@@ -4,9 +4,9 @@
 <div class="h-full flex flex-col">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors" 
-            onclick="document.getElementById('taskModal').classList.remove('hidden')" 
+            onclick="openTaskModal()" 
             title="클릭하여 새 업무 만들기">업무 관리</h2>
-        <button onclick="document.getElementById('taskModal').classList.remove('hidden')"
+        <button onclick="openTaskModal()"
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm text-sm font-medium">
             + 새 업무
         </button>
@@ -227,11 +227,15 @@
 
 <!-- Create Task Modal -->
 <div id="taskModal"
-    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
+    style="z-index: 2147483647; display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; margin: 0; padding: 0;"
+    onclick="if(event.target === this) { closeTaskModal(); }">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
+        style="position: relative; z-index: 2147483647;"
+        onclick="event.stopPropagation();">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">새 업무 만들기</h3>
-            <button onclick="document.getElementById('taskModal').classList.add('hidden')"
+            <button onclick="closeTaskModal()"
                 class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         <form action="/tasks" method="post" class="space-y-4">
@@ -459,6 +463,51 @@
     function deleteTask() {
         if (confirm('정말 이 업무를 삭제하시겠습니까?')) {
             document.getElementById('deleteTaskForm').submit();
+        }
+    }
+
+    function openTaskModal() {
+        const modal = document.getElementById('taskModal');
+        if (!modal) {
+            console.error("Task modal not found");
+            return;
+        }
+        
+        console.log("Opening task modal...");
+        // Remove hidden class
+        modal.classList.remove('hidden');
+        // Add flex class
+        modal.classList.add('flex');
+        
+        // Force display with inline style
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.setProperty('visibility', 'visible', 'important');
+        modal.style.setProperty('opacity', '1', 'important');
+        modal.style.setProperty('z-index', '2147483647', 'important');
+        modal.style.setProperty('background-color', 'rgba(0, 0, 0, 0.5)', 'important');
+        modal.style.setProperty('position', 'fixed', 'important');
+        modal.style.setProperty('top', '0', 'important');
+        modal.style.setProperty('left', '0', 'important');
+        modal.style.setProperty('width', '100vw', 'important');
+        modal.style.setProperty('height', '100vh', 'important');
+        modal.style.setProperty('align-items', 'center', 'important');
+        modal.style.setProperty('justify-content', 'center', 'important');
+        modal.style.setProperty('pointer-events', 'auto', 'important');
+        modal.style.setProperty('margin', '0', 'important');
+        modal.style.setProperty('padding', '0', 'important');
+        
+        // Lock body scroll
+        document.body.style.overflow = 'hidden';
+        
+        console.log("Task modal should now be visible");
+    }
+
+    function closeTaskModal() {
+        const modal = document.getElementById('taskModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.setProperty('display', 'none', 'important');
+            document.body.style.overflow = '';
         }
     }
 </script>
