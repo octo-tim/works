@@ -466,10 +466,12 @@
         }
     }
 
-    function openTaskModal() {
+    // Explicitly attach to window to avoid scope issues
+    window.openTaskModal = function() {
         const modal = document.getElementById('taskModal');
         if (!modal) {
             console.error("Task modal not found");
+            alert("업무 생성 팝업을 찾을 수 없습니다. 페이지를 새로고침해주세요.");
             return;
         }
         
@@ -500,15 +502,35 @@
         document.body.style.overflow = 'hidden';
         
         console.log("Task modal should now be visible");
-    }
+    };
 
-    function closeTaskModal() {
+    window.closeTaskModal = function() {
         const modal = document.getElementById('taskModal');
         if (modal) {
             modal.classList.add('hidden');
             modal.style.setProperty('display', 'none', 'important');
             document.body.style.overflow = '';
         }
-    }
+    };
+
+    // Also add event listener as backup
+    document.addEventListener('DOMContentLoaded', function() {
+        const titleElement = document.querySelector('h2[onclick*="openTaskModal"]');
+        if (titleElement) {
+            console.log("Found title element, adding click event listener");
+            // Remove onclick and add event listener
+            titleElement.removeAttribute('onclick');
+            titleElement.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("Title clicked via event listener");
+                if (window.openTaskModal) {
+                    window.openTaskModal();
+                } else {
+                    console.error("openTaskModal function not found!");
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}
