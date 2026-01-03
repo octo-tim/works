@@ -362,6 +362,25 @@
                     setAction('editProjectForm', "/projects/" + id + "/update");
                     setAction('uploadForm', "/projects/" + id + "/upload");
                     setAction('deleteProjectForm', "/projects/" + id + "/delete");
+                    
+                    // Re-attach onsubmit event handler after modal move
+                    const editForm = document.getElementById('editProjectForm');
+                    if (editForm) {
+                        editForm.onsubmit = function(event) {
+                            const form = this;
+                            const deptSelect = document.getElementById('edit_department');
+                            console.log('Form submitting - Action:', form.action);
+                            console.log('Department value:', deptSelect?.value);
+                            console.log('All form fields:', Array.from(form.elements).filter(el => el.name).map(el => `${el.name}=${el.value || ''}`).join(', '));
+                            if(!form.action) {
+                                event.preventDefault();
+                                alert('프로젝트 ID를 찾을 수 없습니다.');
+                                return false;
+                            }
+                            return true;
+                        };
+                        console.log('Re-attached onsubmit handler to editProjectForm after modal move');
+                    }
                 }
             }
             
