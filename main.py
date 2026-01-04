@@ -1310,7 +1310,7 @@ class AIHelper:
         Output Schema (JSON):
         {{
             "action": "CREATE" | "UPDATE" | "DELETE",
-            "event_id": int or null (Required for UPDATE/DELETE),
+            "event_ids": [int] (Required for UPDATE/DELETE. If multiple match, list all.),
             "payload": {{
                 "title": "string",
                 "description": "string",
@@ -1433,10 +1433,6 @@ async def create_task_from_ai(
         raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
 
 
-
-
-
-
 @app.post("/api/events/ai")
 async def process_event_from_ai(
     request: Request,
@@ -1455,8 +1451,8 @@ async def process_event_from_ai(
         user_ctx = ", ".join([f"{u.username}(ID:{u.id})" for u in users])
 
         upcoming_events = db.query(models.Event).filter(
-            models.Event.start_time >= datetime.now()
-        ).limit(20).all()
+            models.Event.start_time >= (datetime.now() - timedelta(days=1)) # Include recently passed events too for context
+        ).limit(30).all()
         
         event_ctx_list = []
         for e in upcoming_events:
@@ -1468,7 +1464,11 @@ async def process_event_from_ai(
         
         action = result.get('action')
         payload = result.get('payload', {})
-        target_id = result.get('event_id')
+        target_ids = result.get('event_ids', [])
+        
+        # Legacy support if AI returns single event_id
+        if not target_ids and result.get('event_id'):
+            target_ids = [result.get('event_id')]
 
         if action == "CREATE":
             start_str = payload.get('start_time')
@@ -1488,40 +1488,37 @@ async def process_event_from_ai(
             )
             db.add(new_event)
             db.commit()
-            return {"status": "success", "action": "CREATE", "event_id": new_event.id}
+            return {"status": "success", "action": "CREATE", "count": 1}
 
         elif action == "UPDATE":
-            if not target_id:
-                raise HTTPException(status_code=400, detail="AI could not identify which event to update.")
-            event = db.query(models.Event).get(target_id)
-            if not event:
-                raise HTTPException(status_code=404, detail="Event not found")
-            if event.user_id != current_user.id and current_user.role != 'admin':
-                raise HTTPException(status_code=403, detail="Not authorized")
+            if not target_ids:
+                return {"status": "error", "message": "No event identified to update"}
             
-            # Update fields if present
-            if payload.get('title'): event.title = payload['title']
-            if payload.get('description'): event.description = payload['description']
-            if payload.get('start_time'): 
-                event.start_time = datetime.fromisoformat(payload['start_time'])
-            if payload.get('end_time'):
-                event.end_time = datetime.fromisoformat(payload['end_time'])
-            
+            # Update all matched events (usually 1, but technically can be multiple)
+            count = 0
+            for tid in target_ids:
+                event = db.query(models.Event).filter(models.Event.id == tid).first()
+                if event and (event.user_id == current_user.id or current_user.role == 'admin'):
+                    if payload.get('title'): event.title = payload['title']
+                    if payload.get('description'): event.description = payload['description']
+                    if payload.get('start_time'): event.start_time = datetime.fromisoformat(payload['start_time'])
+                    if payload.get('end_time'): event.end_time = datetime.fromisoformat(payload['end_time'])
+                    count += 1
             db.commit()
-            return {"status": "success", "action": "UPDATE", "event_id": event.id}
+            return {"status": "success", "action": "UPDATE", "count": count}
 
         elif action == "DELETE":
-            if not target_id:
-                 raise HTTPException(status_code=400, detail="AI could not identify which event to delete.")
-            event = db.query(models.Event).get(target_id)
-            if not event:
-                raise HTTPException(status_code=404, detail="Event not found")
-            if event.user_id != current_user.id and current_user.role != 'admin':
-                raise HTTPException(status_code=403, detail="Not authorized")
+            if not target_ids:
+                return {"status": "error", "message": "No event identified to delete"}
             
-            db.delete(event)
+            count = 0
+            for tid in target_ids:
+                event = db.query(models.Event).filter(models.Event.id == tid).first()
+                if event and (event.user_id == current_user.id or current_user.role == 'admin'):
+                    db.delete(event)
+                    count += 1
             db.commit()
-            return {"status": "success", "action": "DELETE"}
+            return {"status": "success", "action": "DELETE", "count": count}
 
         else:
             return {"status": "error", "message": "Unknown action"}
