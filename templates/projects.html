@@ -781,8 +781,14 @@
 
         // Show modal and loading
         modal.classList.remove('hidden');
-        // Ensure flex is added
         modal.classList.add('flex');
+
+        // Force robust display styles (same as editProjectModal)
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.setProperty('z-index', '9999', 'important');
+        modal.style.setProperty('visibility', 'visible', 'important');
+        modal.style.setProperty('opacity', '1', 'important');
+
         loadingEl.classList.remove('hidden');
         emptyEl.classList.add('hidden');
 
