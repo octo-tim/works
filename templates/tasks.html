@@ -3,9 +3,8 @@
 {% block content %}
 <div class="h-full flex flex-col">
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors" 
-            onclick="openTaskModal()" 
-            title="클릭하여 새 업무 만들기">업무 관리</h2>
+        <h2 class="text-2xl font-bold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors"
+            onclick="openTaskModal()" title="클릭하여 새 업무 만들기">업무 관리</h2>
         <button onclick="openTaskModal()"
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm text-sm font-medium">
             + 새 업무
@@ -36,7 +35,7 @@
                     <tbody>
                         {% for t in scheduled %}
                         <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.category_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
+                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
                             <td class="px-6 py-4">
                                 {% if t.department == 'System' %}
@@ -104,7 +103,7 @@
                     <tbody>
                         {% for t in inprogress %}
                         <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.category_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
+                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
                             <td class="px-6 py-4">
                                 {% if t.department == 'System' %}
@@ -171,7 +170,7 @@
                     <tbody>
                         {% for t in completed %}
                         <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.category_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
+                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
                             <td class="px-6 py-4">
                                 {% if t.department == 'System' %}
@@ -220,17 +219,14 @@
 </div>
 
 <!-- Create Task Modal -->
-<div id="taskModal"
-    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
+<div id="taskModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
     style="z-index: 2147483647; display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; margin: 0; padding: 0;"
     onclick="if(event.target === this) { closeTaskModal(); }">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
-        style="position: relative; z-index: 2147483647;"
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" style="position: relative; z-index: 2147483647;"
         onclick="event.stopPropagation();">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">새 업무 만들기</h3>
-            <button onclick="closeTaskModal()"
-                class="text-gray-400 hover:text-gray-600">✕</button>
+            <button onclick="closeTaskModal()" class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         <form action="/tasks" method="post" class="space-y-4">
             <div>
@@ -266,15 +262,6 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">업무 유형</label>
-                        <select name="category_id" class="w-full border rounded-lg px-3 py-2 text-sm h-24">
-                            <option value="0">없음</option>
-                            {% for c in categories %}
-                            <option value="{{ c.id }}">{{ c.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트</label>
@@ -297,13 +284,11 @@
     class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
     style="z-index: 2147483647; display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; margin: 0; padding: 0;"
     onclick="if(event.target === this) { closeEditTaskModal(); }">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
-        style="position: relative; z-index: 2147483647;"
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" style="position: relative; z-index: 2147483647;"
         onclick="event.stopPropagation();">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">업무 수정</h3>
-            <button onclick="closeEditTaskModal();"
-                class="text-gray-400 hover:text-gray-600">✕</button>
+            <button onclick="closeEditTaskModal();" class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         <form id="editTaskForm" method="post" class="space-y-4">
             <div>
@@ -338,16 +323,6 @@
                         class="w-full border rounded-lg px-3 py-2 text-sm h-24">
                         {% for u in users %}
                         <option value="{{ u.id }}">{{ u.username }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">업무 유형</label>
-                    <select name="category_id" id="edit_category_id"
-                        class="w-full border rounded-lg px-3 py-2 text-sm h-24">
-                        <option value="0">없음</option>
-                        {% for c in categories %}
-                        <option value="{{ c.id }}">{{ c.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -394,7 +369,7 @@
 </div>
 
 <script>
-    function openEditModal(id, title, description, status, assignee_ids, start_date, due_date, project_id, category_id, department, filenames, filepaths) {
+    function openEditModal(id, title, description, status, assignee_ids, start_date, due_date, project_id, department, filenames, filepaths) {
         // Helper function to safely set value
         const setValue = (id, value) => {
             const element = document.getElementById(id);
@@ -418,8 +393,8 @@
             let ids = [];
             try {
                 ids = typeof assignee_ids === 'string' ? JSON.parse(assignee_ids) : assignee_ids;
-            } catch (e) { 
-                ids = []; 
+            } catch (e) {
+                ids = [];
             }
 
             if (ids && Array.isArray(ids)) {
@@ -434,14 +409,13 @@
         setValue('edit_start_date', start_date);
         setValue('edit_due_date', due_date);
         setValue('edit_project_id', project_id);
-        setValue('edit_category_id', category_id);
         setValue('edit_department', department);
 
         // Set form actions
         const editForm = document.getElementById('editTaskForm');
         const uploadForm = document.getElementById('taskUploadForm');
         const deleteForm = document.getElementById('deleteTaskForm');
-        
+
         if (editForm) {
             editForm.action = "/tasks/" + id + "/update";
         }
@@ -480,7 +454,7 @@
             console.error("editTaskModal not found");
             return;
         }
-        
+
         // Move modal to body if needed
         if (modal.parentElement !== document.body) {
             console.log("Moving editTaskModal to body");
@@ -489,11 +463,11 @@
             document.body.appendChild(modalClone);
             modal = document.getElementById('editTaskModal');
         }
-        
+
         // Remove hidden class and add flex
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        
+
         // Apply styling
         modal.style.setProperty('display', 'flex', 'important');
         modal.style.setProperty('visibility', 'visible', 'important');
@@ -510,7 +484,7 @@
         modal.style.setProperty('pointer-events', 'auto', 'important');
         modal.style.setProperty('margin', '0', 'important');
         modal.style.setProperty('padding', '0', 'important');
-        
+
         // Ensure inner content is visible
         const modalContent = modal.querySelector('div.bg-white');
         if (modalContent) {
@@ -520,7 +494,7 @@
             modalContent.style.setProperty('opacity', '1', 'important');
             modalContent.style.setProperty('visibility', 'visible', 'important');
         }
-        
+
         document.body.style.overflow = 'hidden';
     }
 
@@ -540,18 +514,18 @@
     }
 
     // Explicitly attach to window to avoid scope issues
-    window.openTaskModal = function() {
+    window.openTaskModal = function () {
         let modal = document.getElementById('taskModal');
         if (!modal) {
             console.error("Task modal not found");
             alert("업무 생성 팝업을 찾을 수 없습니다. 페이지를 새로고침해주세요.");
             return;
         }
-        
+
         console.log("Opening task modal...");
         console.log("Modal found:", modal);
         console.log("Modal parent:", modal.parentElement);
-        
+
         // Move modal to body if it's not already there (ensures highest z-index context)
         if (modal.parentElement !== document.body) {
             console.log("Moving modal to body for better z-index stacking");
@@ -561,13 +535,13 @@
             modal = document.getElementById('taskModal');
             console.log("Modal moved to body, new parent:", modal.parentElement);
         }
-        
+
         // Remove hidden class
         modal.classList.remove('hidden');
         // Add flex class
         modal.classList.add('flex');
         console.log("Removed 'hidden' class, added 'flex' class");
-        
+
         // Force display with inline style
         modal.style.setProperty('display', 'flex', 'important');
         modal.style.setProperty('visibility', 'visible', 'important');
@@ -584,7 +558,7 @@
         modal.style.setProperty('pointer-events', 'auto', 'important');
         modal.style.setProperty('margin', '0', 'important');
         modal.style.setProperty('padding', '0', 'important');
-        
+
         // Ensure inner content is visible
         const modalContent = modal.querySelector('div.bg-white');
         if (modalContent) {
@@ -596,16 +570,16 @@
             modalContent.style.setProperty('display', 'block', 'important');
             console.log("Modal content styled:", modalContent);
         }
-        
+
         // Lock body scroll
         document.body.style.overflow = 'hidden';
-        
+
         // Check computed styles
         const computedStyle = window.getComputedStyle(modal);
         console.log("Modal final computed style.display:", computedStyle.display);
         console.log("Modal final computed z-index:", computedStyle.zIndex);
         console.log("Modal final classes:", modal.className);
-        
+
         // Double check after a short delay
         setTimeout(() => {
             const finalComputedStyle = window.getComputedStyle(modal);
@@ -616,7 +590,7 @@
                 modal.style.setProperty('display', 'flex', 'important');
                 modal.style.setProperty('visibility', 'visible', 'important');
             }
-            
+
             // Check if modal is actually visible on screen
             const rect = modal.getBoundingClientRect();
             console.log("Modal bounding rect:", rect);
@@ -624,11 +598,11 @@
                 console.error("Modal has zero dimensions!");
             }
         }, 100);
-        
+
         console.log("Task modal should now be visible");
     };
 
-    window.closeTaskModal = function() {
+    window.closeTaskModal = function () {
         const modal = document.getElementById('taskModal');
         if (modal) {
             modal.classList.add('hidden');
@@ -638,13 +612,13 @@
     };
 
     // Also add event listener as backup
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const titleElement = document.querySelector('h2[onclick*="openTaskModal"]');
         if (titleElement) {
             console.log("Found title element, adding click event listener");
             // Remove onclick and add event listener
             titleElement.removeAttribute('onclick');
-            titleElement.addEventListener('click', function(e) {
+            titleElement.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log("Title clicked via event listener");

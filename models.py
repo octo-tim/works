@@ -70,7 +70,7 @@ class Task(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True) # Kept for backward compat, but we prefer 'assignees'
     creator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    creator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
 
     project = relationship("Project", back_populates="tasks")
     assignee = relationship("User", foreign_keys=[assignee_id]) # Legacy single assignee
