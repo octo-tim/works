@@ -128,10 +128,9 @@
         </button>
 
         <h3 class="text-xl font-bold text-gray-800 mb-6">새 회의록 작성 <span
-                class="text-sm font-normal text-gray-500">(v1.1)</span></h3>
+                class="text-sm font-normal text-gray-500">(v1.2)</span></h3>
 
-        <form action="/meeting_minutes" method="post" enctype="multipart/form-data" class="space-y-4" id="createForm"
-            onsubmit="prepareSubmit()">
+        <form action="/meeting_minutes" method="post" enctype="multipart/form-data" class="space-y-4" id="createForm">
             <!-- AI Analysis Section -->
             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
                 <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
@@ -228,7 +227,7 @@
             <div class="pt-4 flex justify-end gap-2">
                 <button type="button" onclick="document.getElementById('createModal').classList.add('hidden')"
                     class="bg-gray-100 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-200 transition">취소</button>
-                <button type="submit"
+                <button type="button" onclick="submitCreateForm()"
                     class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition">저장하기</button>
             </div>
         </form>
@@ -373,6 +372,16 @@ ${(aiAnalysisData.action_items || []).map(t => `- [ ] ${t.title} (${t.assignee_n
             // Allow submission to proceed even if task preparation fails
         }
         return true;
+    }
+
+    function submitCreateForm() {
+        const form = document.getElementById('createForm');
+        if (form.checkValidity()) {
+            prepareSubmit(); // manually call this
+            form.submit();
+        } else {
+            form.reportValidity();
+        }
     }
 </script>
 {% endblock %}
