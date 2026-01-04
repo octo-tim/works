@@ -38,7 +38,7 @@
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4 font-medium text-blue-600">
                                 <a href="javascript:void(0)"
-                                    onclick="openProjectTasksModal('{{ p.id }}', '{{ p.name|e }}')"
+                                    onclick='openProjectTasksModal({{ p.id|tojson }}, {{ p.name|tojson }})'
                                     class="hover:underline">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
@@ -114,7 +114,7 @@
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4 font-medium text-blue-600">
                                 <a href="javascript:void(0)"
-                                    onclick="openProjectTasksModal('{{ p.id }}', '{{ p.name|e }}')"
+                                    onclick='openProjectTasksModal({{ p.id|tojson }}, {{ p.name|tojson }})'
                                     class="hover:underline">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
@@ -190,7 +190,7 @@
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4 font-medium text-blue-600">
                                 <a href="javascript:void(0)"
-                                    onclick="openProjectTasksModal('{{ p.id }}', '{{ p.name|e }}')"
+                                    onclick='openProjectTasksModal({{ p.id|tojson }}, {{ p.name|tojson }})'
                                     class="hover:underline">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
@@ -746,13 +746,21 @@
         });
     });
 
-    function openProjectTasksModal(projectId, projectName) {
+    // Attach to window to ensure global availability
+    window.openProjectTasksModal = function (projectId, projectName) {
+        console.log("Opening tasks for project:", projectId, projectName);
         const modal = document.getElementById('projectTasksModal');
         const titleEl = document.getElementById('projectTasksModalTitle');
         const listEl = document.getElementById('projectTasksList');
         const loadingEl = document.getElementById('projectTasksLoading');
         const emptyEl = document.getElementById('projectTasksEmpty');
         const linkEl = document.getElementById('projectTasksDashboardLink');
+
+        if (!modal) {
+            console.error("Project tasks modal not found!");
+            alert("업무 목록 팝업을 찾을 수 없습니다.");
+            return;
+        }
 
         // Setup modal
         titleEl.textContent = projectName + " - 업무 목록";
@@ -761,6 +769,8 @@
 
         // Show modal and loading
         modal.classList.remove('hidden');
+        // Ensure flex is added
+        modal.classList.add('flex');
         loadingEl.classList.remove('hidden');
         emptyEl.classList.add('hidden');
 

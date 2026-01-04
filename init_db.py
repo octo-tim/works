@@ -44,10 +44,7 @@ dist_user = models.User(
 )
 db.add(dist_user)
 
-# Create Categories
-categories = ["기획", "디자인", "개발", "테스트"]
-for name in categories:
-    db.add(models.Category(name=name))
+
 
 
 

@@ -35,14 +35,7 @@ class User(Base):
 
 
 
-class Category(Base):
-    __tablename__ = "categories"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
-    color = Column(String, default="#000000")
-
-    tasks = relationship("Task", back_populates="category")
 
 
 class Project(Base):
@@ -77,13 +70,13 @@ class Task(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True) # Kept for backward compat, but we prefer 'assignees'
     creator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     project = relationship("Project", back_populates="tasks")
     assignee = relationship("User", foreign_keys=[assignee_id]) # Legacy single assignee
     creator = relationship("User", foreign_keys=[creator_id])
     assignees = relationship("User", secondary=task_assignees, backref="tasks_multi_assigned")
-    category = relationship("Category", back_populates="tasks")
+    assignees = relationship("User", secondary=task_assignees, backref="tasks_multi_assigned")
     files = relationship("TaskFile", back_populates="task")
 
 

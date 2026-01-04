@@ -266,7 +266,6 @@ def logout(request: Request):
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request, 
               assignee_id: Optional[str] = None, 
-              category_id: Optional[str] = None,
               department: Optional[str] = None, 
               project_id: Optional[str] = None,
               target_month: Optional[int] = None,
@@ -291,13 +290,9 @@ def read_root(request: Request,
         department = current_user.department
         query = query.join(models.User).filter(models.User.department == current_user.department)
     
-    # 담당자, 카테고리, 프로젝트 필터
     a_id = int(assignee_id) if assignee_id and assignee_id.isdigit() else None
-    cat_id = int(category_id) if category_id and category_id.isdigit() else None
     proj_id = int(project_id) if project_id and project_id.isdigit() else None
 
-    if cat_id:
-        query = query.filter(models.Task.category_id == cat_id)
     
     if proj_id:
         query = query.filter(models.Task.project_id == proj_id)
@@ -328,7 +323,7 @@ def read_root(request: Request,
         
         event = {
             "title": f"[{t.assignee.username if t.assignee else '미지정'}] {t.title}",
-            "url": f"javascript:openEditModal('{t.id}', '{t.title}', '{t.description or ''}', '{t.status}', '{t.department or ''}', {[u.id for u in t.assignees]}, '{t.start_date or ''}', '{t.due_date or ''}', '{t.project_id or 0}', '{t.category_id or 0}', {[f.filename for f in t.files]}, {[f.filepath for f in t.files]})"
+            "url": f"javascript:openEditModal('{t.id}', '{t.title}', '{t.description or ''}', '{t.status}', '{t.department or ''}', {[u.id for u in t.assignees]}, '{t.start_date or ''}', '{t.due_date or ''}', '{t.project_id or 0}', {[f.filename for f in t.files]}, {[f.filepath for f in t.files]})"
         }
 
         if start:
@@ -360,10 +355,9 @@ def read_root(request: Request,
         "tasks_done": tasks_done,
         "calendar_events": calendar_events, # Pass to template
         "users": users,
-        "categories": categories,
+        "users": users,
         "projects": db.query(models.Project).all(), # Pass projects for modal
         "selected_assignee": a_id,
-        "selected_category": cat_id,
         "selected_project": proj_id,
         "selected_department": department, # Pass back to UI
         "selected_month": target_month,
@@ -519,7 +513,6 @@ def create_task(title: str = Form(...),
                 due_date: str = Form(None),
                 project_id: int = Form(None),
                 assignee_ids: List[int] = Form([]),
-                category_id: int = Form(None),
                 department: str = Form(None),
                 db: Session = Depends(get_db),
                 current_user: models.User = Depends(get_current_user)):
@@ -531,8 +524,8 @@ def create_task(title: str = Form(...),
     due_date_obj = utils.parse_date(due_date, "%Y-%m-%d")
     
     # 0을 None으로 변환
+    # 0을 None으로 변환
     project_id = None if project_id == 0 else project_id
-    category_id = None if category_id == 0 else category_id
 
     new_task = models.Task(
         title=title,
@@ -541,7 +534,6 @@ def create_task(title: str = Form(...),
         start_date=start_date_obj,
         due_date=due_date_obj,
         project_id=project_id,
-        category_id=category_id,
         department=department,
         creator_id=current_user.id
     )
@@ -574,12 +566,10 @@ def update_task_status(task_id: int, status: str = Form(...), db: Session = Depe
 def read_admin(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
     """관리자 페이지"""
     users = db.query(models.User).all()
-    categories = db.query(models.Category).all()
     return templates.TemplateResponse("admin.html", {
         "request": request, 
         "user": current_user,
-        "users": users, 
-        "categories": categories
+        "users": users
     })
 
 @app.post("/admin/users", response_class=RedirectResponse)
@@ -671,16 +661,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
     
     return RedirectResponse(url="/admin", status_code=303)
 
-@app.post("/admin/categories", response_class=RedirectResponse)
-def create_category(name: str = Form(...), color: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
-    """카테고리 생성"""
-    # 중복 체크
-    if db.query(models.Category).filter(models.Category.name == name).first():
-        return RedirectResponse(url="/admin?error=duplicate_category", status_code=303)
-    
-    db.add(models.Category(name=name, color=color))
-    db.commit()
-    return RedirectResponse(url="/admin", status_code=303)
+
 
 @app.get("/projects", response_class=HTMLResponse)
 def read_projects(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -852,7 +833,7 @@ def read_tasks_page(request: Request, db: Session = Depends(get_db), current_use
         return RedirectResponse(url="/login")
     
     users = db.query(models.User).all()
-    categories = db.query(models.Category).all()
+    users = db.query(models.User).all()
     projects = db.query(models.Project).all()
     
     tasks_scheduled = db.query(models.Task).filter(models.Task.status == "Todo").all()
@@ -866,7 +847,7 @@ def read_tasks_page(request: Request, db: Session = Depends(get_db), current_use
         "inprogress": tasks_inprogress,
         "completed": tasks_done, 
         "users": users,
-        "categories": categories,
+        "users": users,
         "projects": projects
     })
 
@@ -878,7 +859,6 @@ def create_task_page(request: Request,
                 assignee_ids: List[int] = Form([]),
                 due_date: str = Form(None),
                 project_id: int = Form(0),
-                category_id: int = Form(0),
                 department: str = Form(None),
                 db: Session = Depends(get_db),
                 current_user: models.User = Depends(get_current_user)):
@@ -892,7 +872,6 @@ def create_task_page(request: Request,
         status=status,
         due_date=utils.parse_date(due_date, '%Y-%m-%d'),
         project_id=None if project_id == 0 else project_id,
-        category_id=None if category_id == 0 else category_id,
         department=department,
         creator_id=current_user.id
     )
@@ -917,7 +896,6 @@ def update_task_details(task_id: int,
                         start_date: str = Form(None),
                         due_date: str = Form(None),
                         project_id: int = Form(0),
-                        category_id: int = Form(0),
                         department: str = Form(None),
                         db: Session = Depends(get_db),
                         current_user: models.User = Depends(get_current_user)):
@@ -946,7 +924,6 @@ def update_task_details(task_id: int,
     task.start_date = utils.parse_date(start_date, '%Y-%m-%d')
     task.due_date = utils.parse_date(due_date, '%Y-%m-%d')
     task.project_id = None if project_id == 0 else project_id
-    task.category_id = None if category_id == 0 else category_id
     task.department = department
     db.commit()
     return RedirectResponse(url="/tasks", status_code=303)
