@@ -168,3 +168,18 @@ class MeetingMinuteFile(Base):
 
 
 
+
+class Event(Base):
+    __tablename__ = "events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    description = Column(String, nullable=True)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    is_all_day = Column(Boolean, default=False)
+    
+    user_id = Column(Integer, ForeignKey("users.id"))
+    department = Column(String, nullable=True) # For easier department filtering
+
+    user = relationship("User", backref="events")

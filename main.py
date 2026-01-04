@@ -1073,6 +1073,7 @@ async def create_meeting_minute(request: Request,
     
     return RedirectResponse(url="/meeting_minutes", status_code=303)
 
+
 @app.get("/meeting_minutes/{minute_id}", response_class=HTMLResponse)
 def read_meeting_minute_detail(request: Request, minute_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login")
@@ -1086,3 +1087,91 @@ def read_meeting_minute_detail(request: Request, minute_id: int, db: Session = D
         "user": current_user,
         "minute": minute
     })
+
+# --- Calendar Routes ---
+
+@app.get("/calendar", response_class=HTMLResponse)
+async def read_calendar(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """일정 관리 페이지"""
+    if not current_user:
+        return RedirectResponse(url="/login")
+    return templates.TemplateResponse("calendar.html", {"request": request, "user": current_user})
+
+@app.get("/api/events")
+def get_events(scope: str = "all", db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """일정 조회 API"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    query = db.query(models.Event)
+    
+    if scope == "personal":
+        query = query.filter(models.Event.user_id == current_user.id)
+    elif scope == "department":
+        query = query.filter(models.Event.department == current_user.department)
+    # scope == 'all' returns all events (or potentially limited to visibility rules if needed)
+    
+    events = query.all()
+    
+    # Format for FullCalendar
+    formatted_events = []
+    for event in events:
+        formatted_events.append({
+            "id": event.id,
+            "title": event.title,
+            "start": event.start_time.isoformat() if event.start_time else None,
+            "end": event.end_time.isoformat() if event.end_time else None,
+            "allDay": event.is_all_day,
+            "description": event.description,
+            "backgroundColor": "#3b82f6" if event.user_id == current_user.id else "#10b981", # Blue for mine, Green for others
+            "borderColor": "#3b82f6" if event.user_id == current_user.id else "#10b981",
+        })
+    return formatted_events
+
+@app.post("/api/events")
+def create_event(
+    title: str = Form(...),
+    description: str = Form(None),
+    start_time: str = Form(...),
+    end_time: str = Form(...),
+    is_all_day: bool = Form(False),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """일정 생성 API"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    start_dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M")
+    end_dt = datetime.strptime(end_time, "%Y-%m-%dT%H:%M")
+    
+    new_event = models.Event(
+        title=title,
+        description=description,
+        start_time=start_dt,
+        end_time=end_dt,
+        is_all_day=is_all_day,
+        user_id=current_user.id,
+        department=current_user.department
+    )
+    db.add(new_event)
+    db.commit()
+    return {"status": "success"}
+
+@app.delete("/api/events/{event_id}")
+def delete_event(event_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """일정 삭제 API"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    # Permission check: Only creator or admin can delete
+    if event.user_id != current_user.id and current_user.role != 'admin':
+         raise HTTPException(status_code=403, detail="Not authorized to delete this event")
+         
+    db.delete(event)
+    db.commit()
+    return {"status": "success"}
