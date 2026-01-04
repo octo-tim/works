@@ -124,7 +124,7 @@ def populate_db(db: Session):
 
 @app.on_event("startup")
 def on_startup():
-    print(f"[{datetime.now()}] APP VERSION 1.1 LOADED - DEBUG MODE ON")
+    print(f"[{datetime.now()}] APP VERSION 1.5 LOADED - DEBUG MODE ON")
     db = SessionLocal()
     populate_db(db)
     db.close()
@@ -1036,18 +1036,17 @@ async def create_meeting_minute(
                           db: Session = Depends(get_db),
                           current_user: models.User = Depends(get_current_user)):
     """회의록 생성 및 업무 자동 등록"""
+    print(f"[DEBUG] Raw POST Request. Topic: {topic}, User: {current_user}")
     try:
-        if not current_user:
-            return RedirectResponse(url="/login", status_code=303)
+        # DEBUG LOGGING (Moved to top)
+        with open("debug_tasks.log", "a") as f:
+            f.write(f"\n[{datetime.now()}] Create Meeting Request\n")
+            f.write(f"Topic: {topic}\n")
+            f.write(f"Tasks Data: {tasks_data}\n")
             
-        # DEBUG LOGGING
-        print(f"[DEBUG] Create Meeting Request Received. Topic: {topic}")
-        print(f"[DEBUG] Tasks Data: {tasks_data}")
-        try:
-            with open("debug_tasks.log", "a") as f:
-                f.write(f"\n[{datetime.now()}] Create Meeting Request\n")
-                f.write(f"Topic: {topic}\n")
-                f.write(f"Tasks Data: {tasks_data}\n")
+        if not current_user:
+            print("[DEBUG] No current user, redirecting to login")
+            return RedirectResponse(url="/login", status_code=303)
         except Exception as log_e:
             print(f"[ERROR] Failed to write debug log: {log_e}")
             
