@@ -122,9 +122,16 @@ def populate_db(db: Session):
         admin_user.password_hash = utils.get_password_hash(config.ADMIN_PASSWORD)
         db.commit()
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"[{datetime.now()}] GLOBAL LOG: {request.method} {request.url}")
+    response = await call_next(request)
+    print(f"[{datetime.now()}] GLOBAL LOG: Response {response.status_code}")
+    return response
+
 @app.on_event("startup")
 def on_startup():
-    print(f"[{datetime.now()}] APP VERSION 1.5 LOADED - DEBUG MODE ON")
+    print(f"[{datetime.now()}] APP VERSION 1.6 LOADED - DEBUG MODE ON")
     db = SessionLocal()
     populate_db(db)
     db.close()
