@@ -131,7 +131,7 @@ async def log_requests(request: Request, call_next):
 
 @app.on_event("startup")
 def on_startup():
-    print(f"[{datetime.now()}] APP VERSION 1.6 LOADED - DEBUG MODE ON")
+    print(f"[{datetime.now()}] APP VERSION 1.7 LOADED")
     db = SessionLocal()
     populate_db(db)
     db.close()
@@ -1103,7 +1103,6 @@ async def create_meeting_minute(
                         status="Todo",
                         # Default to meeting date + 7 days if no due date
                         due_date=utils.parse_date(t.get("due_date"), "%Y-%m-%d") if t.get("due_date") else (m_date + timedelta(days=7)),
-                        priority=t.get("priority", "Normal"),
                         creator_id=current_user.id,
                         project_id=None, # No project link for now
                         department=dept
