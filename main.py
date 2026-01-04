@@ -1038,17 +1038,18 @@ async def create_meeting_minute(
     """회의록 생성 및 업무 자동 등록"""
     print(f"[DEBUG] Raw POST Request. Topic: {topic}, User: {current_user}")
     try:
-        # DEBUG LOGGING (Moved to top)
-        with open("debug_tasks.log", "a") as f:
-            f.write(f"\n[{datetime.now()}] Create Meeting Request\n")
-            f.write(f"Topic: {topic}\n")
-            f.write(f"Tasks Data: {tasks_data}\n")
+        # DEBUG LOGGING
+        try:
+            with open("debug_tasks.log", "a") as f:
+                f.write(f"\n[{datetime.now()}] Create Meeting Request\n")
+                f.write(f"Topic: {topic}\n")
+                f.write(f"Tasks Data: {tasks_data}\n")
+        except Exception as log_e:
+            print(f"[ERROR] Failed to write debug log: {log_e}")
             
         if not current_user:
             print("[DEBUG] No current user, redirecting to login")
             return RedirectResponse(url="/login", status_code=303)
-        except Exception as log_e:
-            print(f"[ERROR] Failed to write debug log: {log_e}")
             
         m_date = utils.parse_date(date_str, "%Y-%m-%d")
         
