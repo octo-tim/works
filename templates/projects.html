@@ -27,25 +27,18 @@
                         <tr>
                             <th scope="col" class="px-6 py-3">프로젝트명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
-
                             <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">기간</th>
                             <th scope="col" class="px-6 py-3">설명</th>
+                            <th scope="col" class="px-6 py-3">관리</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in scheduled %}
                         <tr class="bg-white border-b hover:bg-gray-50">
-                            <td class="px-6 py-4 font-medium text-blue-600 hover:underline cursor-pointer"
-                                onclick="projectOpenEditModal(this)" data-id="{{ p.id }}" data-name="{{ p.name|e }}"
-                                data-description="{{ (p.description or '')|e }}" data-status="{{ p.status|e }}"
-                                data-department="{{ (p.department or '')|e }}"
-                                data-assignee-ids='{{ p.assignees|map(attribute="id")|list|tojson|forceescape }}'
-                                data-start-date="{{ p.start_date.strftime('%Y-%m') if p.start_date else '' }}"
-                                data-end-date="{{ p.end_date.strftime('%Y-%m') if p.end_date else '' }}"
-                                data-file-names='{{ p.files|map(attribute="filename")|list|tojson|forceescape }}'
-                                data-file-paths='{{ p.files|map(attribute="filepath")|list|tojson|forceescape }}'>
-                                {{ p.name }}</td>
+                            <td class="px-6 py-4 font-medium text-blue-600">
+                                <a href="/?project_id={{ p.id }}" class="hover:underline">{{ p.name }}</a>
+                            </td>
                             <td class="px-6 py-4">
                                 {% if p.department == 'System' %}
                                 <span
@@ -57,16 +50,36 @@
                                 <span class="text-gray-400">-</span>
                                 {% endif %}
                             </td>
-
+                            <td class="px-6 py-4">
+                                <span class="text-xs text-gray-500">{{ p.creator.username if p.creator else '시스템'
+                                    }}</span>
+                            </td>
                             <td class="px-6 py-4">
                                 {{ p.start_date.strftime('%Y-%m') if p.start_date else '' }} ~ {{
                                 p.end_date.strftime('%Y-%m') if p.end_date else '' }}
                             </td>
                             <td class="px-6 py-4 truncate max-w-xs">{{ p.description or '' }}</td>
+                            <td class="px-6 py-4">
+                                <button onclick="projectOpenEditModal(this)" data-id="{{ p.id }}"
+                                    data-name="{{ p.name|e }}" data-description="{{ (p.description or '')|e }}"
+                                    data-status="{{ p.status|e }}" data-department="{{ (p.department or '')|e }}"
+                                    data-assignee-ids='{{ p.assignees|map(attribute="id")|list|tojson|forceescape }}'
+                                    data-start-date="{{ p.start_date.strftime('%Y-%m') if p.start_date else '' }}"
+                                    data-end-date="{{ p.end_date.strftime('%Y-%m') if p.end_date else '' }}"
+                                    data-file-names='{{ p.files|map(attribute="filename")|list|tojson|forceescape }}'
+                                    data-file-paths='{{ p.files|map(attribute="filepath")|list|tojson|forceescape }}'
+                                    class="text-gray-500 hover:text-blue-600 p-1 rounded hover:bg-gray-100 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                    </svg>
+                                </button>
+                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-400">등록된 프로젝트가 없습니다.</td>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-400">등록된 프로젝트가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -88,25 +101,18 @@
                         <tr>
                             <th scope="col" class="px-6 py-3">프로젝트명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
-
                             <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">기간</th>
                             <th scope="col" class="px-6 py-3">설명</th>
+                            <th scope="col" class="px-6 py-3">관리</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in inprogress %}
                         <tr class="bg-white border-b hover:bg-gray-50">
-                            <td class="px-6 py-4 font-medium text-blue-600 hover:underline cursor-pointer"
-                                onclick="projectOpenEditModal(this)" data-id="{{ p.id }}" data-name="{{ p.name|e }}"
-                                data-description="{{ (p.description or '')|e }}" data-status="{{ p.status|e }}"
-                                data-department="{{ (p.department or '')|e }}"
-                                data-assignee-ids='{{ p.assignees|map(attribute="id")|list|tojson|forceescape }}'
-                                data-start-date="{{ p.start_date.strftime('%Y-%m') if p.start_date else '' }}"
-                                data-end-date="{{ p.end_date.strftime('%Y-%m') if p.end_date else '' }}"
-                                data-file-names='{{ p.files|map(attribute="filename")|list|tojson|forceescape }}'
-                                data-file-paths='{{ p.files|map(attribute="filepath")|list|tojson|forceescape }}'>
-                                {{ p.name }}</td>
+                            <td class="px-6 py-4 font-medium text-blue-600">
+                                <a href="/?project_id={{ p.id }}" class="hover:underline">{{ p.name }}</a>
+                            </td>
                             <td class="px-6 py-4">
                                 {% if p.department == 'System' %}
                                 <span
@@ -118,7 +124,6 @@
                                 <span class="text-gray-400">-</span>
                                 {% endif %}
                             </td>
-
                             <td class="px-6 py-4">
                                 <span class="text-xs text-gray-500">{{ p.creator.username if p.creator else '시스템'
                                     }}</span>
@@ -128,10 +133,27 @@
                                 p.end_date.strftime('%Y-%m') if p.end_date else '' }}
                             </td>
                             <td class="px-6 py-4 truncate max-w-xs">{{ p.description or '' }}</td>
+                            <td class="px-6 py-4">
+                                <button onclick="projectOpenEditModal(this)" data-id="{{ p.id }}"
+                                    data-name="{{ p.name|e }}" data-description="{{ (p.description or '')|e }}"
+                                    data-status="{{ p.status|e }}" data-department="{{ (p.department or '')|e }}"
+                                    data-assignee-ids='{{ p.assignees|map(attribute="id")|list|tojson|forceescape }}'
+                                    data-start-date="{{ p.start_date.strftime('%Y-%m') if p.start_date else '' }}"
+                                    data-end-date="{{ p.end_date.strftime('%Y-%m') if p.end_date else '' }}"
+                                    data-file-names='{{ p.files|map(attribute="filename")|list|tojson|forceescape }}'
+                                    data-file-paths='{{ p.files|map(attribute="filepath")|list|tojson|forceescape }}'
+                                    class="text-gray-500 hover:text-blue-600 p-1 rounded hover:bg-gray-100 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                    </svg>
+                                </button>
+                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-400">진행 중인 프로젝트가 없습니다.</td>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-400">진행 중인 프로젝트가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -153,25 +175,18 @@
                         <tr>
                             <th scope="col" class="px-6 py-3">프로젝트명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
-
                             <th scope="col" class="px-6 py-3">생성자</th>
                             <th scope="col" class="px-6 py-3">기간</th>
                             <th scope="col" class="px-6 py-3">설명</th>
+                            <th scope="col" class="px-6 py-3">관리</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in completed %}
                         <tr class="bg-white border-b hover:bg-gray-50">
-                            <td class="px-6 py-4 font-medium text-blue-600 hover:underline cursor-pointer"
-                                onclick="projectOpenEditModal(this)" data-id="{{ p.id }}" data-name="{{ p.name|e }}"
-                                data-description="{{ (p.description or '')|e }}" data-status="{{ p.status|e }}"
-                                data-department="{{ (p.department or '')|e }}"
-                                data-assignee-ids='{{ p.assignees|map(attribute="id")|list|tojson|forceescape }}'
-                                data-start-date="{{ p.start_date.strftime('%Y-%m') if p.start_date else '' }}"
-                                data-end-date="{{ p.end_date.strftime('%Y-%m') if p.end_date else '' }}"
-                                data-file-names='{{ p.files|map(attribute="filename")|list|tojson|forceescape }}'
-                                data-file-paths='{{ p.files|map(attribute="filepath")|list|tojson|forceescape }}'>
-                                {{ p.name }}</td>
+                            <td class="px-6 py-4 font-medium text-blue-600">
+                                <a href="/?project_id={{ p.id }}" class="hover:underline">{{ p.name }}</a>
+                            </td>
                             <td class="px-6 py-4">
                                 {% if p.department == '시스템사업부' %}
                                 <span
@@ -184,7 +199,6 @@
                                     p.department or '-' }}</span>
                                 {% endif %}
                             </td>
-
                             <td class="px-6 py-4">
                                 <span class="text-xs text-gray-500">{{ p.creator.username if p.creator else '시스템'
                                     }}</span>
@@ -194,10 +208,27 @@
                                 p.end_date.strftime('%Y-%m') if p.end_date else '' }}
                             </td>
                             <td class="px-6 py-4 truncate max-w-xs">{{ p.description or '' }}</td>
+                            <td class="px-6 py-4">
+                                <button onclick="projectOpenEditModal(this)" data-id="{{ p.id }}"
+                                    data-name="{{ p.name|e }}" data-description="{{ (p.description or '')|e }}"
+                                    data-status="{{ p.status|e }}" data-department="{{ (p.department or '')|e }}"
+                                    data-assignee-ids='{{ p.assignees|map(attribute="id")|list|tojson|forceescape }}'
+                                    data-start-date="{{ p.start_date.strftime('%Y-%m') if p.start_date else '' }}"
+                                    data-end-date="{{ p.end_date.strftime('%Y-%m') if p.end_date else '' }}"
+                                    data-file-names='{{ p.files|map(attribute="filename")|list|tojson|forceescape }}'
+                                    data-file-paths='{{ p.files|map(attribute="filepath")|list|tojson|forceescape }}'
+                                    class="text-gray-500 hover:text-blue-600 p-1 rounded hover:bg-gray-100 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                    </svg>
+                                </button>
+                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-400">완료된 프로젝트가 없습니다.</td>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-400">완료된 프로젝트가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -215,20 +246,20 @@
     // Explicitly attach to window to avoid scope issues
     window.projectOpenEditModal = function (el) {
         console.log("projectOpenEditModal called with element:", el);
-        
+
         try {
             if (!el) {
                 console.error("Element is null or undefined");
                 alert("요소를 찾을 수 없습니다.");
                 return;
             }
-            
+
             if (!el.dataset) {
                 console.error("Element dataset is missing");
                 alert("데이터 속성을 찾을 수 없습니다.");
                 return;
             }
-            
+
             console.log("Element dataset:", el.dataset);
 
             const ds = el.dataset;
@@ -321,7 +352,7 @@
                 setAction('editProjectForm', "/projects/" + id + "/update");
                 setAction('uploadForm', "/projects/" + id + "/upload"); // 선택적
                 setAction('deleteProjectForm', "/projects/" + id + "/delete");
-                
+
                 // Verify form action was set and attach submit handler
                 const editForm = document.getElementById('editProjectForm');
                 if (editForm) {
@@ -329,36 +360,36 @@
                     // Remove any existing event listeners
                     editForm.onsubmit = null;
                     // Add new event listener
-                    editForm.addEventListener('submit', function(event) {
+                    editForm.addEventListener('submit', function (event) {
                         const form = this;
                         const deptSelect = document.getElementById('edit_department');
                         console.log('=== FORM SUBMIT EVENT TRIGGERED (initial) ===');
                         console.log('Form submitting - Action:', form.action);
                         console.log('Department select element:', deptSelect);
                         console.log('Department value:', deptSelect?.value);
-                        
+
                         // Get all form data
                         const formData = new FormData(form);
                         console.log('FormData entries:');
                         for (let [key, value] of formData.entries()) {
                             console.log(`  ${key}: ${value}`);
                         }
-                        
-                        if(!form.action) {
+
+                        if (!form.action) {
                             event.preventDefault();
                             alert('프로젝트 ID를 찾을 수 없습니다.');
                             return false;
                         }
-                        
+
                         // Verify department is included
                         if (!formData.has('department')) {
                             console.warn('WARNING: department field not found in form data!');
                         }
-                        
+
                         console.log('Form will submit to:', form.action);
                         return true;
                     }, false);
-                    
+
                     // Save button handler will be set up after modal is shown
                 }
             }
@@ -371,12 +402,12 @@
                 alert("수정 팝업을 찾을 수 없습니다. 페이지를 새로고침해주세요.");
                 return;
             }
-            
+
             console.log("Modal found:", modal);
             console.log("Modal parent:", modal.parentElement);
             console.log("Modal current classes:", modal.className);
             console.log("Modal current style.display:", modal.style.display);
-            
+
             // Move modal to body if it's not already there (ensures highest z-index context)
             if (modal.parentElement !== document.body) {
                 console.log("Moving modal to body for better z-index stacking");
@@ -385,7 +416,7 @@
                 document.body.appendChild(modalClone);
                 modal = document.getElementById('editProjectModal');
                 console.log("Modal moved to body, new parent:", modal.parentElement);
-                
+
                 // Re-set form actions after moving modal (forms are now new elements)
                 const id = ds.id;
                 if (id) {
@@ -404,7 +435,7 @@
                     setAction('editProjectForm', "/projects/" + id + "/update");
                     setAction('uploadForm', "/projects/" + id + "/upload"); // 선택적
                     setAction('deleteProjectForm', "/projects/" + id + "/delete");
-                    
+
                     // Re-attach onsubmit event handler after modal move
                     const editForm = document.getElementById('editProjectForm');
                     if (editForm) {
@@ -412,12 +443,12 @@
                         const newForm = editForm.cloneNode(true);
                         editForm.parentNode.replaceChild(newForm, editForm);
                         const freshForm = document.getElementById('editProjectForm');
-                        
+
                         // Re-set action after cloning
                         freshForm.action = "/projects/" + id + "/update";
-                        
+
                         // Re-set onsubmit attribute after cloning
-                        freshForm.onsubmit = function(event) {
+                        freshForm.onsubmit = function (event) {
                             event.preventDefault();
                             const form = this;
                             const deptSelect = document.getElementById('edit_department');
@@ -439,46 +470,46 @@
                             form.submit();
                             return false;
                         };
-                        
+
                         // Add event listener to fresh form (backup)
-                        freshForm.addEventListener('submit', function(event) {
+                        freshForm.addEventListener('submit', function (event) {
                             const form = this;
                             const deptSelect = document.getElementById('edit_department');
                             console.log('=== FORM SUBMIT EVENT TRIGGERED (after modal move) ===');
                             console.log('Form submitting - Action:', form.action);
                             console.log('Department select element:', deptSelect);
                             console.log('Department value:', deptSelect?.value);
-                            
+
                             // Get all form data
                             const formData = new FormData(form);
                             console.log('FormData entries:');
                             for (let [key, value] of formData.entries()) {
                                 console.log(`  ${key}: ${value}`);
                             }
-                            
-                            if(!form.action) {
+
+                            if (!form.action) {
                                 event.preventDefault();
                                 alert('프로젝트 ID를 찾을 수 없습니다.');
                                 return false;
                             }
-                            
+
                             // Verify department is included
                             if (!formData.has('department')) {
                                 console.warn('WARNING: department field not found in form data!');
                             }
-                            
+
                             console.log('Form will submit to:', form.action);
                             return true;
                         }, false);
                         console.log('Re-attached onsubmit handler to editProjectForm after modal move and form clone');
-                        
+
                         // Save button handler will be set up after modal is shown
                     } else {
                         console.error('editProjectForm not found after modal move!');
                     }
                 }
             }
-            
+
             // Set up save button click handler - do this after modal is fully displayed
             // Use multiple attempts to ensure button is found
             function setupSaveButtonHandler() {
@@ -489,68 +520,68 @@
                     if (window.handleSaveButtonClickDirect) {
                         saveBtn.removeEventListener('click', window.handleSaveButtonClickDirect, true);
                     }
-                    
+
                     // Create handler function
-                    window.handleSaveButtonClickDirect = function(event) {
+                    window.handleSaveButtonClickDirect = function (event) {
                         console.log('=== SAVE BUTTON CLICKED ===');
                         event.preventDefault();
                         event.stopPropagation();
-                        
+
                         const form = document.getElementById('editProjectForm');
                         const deptSelect = document.getElementById('edit_department');
-                        
+
                         if (!form || !form.action) {
                             alert('프로젝트 ID를 찾을 수 없습니다.');
                             return false;
                         }
-                        
+
                         if (!deptSelect) {
                             console.error('ERROR: edit_department element not found!');
                             alert('사업부 필드를 찾을 수 없습니다.');
                             return false;
                         }
-                        
+
                         console.log('Form action:', form.action);
                         console.log('Department value:', deptSelect.value);
-                        
+
                         const formData = new FormData(form);
-                        
+
                         // Always ensure department is set correctly
                         formData.set('department', deptSelect.value);
-                        
+
                         console.log('FormData entries:');
                         for (let [key, value] of formData.entries()) {
                             console.log(`  ${key}: ${value}`);
                         }
-                        
+
                         // Submit using fetch
                         console.log('Submitting form via fetch to:', form.action);
                         fetch(form.action, {
                             method: form.method,
                             body: formData
                         })
-                        .then(response => {
-                            console.log('Response status:', response.status);
-                            if (response.redirected) {
-                                console.log('Redirected to:', response.url);
-                                window.location.href = response.url;
-                            } else if (response.ok) {
-                                window.location.reload();
-                            } else {
-                                return response.text().then(text => {
-                                    console.error('Error response:', text);
-                                    alert('저장 중 오류가 발생했습니다.');
-                                });
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error submitting form:', error);
-                            alert('저장 중 오류가 발생했습니다: ' + error.message);
-                        });
-                        
+                            .then(response => {
+                                console.log('Response status:', response.status);
+                                if (response.redirected) {
+                                    console.log('Redirected to:', response.url);
+                                    window.location.href = response.url;
+                                } else if (response.ok) {
+                                    window.location.reload();
+                                } else {
+                                    return response.text().then(text => {
+                                        console.error('Error response:', text);
+                                        alert('저장 중 오류가 발생했습니다.');
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error submitting form:', error);
+                                alert('저장 중 오류가 발생했습니다: ' + error.message);
+                            });
+
                         return false;
                     };
-                    
+
                     // Attach handler with capture phase
                     saveBtn.addEventListener('click', window.handleSaveButtonClickDirect, true);
                     console.log('✓ Save button click handler attached');
@@ -560,25 +591,25 @@
                     return false;
                 }
             }
-            
+
             // Try immediately
             if (!setupSaveButtonHandler()) {
                 // Try after a short delay
-                setTimeout(function() {
+                setTimeout(function () {
                     if (!setupSaveButtonHandler()) {
                         // Try after another delay
                         setTimeout(setupSaveButtonHandler, 200);
                     }
                 }, 50);
             }
-            
+
             // Remove hidden class and any conflicting classes
             modal.classList.remove('hidden');
             // Add flex class explicitly
             modal.classList.add('flex');
             console.log("Removed 'hidden' class, added 'flex' class");
             console.log("Modal classes after update:", modal.className);
-            
+
             // Force display with inline style (overrides Tailwind hidden class)
             // Use setProperty with important flag for maximum compatibility
             // Set extremely high z-index to ensure it's on top of everything
@@ -597,7 +628,7 @@
             modal.style.setProperty('pointer-events', 'auto', 'important');
             modal.style.setProperty('margin', '0', 'important');
             modal.style.setProperty('padding', '0', 'important');
-            
+
             // Ensure inner content is visible
             const modalContent = modal.querySelector('div.bg-white');
             if (modalContent) {
@@ -610,10 +641,10 @@
                 console.log("Modal content styled:", modalContent);
                 console.log("Modal content computed z-index:", window.getComputedStyle(modalContent).zIndex);
             }
-            
+
             // Force body scroll lock
             document.body.style.overflow = 'hidden';
-            
+
             // Check all parent elements for z-index or overflow issues
             let parent = modal.parentElement;
             let depth = 0;
@@ -626,13 +657,13 @@
                 parent = parent.parentElement;
                 depth++;
             }
-            
+
             console.log("Modal should now be visible");
             const computedStyle = window.getComputedStyle(modal);
             console.log("Modal final computed style.display:", computedStyle.display);
             console.log("Modal final computed z-index:", computedStyle.zIndex);
             console.log("Modal final classes:", modal.className);
-            
+
             // Double check after a short delay
             setTimeout(() => {
                 const finalComputedStyle = window.getComputedStyle(modal);
@@ -645,7 +676,7 @@
                     modal.style.setProperty('display', 'flex', 'important');
                     modal.style.setProperty('visibility', 'visible', 'important');
                 }
-                
+
                 // Check if modal is actually visible on screen
                 const rect = modal.getBoundingClientRect();
                 console.log("Modal bounding rect:", rect);
@@ -676,16 +707,16 @@
     }
 
     // Ensure function is available globally and verify setup
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         console.log("DOM loaded, verifying project edit modal setup");
-        
+
         // Verify function exists
         if (typeof window.projectOpenEditModal === 'function') {
             console.log("✓ projectOpenEditModal function is available");
         } else {
             console.error("✗ projectOpenEditModal function is NOT available!");
         }
-        
+
         // Verify modal exists
         const modal = document.getElementById('editProjectModal');
         if (modal) {
@@ -694,14 +725,14 @@
             console.error("✗ Edit modal NOT found in DOM!");
             alert("수정 팝업 요소를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
         }
-        
+
         // Add click event listeners as backup (in addition to onclick)
         const projectNameCells = document.querySelectorAll('td[onclick*="projectOpenEditModal"]');
         console.log("Found project name cells with onclick:", projectNameCells.length);
-        
-        projectNameCells.forEach(function(cell) {
+
+        projectNameCells.forEach(function (cell) {
             // Add event listener as backup (onclick will also work)
-            cell.addEventListener('click', function(e) {
+            cell.addEventListener('click', function (e) {
                 console.log("Project name cell clicked (event listener)");
                 // Don't prevent default - let onclick handle it first
                 // This is just for debugging
@@ -789,8 +820,7 @@
         onclick="event.stopPropagation();">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">프로젝트 수정</h3>
-            <button onclick="closeEditProjectModal();"
-                class="text-gray-400 hover:text-gray-600">✕</button>
+            <button onclick="closeEditProjectModal();" class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         <form id="editProjectForm" method="post" action="" class="space-y-4">
             <div>

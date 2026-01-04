@@ -268,6 +268,7 @@ def read_root(request: Request,
               assignee_id: Optional[str] = None, 
               category_id: Optional[str] = None,
               department: Optional[str] = None, 
+              project_id: Optional[str] = None,
               target_month: Optional[int] = None,
               db: Session = Depends(get_db),
               current_user: models.User = Depends(get_current_user)):
@@ -290,11 +291,16 @@ def read_root(request: Request,
         department = current_user.department
         query = query.join(models.User).filter(models.User.department == current_user.department)
     
-    # 담당자 및 카테고리 필터
+    # 담당자, 카테고리, 프로젝트 필터
     a_id = int(assignee_id) if assignee_id and assignee_id.isdigit() else None
     cat_id = int(category_id) if category_id and category_id.isdigit() else None
+    proj_id = int(project_id) if project_id and project_id.isdigit() else None
+
     if cat_id:
         query = query.filter(models.Task.category_id == cat_id)
+    
+    if proj_id:
+        query = query.filter(models.Task.project_id == proj_id)
 
     tasks = query.all()
 
@@ -358,6 +364,7 @@ def read_root(request: Request,
         "projects": db.query(models.Project).all(), # Pass projects for modal
         "selected_assignee": a_id,
         "selected_category": cat_id,
+        "selected_project": proj_id,
         "selected_department": department, # Pass back to UI
         "selected_month": target_month,
         "goals": {
