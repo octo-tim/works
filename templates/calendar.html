@@ -22,6 +22,32 @@
         </div>
     </div>
 
+    <!-- AI Input -->
+    <div
+        class="mb-6 bg-gradient-to-r from-green-50 to-teal-50 border border-green-100 rounded-xl p-4 shadow-sm relative">
+        <label for="ai-event-input" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+            <span>⚡ AI 일정 비서</span>
+            <span class="text-xs font-normal text-gray-500 bg-white px-2 py-0.5 rounded border">Beta (생성/수정/삭제)</span>
+        </label>
+        <div class="relative">
+            <input type="text" id="ai-event-input"
+                class="w-full pl-4 pr-12 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none shadow-sm transition-all"
+                placeholder="예: 내일 오후 2시 팀 미팅 잡기 / 3시 미팅 취소해줘" onkeypress="if(event.key === 'Enter') submitAIEvent()">
+            <button onclick="submitAIEvent()"
+                class="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-green-600 hover:bg-green-100 rounded-full transition-colors"
+                title="실행">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z"
+                        clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+        <div id="ai-event-loading" class="hidden absolute right-4 top-4">
+            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600"></div>
+        </div>
+    </div>
+
     <!-- Calendar Container -->
     <div class="flex-1 bg-white p-4 rounded-xl shadow-sm overflow-hidden flex flex-col">
         <div id="calendar" class="flex-1"></div>
@@ -257,6 +283,51 @@
         } catch (err) {
             console.error(err);
             alert('오류가 발생했습니다.');
+        }
+    }
+    async function submitAIEvent() {
+        const input = document.getElementById('ai-event-input');
+        const text = input.value.trim();
+        const loading = document.getElementById('ai-event-loading');
+
+        if (!text) return;
+
+        loading.classList.remove('hidden');
+        input.disabled = true;
+
+        try {
+            const response = await fetch('/api/events/ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+
+            const result = await response.json();
+            console.log("AI Result:", result);
+
+            if (response.ok) {
+                // Success
+                input.value = '';
+                // Refresh calendar events
+                calendar.refetchEvents();
+
+                let msg = '';
+                if (result.action === 'CREATE') msg = '일정이 등록되었습니다.';
+                else if (result.action === 'UPDATE') msg = '일정이 수정되었습니다.';
+                else if (result.action === 'DELETE') msg = '일정이 삭제되었습니다.';
+                else msg = '작업이 완료되었습니다.';
+
+                alert(msg);
+            } else {
+                alert('AI 요청 실패: ' + (result.detail || '알 수 없는 오류'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('네트워크 오류 발생');
+        } finally {
+            loading.classList.add('hidden');
+            input.disabled = false;
+            input.focus();
         }
     }
 </script>

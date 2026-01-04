@@ -1216,11 +1216,64 @@ def delete_event(event_id: int, db: Session = Depends(get_db), current_user: mod
 
 # --- AI Task Creation Routes ---
 
-def extract_json_from_text(text: str):
-    """Clean markdown code blocks to get raw JSON string"""
-    text = re.sub(r"```json\s*", "", text)
-    text = re.sub(r"```\s*", "", text)
-    return text.strip()
+# --- AI Helper & Routes ---
+
+class AIHelper:
+    def __init__(self):
+        if not config.GEMINI_API_KEY:
+             raise Exception("No AI API Key configured")
+        genai.configure(api_key=config.GEMINI_API_KEY)
+        # Use latest available model
+        self.model = genai.GenerativeModel(
+            'gemini-2.0-flash',
+            generation_config={"response_mime_type": "application/json"}
+        )
+
+    def generate_task_json(self, text, user_context, project_context):
+        prompt = f"""
+        You are a project management assistant. Extract task details.
+        
+        Current Date: {date.today()}
+        Users: {user_context}
+        Projects: {project_context}
+        User Input: "{text}"
+        
+        Output Schema (JSON):
+        {{
+            "title": "string",
+            "description": "string",
+            "due_date": "YYYY-MM-DD" or null,
+            "assignee_ids": [int],
+            "project_id": int or 0,
+            "department": "string" or null
+        }}
+        """
+        response = self.model.generate_content(prompt)
+        return json.loads(response.text)
+
+    def generate_event_action_json(self, text, user_context, event_context):
+        prompt = f"""
+        You are a calendar assistant. Determine if the user wants to CREATE, UPDATE, or DELETE an event.
+        
+        Current Date: {date.today()}
+        Users: {user_context}
+        Upcoming Events: {event_context}
+        User Input: "{text}"
+        
+        Output Schema (JSON):
+        {{
+            "action": "CREATE" | "UPDATE" | "DELETE",
+            "event_id": int or null (Required for UPDATE/DELETE),
+            "payload": {{
+                "title": "string",
+                "description": "string",
+                "start_time": "YYYY-MM-DDTHH:MM:SS",
+                "end_time": "YYYY-MM-DDTHH:MM:SS" or null
+            }}
+        }}
+        """
+        response = self.model.generate_content(prompt)
+        return json.loads(response.text)
 
 @app.post("/api/tasks/ai")
 async def create_task_from_ai(
@@ -1228,107 +1281,171 @@ async def create_task_from_ai(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """AI를 이용한 자연어 업무 등록"""
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    
-    if not config.GEMINI_API_KEY:
-        raise HTTPException(status_code=500, detail="Server misconfigured: No AI API Key")
-
-    data = await request.json()
-    user_text = data.get("text")
-    
-    if not user_text:
-        raise HTTPException(status_code=400, detail="No text provided")
-
-    # 1. Fetch Context (Users, Projects)
-    users = db.query(models.User).all()
-    projects = db.query(models.Project).all()
-    
-    user_context = ", ".join([f"{u.username}(ID:{u.id})" for u in users])
-    project_context = ", ".join([f"{p.name}(ID:{p.id})" for p in projects])
-    
-    # 2. Construct Prompt
-    prompt = f"""
-    You are a smart project manager assistant.
-    Parse the following user request and extract task details into a JSON object.
-    
-    Current Date: {date.today()}
-    
-    Users: {user_context}
-    Projects: {project_context}
-    
-    User Request: "{user_text}"
-    
-    Output JSON format:
-    {{
-      "title": "Task Title",
-      "description": "Task details",
-      "due_date": "YYYY-MM-DD",
-      "assignee_ids": [1, 2],  // List of matched User IDs. If unknown, leave empty.
-      "project_id": 0,         // Matched Project ID. If unknown or inbox, use 0.
-      "department": "Department Name" // "시스템사업부" or "유통사업부". If not specified, infer from Assignee or default to User's department.
-    }}
-    
-    Rules:
-    - If no due date is mentioned, exclude the field or set to null.
-    - If assignee is mentioned by name, find the ID.
-    - If project is mentioned, find the ID.
-    - Return ONLY the JSON object.
-    """
-    
-    # 3. Call Gemini
+    """AI를 이용한 자연어 업무 등록 (Structured Output 적용)"""
     try:
-        genai.configure(api_key=config.GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-pro')
-        response = model.generate_content(prompt)
-        
-        json_str = extract_json_from_text(response.text)
-        task_data = json.loads(json_str)
-        
-    except Exception as e:
-        print(f"AI Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to process AI request")
+        data = await request.json()
+        user_text = data.get("text")
+        if not user_text:
+            raise HTTPException(status_code=400, detail="No text provided")
 
-    # 4. Create Task
-    try:
-        # Validate Assignees
-        assignee_ids = task_data.get('assignee_ids', [])
-        # Ensure list
-        if not isinstance(assignee_ids, list):
-            assignee_ids = []
-            
-        # Default Department if missing
-        dept = task_data.get('department')
-        if not dept:
-            dept = current_user.department
+        # Context fetching
+        users = db.query(models.User).all()
+        projects = db.query(models.Project).all()
+        user_ctx = ", ".join([f"{u.username}(ID:{u.id})" for u in users])
+        project_ctx = ", ".join([f"{p.name}(ID:{p.id})" for p in projects])
 
+        # Generate JSON
+        ai = AIHelper()
+        task_data = ai.generate_task_json(user_text, user_ctx, project_ctx)
+        
+        # Logic to create task (reuse previous logic)
+        dept = task_data.get('department') or current_user.department
+        
         new_task = models.Task(
             title=task_data.get('title', 'New Task'),
             description=task_data.get('description'),
             status="Todo",
             start_date=date.today(),
             due_date=utils.parse_date(task_data.get('due_date'), "%Y-%m-%d") if task_data.get('due_date') else None,
-            project_id=task_data.get('project_id', 0) if task_data.get('project_id') else 0,
+            project_id=task_data.get('project_id', 0),
             department=dept,
             creator_id=current_user.id
         )
-        
         db.add(new_task)
         db.commit()
         db.refresh(new_task)
         
-        # Add Assignees
-        if assignee_ids:
-            for uid in assignee_ids:
-                user_obj = db.query(models.User).filter(models.User.id == uid).first()
-                if user_obj:
-                    new_task.assignees.append(user_obj)
+        # Assignees
+        a_ids = task_data.get('assignee_ids', [])
+        if a_ids:
+            for uid in a_ids:
+                u = db.query(models.User).get(uid)
+                if u: new_task.assignees.append(u)
             db.commit()
 
-        return {"status": "success", "task_id": new_task.id, "title": new_task.title}
-        
+        return {"status": "success", "task_id": new_task.id}
     except Exception as e:
-        print(f"DB Error: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Failed to save task")
+        print(f"AI Task Error: {e}")
+        # traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
+
+
+
+
+
+
+@app.post("/api/events/ai")
+async def process_event_from_ai(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """AI를 이용한 일정 생성/수정/삭제"""
+    try:
+        data = await request.json()
+        user_text = data.get("text")
+        if not user_text: raise HTTPException(status_code=400, detail="No text provided")
+
+        # Context: Fetch upcoming events (e.g., next 30 days) to allow update/delete
+        # Also need users to map 'meeting with X'
+        users = db.query(models.User).all()
+        user_ctx = ", ".join([f"{u.username}(ID:{u.id})" for u in users])
+
+        upcoming_events = db.query(models.Event).filter(
+            models.Event.start_time >= datetime.now()
+        ).limit(20).all()
+        
+        event_ctx_list = []
+        for e in upcoming_events:
+            event_ctx_list.append(f"ID:{e.id}|Title:{e.title}|Time:{e.start_time}")
+        event_ctx = "\n".join(event_ctx_list)
+
+        ai = AIHelper()
+        result = ai.generate_event_action_json(user_text, user_ctx, event_ctx)
+        
+        action = result.get('action')
+        payload = result.get('payload', {})
+        target_id = result.get('event_id')
+
+        if action == "CREATE":
+            start_str = payload.get('start_time')
+            # Default to now if not provided (shouldn't happen with AI)
+            start_dt = datetime.fromisoformat(start_str) if start_str else datetime.now()
+            # If no end time, default to +1 hour
+            end_str = payload.get('end_time')
+            end_dt = datetime.fromisoformat(end_str) if end_str else (start_dt + timedelta(hours=1))
+
+            new_event = models.Event(
+                title=payload.get('title', 'New Event'),
+                description=payload.get('description'),
+                start_time=start_dt,
+                end_time=end_dt,
+                user_id=current_user.id,
+                department=current_user.department
+            )
+            db.add(new_event)
+            db.commit()
+            return {"status": "success", "action": "CREATE", "event_id": new_event.id}
+
+        elif action == "UPDATE":
+            if not target_id:
+                raise HTTPException(status_code=400, detail="AI could not identify which event to update.")
+            event = db.query(models.Event).get(target_id)
+            if not event:
+                raise HTTPException(status_code=404, detail="Event not found")
+            if event.user_id != current_user.id and current_user.role != 'admin':
+                raise HTTPException(status_code=403, detail="Not authorized")
+            
+            # Update fields if present
+            if payload.get('title'): event.title = payload['title']
+            if payload.get('description'): event.description = payload['description']
+            if payload.get('start_time'): 
+                event.start_time = datetime.fromisoformat(payload['start_time'])
+            if payload.get('end_time'):
+                event.end_time = datetime.fromisoformat(payload['end_time'])
+            
+            db.commit()
+            return {"status": "success", "action": "UPDATE", "event_id": event.id}
+
+        elif action == "DELETE":
+            if not target_id:
+                 raise HTTPException(status_code=400, detail="AI could not identify which event to delete.")
+            event = db.query(models.Event).get(target_id)
+            if not event:
+                raise HTTPException(status_code=404, detail="Event not found")
+            if event.user_id != current_user.id and current_user.role != 'admin':
+                raise HTTPException(status_code=403, detail="Not authorized")
+            
+            db.delete(event)
+            db.commit()
+            return {"status": "success", "action": "DELETE"}
+
+        else:
+            return {"status": "error", "message": "Unknown action"}
+
+    except Exception as e:
+        print(f"AI Event Error: {e}")
+        # traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
+
+@app.get("/api/ai/test")
+async def test_ai_connection():
+    """Test AI connectivity and List Models"""
+    try:
+        if not config.GEMINI_API_KEY:
+            return {"status": "error", "message": "API Key is missing in config"}
+        
+        genai.configure(api_key=config.GEMINI_API_KEY)
+        
+        available_models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                available_models.append(m.name)
+                
+        return {
+            "status": "success", 
+            "available_models": available_models, 
+            "key_masked": config.GEMINI_API_KEY[:5] + "..."
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e), "type": str(type(e))}
