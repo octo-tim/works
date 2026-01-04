@@ -14,6 +14,9 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 import config
 import utils
+import google.generativeai as genai
+import json
+import re
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -1210,3 +1213,122 @@ def delete_event(event_id: int, db: Session = Depends(get_db), current_user: mod
     db.delete(event)
     db.commit()
     return {"status": "success"}
+
+# --- AI Task Creation Routes ---
+
+def extract_json_from_text(text: str):
+    """Clean markdown code blocks to get raw JSON string"""
+    text = re.sub(r"```json\s*", "", text)
+    text = re.sub(r"```\s*", "", text)
+    return text.strip()
+
+@app.post("/api/tasks/ai")
+async def create_task_from_ai(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """AI를 이용한 자연어 업무 등록"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    if not config.GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="Server misconfigured: No AI API Key")
+
+    data = await request.json()
+    user_text = data.get("text")
+    
+    if not user_text:
+        raise HTTPException(status_code=400, detail="No text provided")
+
+    # 1. Fetch Context (Users, Projects)
+    users = db.query(models.User).all()
+    projects = db.query(models.Project).all()
+    
+    user_context = ", ".join([f"{u.username}(ID:{u.id})" for u in users])
+    project_context = ", ".join([f"{p.name}(ID:{p.id})" for p in projects])
+    
+    # 2. Construct Prompt
+    prompt = f"""
+    You are a smart project manager assistant.
+    Parse the following user request and extract task details into a JSON object.
+    
+    Current Date: {date.today()}
+    
+    Users: {user_context}
+    Projects: {project_context}
+    
+    User Request: "{user_text}"
+    
+    Output JSON format:
+    {{
+      "title": "Task Title",
+      "description": "Task details",
+      "due_date": "YYYY-MM-DD",
+      "assignee_ids": [1, 2],  // List of matched User IDs. If unknown, leave empty.
+      "project_id": 0,         // Matched Project ID. If unknown or inbox, use 0.
+      "department": "Department Name" // "시스템사업부" or "유통사업부". If not specified, infer from Assignee or default to User's department.
+    }}
+    
+    Rules:
+    - If no due date is mentioned, exclude the field or set to null.
+    - If assignee is mentioned by name, find the ID.
+    - If project is mentioned, find the ID.
+    - Return ONLY the JSON object.
+    """
+    
+    # 3. Call Gemini
+    try:
+        genai.configure(api_key=config.GEMINI_API_KEY)
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(prompt)
+        
+        json_str = extract_json_from_text(response.text)
+        task_data = json.loads(json_str)
+        
+    except Exception as e:
+        print(f"AI Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process AI request")
+
+    # 4. Create Task
+    try:
+        # Validate Assignees
+        assignee_ids = task_data.get('assignee_ids', [])
+        # Ensure list
+        if not isinstance(assignee_ids, list):
+            assignee_ids = []
+            
+        # Default Department if missing
+        dept = task_data.get('department')
+        if not dept:
+            dept = current_user.department
+
+        new_task = models.Task(
+            title=task_data.get('title', 'New Task'),
+            description=task_data.get('description'),
+            status="Todo",
+            start_date=date.today(),
+            due_date=utils.parse_date(task_data.get('due_date'), "%Y-%m-%d") if task_data.get('due_date') else None,
+            project_id=task_data.get('project_id', 0) if task_data.get('project_id') else 0,
+            department=dept,
+            creator_id=current_user.id
+        )
+        
+        db.add(new_task)
+        db.commit()
+        db.refresh(new_task)
+        
+        # Add Assignees
+        if assignee_ids:
+            for uid in assignee_ids:
+                user_obj = db.query(models.User).filter(models.User.id == uid).first()
+                if user_obj:
+                    new_task.assignees.append(user_obj)
+            db.commit()
+
+        return {"status": "success", "task_id": new_task.id, "title": new_task.title}
+        
+    except Exception as e:
+        print(f"DB Error: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to save task")

@@ -30,3 +30,6 @@ DEPARTMENT_MAPPING = {
     'Management': '경영지원팀'
 }
 
+
+# AI 설정
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
