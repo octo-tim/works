@@ -246,6 +246,21 @@
 
 
 <script>
+    // Check for URL parameters for error handling
+    document.addEventListener('DOMContentLoaded', function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        if (error === 'duplicate_name') {
+            alert('이미 존재하는 프로젝트명입니다. 다른 이름으로 시도해주세요.');
+            // Clean URL
+            const url = new URL(window.location.href);
+            url.searchParams.delete('error');
+            window.history.replaceState({}, document.title, url);
+        } else if (error) {
+            alert('오류가 발생했습니다: ' + error);
+        }
+    });
+
     // Explicitly attach to window to avoid scope issues
     window.projectOpenEditModal = function (el) {
         console.log("projectOpenEditModal called with element:", el);
@@ -853,6 +868,22 @@
                 loadingEl.classList.add('hidden');
                 listEl.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
             });
+    }; // Corrected: Removed duplicate '});' and '}'
+
+    // Function to close the project tasks modal
+    function closeProjectTasksModal() {
+        const modal = document.getElementById('projectTasksModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+
+            // Clear robust inline styles
+            modal.style.display = 'none';
+            modal.style.zIndex = '';
+            modal.style.visibility = '';
+            modal.style.opacity = '';
+            document.body.style.overflow = ''; // Restore scrolling
+        }
     }
 </script>
 {% endblock %}
@@ -1025,8 +1056,7 @@
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative max-h-[80vh] flex flex-col">
         <div class="flex justify-between items-center mb-4 pb-2 border-b">
             <h3 class="text-xl font-bold text-gray-800" id="projectTasksModalTitle">프로젝트 업무 목록</h3>
-            <button onclick="document.getElementById('projectTasksModal').classList.add('hidden')"
-                class="text-gray-400 hover:text-gray-600">✕</button>
+            <button onclick="closeProjectTasksModal()" class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
 
         <div class="overflow-y-auto flex-1">

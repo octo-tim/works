@@ -696,6 +696,11 @@ def create_project(name: str = Form(...), description: str = Form(None),
     if not current_user:
         return RedirectResponse(url="/login", status_code=303)
     
+    # Check for duplicate project name
+    existing_project = db.query(models.Project).filter(models.Project.name == name).first()
+    if existing_project:
+        return RedirectResponse(url="/projects?error=duplicate_name", status_code=303)
+    
     # YYYY-MM 형식 처리
     s_date = utils.parse_date(start_date, "%Y-%m") if start_date else None
     e_date = utils.parse_date(end_date, "%Y-%m") if end_date else None
