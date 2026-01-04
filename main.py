@@ -1147,6 +1147,40 @@ async def create_meeting_minute(
         return HTMLResponse(content=f"<h1>Internal Server Error</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", status_code=500)
 
 
+@app.post("/meeting_minutes/delete_bulk", response_class=RedirectResponse)
+def delete_bulk_minutes(minute_ids: List[int] = Form(...),
+                       db: Session = Depends(get_db),
+                       current_user: models.User = Depends(get_current_user)):
+    """회의록 일괄 삭제"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    if not minute_ids:
+        return RedirectResponse(url="/meeting_minutes", status_code=303)
+
+    try:
+        # 권한 확인: 관리자가 아니면 자신이 작성한 것만 삭제 가능하도록? 
+        # 현재는 편의상 로그인한 유저는 삭제 가능하게 처리 (또는 필요시 로직 추가)
+        # db.query(models.MeetingMinutes).filter(models.MeetingMinutes.id.in_(minute_ids)).delete(synchronize_session=False)
+        
+        # 안전한 삭제를 위해 조회 후 삭제 (파일 삭제 등 확장을 위해)
+        minutes = db.query(models.MeetingMinutes).filter(models.MeetingMinutes.id.in_(minute_ids)).all()
+        for m in minutes:
+            # 권한 체크: 작성자 본인 또는 관리자만 삭제 가능
+            if current_user.role != "admin" and m.writer_id != current_user.id:
+                print(f"[WARNING] User {current_user.username} tried to delete minute {m.id} owned by {m.writer_id}")
+                continue # Skip unauthorized
+                
+            db.delete(m)
+            
+        db.commit()
+    except Exception as e:
+        print(f"Bulk Delete Error: {e}")
+        db.rollback()
+        
+    return RedirectResponse(url="/meeting_minutes", status_code=303)
+
+
 @app.get("/meeting_minutes/{minute_id}", response_class=HTMLResponse)
 def read_meeting_minute_detail(request: Request, minute_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login")
