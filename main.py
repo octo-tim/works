@@ -1068,8 +1068,8 @@ async def create_meeting_minute(
         db.commit()
         db.refresh(new_minute)
         
-        # 2. Process Auto-Tasks
-        if tasks_data:
+        # 2. Create Tasks (if any)
+        if tasks_data and tasks_data.strip():
             try:
                 print(f"[DEBUG] Processing AI Tasks: {tasks_data}")
                 import json
