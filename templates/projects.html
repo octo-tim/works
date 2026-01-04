@@ -745,10 +745,11 @@
 
     // Delegated event listener for project task links
     document.addEventListener('click', function (e) {
-        if (e.target && e.target.classList.contains('project-task-link')) {
+        const link = e.target.closest('.project-task-link');
+        if (link) {
             e.preventDefault();
-            const pid = e.target.getAttribute('data-project-id');
-            const pname = e.target.getAttribute('data-project-name');
+            const pid = link.getAttribute('data-project-id');
+            const pname = link.getAttribute('data-project-name');
             console.log("Project link clicked via delegation:", pid, pname);
             openProjectTasksModal(pid, pname);
         }
@@ -761,12 +762,9 @@
             return;
         }
         console.log("Opening tasks for project:", projectId, projectName);
-        const modal = document.getElementById('projectTasksModal');
-        const titleEl = document.getElementById('projectTasksModalTitle');
-        const listEl = document.getElementById('projectTasksList');
-        const loadingEl = document.getElementById('projectTasksLoading');
-        const emptyEl = document.getElementById('projectTasksEmpty');
-        const linkEl = document.getElementById('projectTasksDashboardLink');
+
+        // Find modal
+        let modal = document.getElementById('projectTasksModal');
 
         if (!modal) {
             console.error("Project tasks modal not found!");
@@ -774,23 +772,41 @@
             return;
         }
 
-        // Setup modal
-        titleEl.textContent = projectName + " - 업무 목록";
-        linkEl.href = "/?project_id=" + projectId;
-        listEl.innerHTML = '';
+        // Move modal to body if needed (Fixes z-index/stacking contexts)
+        if (modal.parentElement !== document.body) {
+            console.log("Moving projectTasksModal to body for better stacking");
+            const modalClone = modal.cloneNode(true);
+            modal.remove();
+            document.body.appendChild(modalClone);
+            modal = document.getElementById('projectTasksModal');
+        }
+
+        const titleEl = document.getElementById('projectTasksModalTitle');
+        const listEl = document.getElementById('projectTasksList');
+        const loadingEl = document.getElementById('projectTasksLoading');
+        const emptyEl = document.getElementById('projectTasksEmpty');
+        const linkEl = document.getElementById('projectTasksDashboardLink');
+
+        // Setup modal content
+        if (titleEl) titleEl.textContent = projectName + " - 업무 목록";
+        if (linkEl) linkEl.href = "/?project_id=" + projectId;
+        if (listEl) listEl.innerHTML = '';
 
         // Show modal and loading
         modal.classList.remove('hidden');
         modal.classList.add('flex');
 
-        // Force robust display styles (same as editProjectModal)
+        // Force robust display styles
         modal.style.setProperty('display', 'flex', 'important');
-        modal.style.setProperty('z-index', '9999', 'important');
+        modal.style.setProperty('z-index', '2147483647', 'important'); // Max int value
         modal.style.setProperty('visibility', 'visible', 'important');
         modal.style.setProperty('opacity', '1', 'important');
+        modal.style.setProperty('position', 'fixed', 'important');
+        modal.style.setProperty('top', '0', 'important');
+        modal.style.setProperty('left', '0', 'important');
 
-        loadingEl.classList.remove('hidden');
-        emptyEl.classList.add('hidden');
+        if (loadingEl) loadingEl.classList.remove('hidden');
+        if (emptyEl) emptyEl.classList.add('hidden');
 
         // Fetch tasks
         fetch('/api/projects/' + projectId + '/tasks')
