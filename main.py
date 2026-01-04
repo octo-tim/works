@@ -284,11 +284,11 @@ def read_root(request: Request,
     # 부서별 필터링 로직
     if current_user.role == "admin":
         if department:
-            query = query.join(models.User).filter(models.User.department == department)
+            query = query.filter(models.Task.department == department)
     else:
         # 일반 사용자는 자신의 부서 데이터만 조회
         department = current_user.department
-        query = query.join(models.User).filter(models.User.department == current_user.department)
+        query = query.filter(models.Task.department == department)
     
     a_id = int(assignee_id) if assignee_id and assignee_id.isdigit() else None
     proj_id = int(project_id) if project_id and project_id.isdigit() else None
@@ -340,15 +340,14 @@ def read_root(request: Request,
             event["end"] = next_day.strftime('%Y-%m-%d')
         elif end and not start:
              # Only due date. Make it all day.
-             pass 
+            pass 
 
         calendar_events.append(event)
 
     users = db.query(models.User).all()
-    categories = db.query(models.Category).all()
 
     return templates.TemplateResponse("dashboard.html", {
-        "request": request,
+        "request": request, 
         "user": current_user,
         "tasks_todo": tasks_todo,
         "tasks_inprogress": tasks_inprogress,
