@@ -1033,95 +1033,105 @@ async def create_meeting_minute(
                           db: Session = Depends(get_db),
                           current_user: models.User = Depends(get_current_user)):
     """회의록 생성 및 업무 자동 등록"""
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=303)
+    try:
+        if not current_user:
+            return RedirectResponse(url="/login", status_code=303)
+            
+        m_date = utils.parse_date(date_str, "%Y-%m-%d")
         
-    m_date = utils.parse_date(date_str, "%Y-%m-%d")
-    
-    # 1. Create Meeting Minute
-    new_minute = models.MeetingMinute(
-        topic=topic,
-        date=m_date,
-        time=time,
-        location=location,
-        attendees=attendees,
-        content=content,
-        writer_id=current_user.id
-    )
-    db.add(new_minute)
-    db.commit()
-    db.refresh(new_minute)
-    
-    # 2. Process Auto-Tasks
-    if tasks_data:
-        try:
-            print(f"[DEBUG] Processing AI Tasks: {tasks_data}")
-            import json
-            from datetime import timedelta
-            tasks_list = json.loads(tasks_data)
-            
-            for t in tasks_list:
-                # Find assignee
-                assignee_id = None
-                if t.get("assignee_name"):
-                    # Simple fuzzy match or exact match
-                    u = db.query(models.User).filter(models.User.username == t["assignee_name"]).first()
-                    if u: assignee_id = u.id
-                
-                new_task = models.Task(
-                    title=t.get("title", "New Task"),
-                    description=f"[From Meeting: {topic}] Auto-generated task.",
-                    status="Todo",
-                    # Default to meeting date + 7 days if no due date
-                    due_date=utils.parse_date(t.get("due_date"), "%Y-%m-%d") if t.get("due_date") else (m_date + timedelta(days=7)),
-                    priority=t.get("priority", "Normal"),
-                    creator_id=current_user.id,
-                    project_id=None # No project link for now
-                )
-                db.add(new_task)
-                db.flush() # to get ID
-                
-                if assignee_id:
-                    u = db.query(models.User).get(assignee_id)
-                    new_task.assignees.append(u)
-                    
-            db.commit()
-            print("[DEBUG] AI Tasks Created Successfully")
-            
-        except Exception as e:
-            print(f"[ERROR] Failed to create AI tasks: {e}")
-            # Don't fail the whole request, just log it
-
-
-    # 파일 업로드 처리
-    if files:
-        upload_dir = "uploads/meeting_minutes"
-        if not os.path.exists(upload_dir):
-            os.makedirs(upload_dir)
-            
-        for file in files:
-            if file.filename:
-                file_content = await file.read()
-                is_valid, error_msg = utils.validate_file_upload(file.filename, len(file_content))
-                if not is_valid:
-                    continue  # 잘못된 파일은 건너뛰기
-                
-                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                filename = f"{timestamp}_{file.filename}"
-                filepath = os.path.join(upload_dir, filename)
-                
-                with open(filepath, "wb") as buffer:
-                    buffer.write(file_content)
-                
-                new_file = models.MeetingMinuteFile(
-                    filename=file.filename,
-                    filepath=f"/uploads/meeting_minutes/{filename}",
-                    meeting_minute_id=new_minute.id
-                )
-                db.add(new_file)
+        # 1. Create Meeting Minute
+        # Fix: Model class name is MeetingMinutes (plural)
+        new_minute = models.MeetingMinutes(
+            topic=topic,
+            date=m_date,
+            time=time,
+            location=location,
+            attendees=attendees,
+            content=content,
+            writer_id=current_user.id
+        )
+        db.add(new_minute)
         db.commit()
-    
-    return RedirectResponse(url="/meeting_minutes", status_code=303)
+        db.refresh(new_minute)
+        
+        # 2. Process Auto-Tasks
+        if tasks_data:
+            try:
+                print(f"[DEBUG] Processing AI Tasks: {tasks_data}")
+                import json
+                from datetime import timedelta
+                tasks_list = json.loads(tasks_data)
+                
+                for t in tasks_list:
+                    # Find assignee
+                    assignee_id = None
+                    if t.get("assignee_name"):
+                        # Simple fuzzy match or exact match
+                        u = db.query(models.User).filter(models.User.username == t["assignee_name"]).first()
+                        if u: assignee_id = u.id
+                    
+                    new_task = models.Task(
+                        title=t.get("title", "New Task"),
+                        description=f"[From Meeting: {topic}] Auto-generated task.",
+                        status="Todo",
+                        # Default to meeting date + 7 days if no due date
+                        due_date=utils.parse_date(t.get("due_date"), "%Y-%m-%d") if t.get("due_date") else (m_date + timedelta(days=7)),
+                        priority=t.get("priority", "Normal"),
+                        creator_id=current_user.id,
+                        project_id=None # No project link for now
+                    )
+                    db.add(new_task)
+                    db.flush() # to get ID
+                    
+                    if assignee_id:
+                        u = db.query(models.User).get(assignee_id)
+                        new_task.assignees.append(u)
+                        
+                db.commit()
+                print("[DEBUG] AI Tasks Created Successfully")
+                
+            except Exception as e:
+                print(f"[ERROR] Failed to create AI tasks: {e}")
+                import traceback
+                traceback.print_exc()
+                # Don't fail the whole request, just log it
+
+
+        # 파일 업로드 처리
+        if files:
+            upload_dir = "uploads/meeting_minutes"
+            if not os.path.exists(upload_dir):
+                os.makedirs(upload_dir)
+                
+            for file in files:
+                if file.filename:
+                    file_content = await file.read()
+                    is_valid, error_msg = utils.validate_file_upload(file.filename, len(file_content))
+                    if not is_valid:
+                        continue  # 잘못된 파일은 건너뛰기
+                    
+                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                    filename = f"{timestamp}_{file.filename}"
+                    filepath = os.path.join(upload_dir, filename)
+                    
+                    with open(filepath, "wb") as buffer:
+                        buffer.write(file_content)
+                    
+                    new_file = models.MeetingMinuteFile(
+                        filename=file.filename,
+                        filepath=f"/uploads/meeting_minutes/{filename}",
+                        meeting_minute_id=new_minute.id
+                    )
+                    db.add(new_file)
+            db.commit()
+        
+        return RedirectResponse(url="/meeting_minutes", status_code=303)
+        
+    except Exception as e:
+        print(f"Meeting Minute Save Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return HTMLResponse(content=f"<h1>Internal Server Error</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", status_code=500)
 
 
 @app.get("/meeting_minutes/{minute_id}", response_class=HTMLResponse)
