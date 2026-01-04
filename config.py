@@ -1,5 +1,9 @@
 """애플리케이션 설정 및 상수"""
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 # 보안 설정
 SECRET_KEY = os.getenv("SECRET_KEY")
