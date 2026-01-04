@@ -1264,9 +1264,9 @@ class AIHelper:
         if not config.GEMINI_API_KEY:
              raise Exception("No AI API Key configured")
         genai.configure(api_key=config.GEMINI_API_KEY)
-        # Use standard stable model for free tier compatibility
+        # Use gemini-flash-latest (as 1.5-flash specific alias was not found)
         self.model = genai.GenerativeModel(
-            'gemini-1.5-flash',
+            'gemini-flash-latest',
             generation_config={"response_mime_type": "application/json"}
         )
 
