@@ -1,8 +1,13 @@
-"""애플리케이션 설정 및 상수"""
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# .env 파일을 절대 경로로 지정하여 로드
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, ".env"))
+
+# AI 설정
+# 환경 변수 로드 실패 시 하드코딩된 키 사용 (사용자 제공)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyAmhhh66lRiGHtzsfUYMQxCMXORhr7pr8M")
 
 
 # 보안 설정
