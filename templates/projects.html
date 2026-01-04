@@ -41,10 +41,10 @@
                                     data-project-id="{{ p.id }}" data-project-name="{{ p.name }}">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
-                                {% if p.department == 'System' %}
+                                {% if p.department == 'System' or p.department == '시스템사업부' %}
                                 <span
                                     class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
-                                {% elif p.department == 'Distribution' %}
+                                {% elif p.department == 'Distribution' or p.department == '유통사업부' %}
                                 <span
                                     class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
                                 {% else %}
@@ -116,10 +116,10 @@
                                     data-project-id="{{ p.id }}" data-project-name="{{ p.name }}">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
-                                {% if p.department == 'System' %}
+                                {% if p.department == 'System' or p.department == '시스템사업부' %}
                                 <span
                                     class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
-                                {% elif p.department == 'Distribution' %}
+                                {% elif p.department == 'Distribution' or p.department == '유통사업부' %}
                                 <span
                                     class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
                                 {% else %}
@@ -191,13 +191,15 @@
                                     data-project-id="{{ p.id }}" data-project-name="{{ p.name }}">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
-                                {% if p.department == '시스템사업부' %}
+                                {% if p.department == 'System' or p.department == '시스템사업부' %}
                                 <span
                                     class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
-                                {% elif p.department == '유통사업부' %}
+                                {% elif p.department == 'Distribution' or p.department == '유통사업부' %}
                                 <span
                                     class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
                                 {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
                                 <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full font-bold">{{
                                     p.department or '-' }}</span>
                                 {% endif %}

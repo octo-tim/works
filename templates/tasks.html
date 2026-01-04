@@ -38,10 +38,10 @@
                             onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
                             <td class="px-6 py-4">
-                                {% if t.department == 'System' %}
+                                {% if t.department == 'System' or t.department == '시스템사업부' %}
                                 <span
                                     class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
-                                {% elif t.department == 'Distribution' %}
+                                {% elif t.department == 'Distribution' or t.department == '유통사업부' %}
                                 <span
                                     class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
                                 {% else %}
@@ -106,10 +106,10 @@
                             onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
                             <td class="px-6 py-4">
-                                {% if t.department == 'System' %}
+                                {% if t.department == 'System' or t.department == '시스템사업부' %}
                                 <span
                                     class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
-                                {% elif t.department == 'Distribution' %}
+                                {% elif t.department == 'Distribution' or t.department == '유통사업부' %}
                                 <span
                                     class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
                                 {% else %}
@@ -173,10 +173,10 @@
                             onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
                             <td class="px-6 py-4">
-                                {% if t.department == 'System' %}
+                                {% if t.department == 'System' or t.department == '시스템사업부' %}
                                 <span
                                     class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
-                                {% elif t.department == 'Distribution' %}
+                                {% elif t.department == 'Distribution' or t.department == '유통사업부' %}
                                 <span
                                     class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
                                 {% else %}
