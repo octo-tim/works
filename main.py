@@ -1077,12 +1077,19 @@ async def create_meeting_minute(
         
         # 2. Create Tasks (if any)
         if tasks_data and tasks_data.strip():
+            log_path = os.path.abspath("debug_tasks.log")
             try:
+                with open(log_path, "a") as f:
+                    f.write(f"\n[{datetime.now()}] Processing Tasks Data: {tasks_data}\n")
+                
                 print(f"[DEBUG] Processing AI Tasks: {tasks_data}")
                 import json
                 from datetime import timedelta
                 tasks_list = json.loads(tasks_data)
                 
+                with open(log_path, "a") as f:
+                    f.write(f"Parsed JSON: {tasks_list}\n")
+
                 for t in tasks_list:
                     # Find assignee
                     assignee_id = None
@@ -1093,16 +1100,27 @@ async def create_meeting_minute(
                         if u: 
                             assignee_id = u.id
                             assignee_dept = u.department
+                            with open(log_path, "a") as f:
+                                f.write(f"Found Assignee: {u.username} (ID: {u.id})\n")
+                        else:
+                            with open(log_path, "a") as f:
+                                f.write(f"Assignee not found: {t.get('assignee_name')}\n")
                     
                     # Use assignee's department if available, else creator's
                     dept = assignee_dept if assignee_dept else current_user.department
+
+                    # Default due date logic
+                    d_date = None
+                    if t.get("due_date"):
+                        d_date = utils.parse_date(t.get("due_date"), "%Y-%m-%d")
+                    else:
+                        d_date = m_date + timedelta(days=7)
 
                     new_task = models.Task(
                         title=t.get("title", "New Task"),
                         description=f"[From Meeting: {topic}] Auto-generated task.",
                         status="Todo",
-                        # Default to meeting date + 7 days if no due date
-                        due_date=utils.parse_date(t.get("due_date"), "%Y-%m-%d") if t.get("due_date") else (m_date + timedelta(days=7)),
+                        due_date=d_date,
                         creator_id=current_user.id,
                         project_id=None, # No project link for now
                         department=dept
@@ -1110,17 +1128,28 @@ async def create_meeting_minute(
                     db.add(new_task)
                     db.flush() # to get ID
                     
+                    with open(log_path, "a") as f:
+                        f.write(f"Created Task ID: {new_task.id}, Title: {new_task.title}\n")
+
                     if assignee_id:
                         u = db.query(models.User).get(assignee_id)
                         new_task.assignees.append(u)
                         
                 db.commit()
                 print("[DEBUG] AI Tasks Created Successfully")
+                with open(log_path, "a") as f:
+                    f.write(f"[{datetime.now()}] All tasks committed successfully.\n")
                 
             except Exception as e:
                 print(f"[ERROR] Failed to create AI tasks: {e}")
                 import traceback
-                traceback.print_exc()
+                error_trace = traceback.format_exc()
+                print(error_trace)
+                try:
+                    with open(log_path, "a") as f:
+                        f.write(f"[ERROR] Exception: {e}\n{error_trace}\n")
+                except:
+                    pass
                 # Don't fail the whole request, just log it
 
 
