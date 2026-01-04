@@ -782,6 +782,31 @@ def update_project(project_id: int,
     return RedirectResponse(url="/projects", status_code=303)
 
 
+@app.get("/api/projects/{project_id}/tasks")
+def get_project_tasks(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """프로젝트별 업무 목록 API"""
+    if not current_user:
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    
+    tasks = db.query(models.Task).filter(models.Task.project_id == project_id).all()
+    
+    data = []
+    for t in tasks:
+        assignees = [u.username for u in t.assignees]
+        data.append({
+            "id": t.id,
+            "title": t.title,
+            "status": t.status,
+            "assignees": assignees,
+            "assignees_str": ", ".join(assignees),
+            "start_date": t.start_date.strftime("%Y-%m-%d") if t.start_date else None,
+            "due_date": t.due_date.strftime("%Y-%m-%d") if t.due_date else None,
+            "priority": "Normal" # Priority field doesn't exist yet, defaulting
+        })
+        
+    return JSONResponse(content=data)
+
+
 @app.post("/projects/{project_id}/upload")
 async def upload_file(project_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """프로젝트 파일 업로드"""

@@ -37,7 +37,9 @@
                         {% for p in scheduled %}
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4 font-medium text-blue-600">
-                                <a href="/?project_id={{ p.id }}" class="hover:underline">{{ p.name }}</a>
+                                <a href="javascript:void(0)"
+                                    onclick="openProjectTasksModal('{{ p.id }}', '{{ p.name|e }}')"
+                                    class="hover:underline">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
                                 {% if p.department == 'System' %}
@@ -111,7 +113,9 @@
                         {% for p in inprogress %}
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4 font-medium text-blue-600">
-                                <a href="/?project_id={{ p.id }}" class="hover:underline">{{ p.name }}</a>
+                                <a href="javascript:void(0)"
+                                    onclick="openProjectTasksModal('{{ p.id }}', '{{ p.name|e }}')"
+                                    class="hover:underline">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
                                 {% if p.department == 'System' %}
@@ -185,7 +189,9 @@
                         {% for p in completed %}
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4 font-medium text-blue-600">
-                                <a href="/?project_id={{ p.id }}" class="hover:underline">{{ p.name }}</a>
+                                <a href="javascript:void(0)"
+                                    onclick="openProjectTasksModal('{{ p.id }}', '{{ p.name|e }}')"
+                                    class="hover:underline">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
                                 {% if p.department == '시스템사업부' %}
@@ -739,6 +745,71 @@
             }, true); // Use capture phase for debugging
         });
     });
+
+    function openProjectTasksModal(projectId, projectName) {
+        const modal = document.getElementById('projectTasksModal');
+        const titleEl = document.getElementById('projectTasksModalTitle');
+        const listEl = document.getElementById('projectTasksList');
+        const loadingEl = document.getElementById('projectTasksLoading');
+        const emptyEl = document.getElementById('projectTasksEmpty');
+        const linkEl = document.getElementById('projectTasksDashboardLink');
+
+        // Setup modal
+        titleEl.textContent = projectName + " - 업무 목록";
+        linkEl.href = "/?project_id=" + projectId;
+        listEl.innerHTML = '';
+
+        // Show modal and loading
+        modal.classList.remove('hidden');
+        loadingEl.classList.remove('hidden');
+        emptyEl.classList.add('hidden');
+
+        // Fetch tasks
+        fetch('/api/projects/' + projectId + '/tasks')
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                loadingEl.classList.add('hidden');
+
+                if (data.length === 0) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                data.forEach(task => {
+                    const tr = document.createElement('tr');
+                    tr.className = "bg-white border-b hover:bg-gray-50";
+
+                    // Status Badge coloring
+                    let statusClass = "bg-gray-100 text-gray-800";
+                    let statusText = "예정";
+                    if (task.status === "In Progress") {
+                        statusClass = "bg-blue-100 text-blue-800";
+                        statusText = "진행 중";
+                    } else if (task.status === "Done") {
+                        statusClass = "bg-green-100 text-green-800";
+                        statusText = "완료";
+                    }
+
+                    tr.innerHTML = `
+                        <td class="px-6 py-4">
+                            <span class="${statusClass} text-xs font-medium px-2.5 py-0.5 rounded">${statusText}</span>
+                        </td>
+                        <td class="px-6 py-4 font-medium text-gray-900">${task.title}</td>
+                        <td class="px-6 py-4">${task.assignees_str || '-'}</td>
+                        <td class="px-6 py-4">${task.due_date || '-'}</td>
+                    `;
+                    listEl.appendChild(tr);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching tasks:', error);
+                loadingEl.classList.add('hidden');
+                listEl.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
+            });
+    }
 </script>
 {% endblock %}
 
@@ -900,6 +971,46 @@
         <!-- Hidden Delete Form (Helper) -->
         <form id="deleteProjectForm" method="post" action="">
         </form>
+    </div>
+</div>
+
+<!-- Project Tasks Modal -->
+<div id="projectTasksModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm"
+    style="z-index: 9999;">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative max-h-[80vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b">
+            <h3 class="text-xl font-bold text-gray-800" id="projectTasksModalTitle">프로젝트 업무 목록</h3>
+            <button onclick="document.getElementById('projectTasksModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+
+        <div class="overflow-y-auto flex-1">
+            <table class="w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b sticky top-0">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">상태</th>
+                        <th scope="col" class="px-6 py-3">업무명</th>
+                        <th scope="col" class="px-6 py-3">담당자</th>
+                        <th scope="col" class="px-6 py-3">마감일</th>
+                    </tr>
+                </thead>
+                <tbody id="projectTasksList">
+                    <!-- Tasks will be populated here -->
+                </tbody>
+            </table>
+            <div id="projectTasksLoading" class="hidden text-center py-4">
+                <p>로딩 중...</p>
+            </div>
+            <div id="projectTasksEmpty" class="hidden text-center py-4 text-gray-400">
+                <p>등록된 업무가 없습니다.</p>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-2 border-t text-right">
+            <a href="#" id="projectTasksDashboardLink"
+                class="text-blue-600 hover:text-blue-800 text-sm font-medium">대시보드에서 보기 →</a>
+        </div>
     </div>
 </div>
 {% endblock %}
