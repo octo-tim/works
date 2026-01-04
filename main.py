@@ -124,7 +124,10 @@ def populate_db(db: Session):
 
 @app.on_event("startup")
 def on_startup():
-    """애플리케이션 시작 시 실행되는 초기화 함수"""
+    print(f"[{datetime.now()}] APP VERSION 1.1 LOADED - DEBUG MODE ON")
+    db = SessionLocal()
+    populate_db(db)
+    db.close()
     print("서버 시작 중...")
     try:
         db = SessionLocal()
