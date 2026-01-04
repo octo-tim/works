@@ -7,7 +7,7 @@ load_dotenv(os.path.join(basedir, ".env"))
 
 # AI 설정
 # 환경 변수 로드 실패 시 하드코딩된 키 사용 (사용자 제공)
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyAmhhh66lRiGHtzsfUYMQxCMXORhr7pr8M")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
     print("[ERROR] GEMINI_API_KEY is missing!")
