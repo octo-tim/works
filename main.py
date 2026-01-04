@@ -1223,9 +1223,9 @@ class AIHelper:
         if not config.GEMINI_API_KEY:
              raise Exception("No AI API Key configured")
         genai.configure(api_key=config.GEMINI_API_KEY)
-        # Use latest available model
+        # Use experimental model (often freer quota)
         self.model = genai.GenerativeModel(
-            'gemini-2.0-flash',
+            'gemini-2.0-flash-exp',
             generation_config={"response_mime_type": "application/json"}
         )
 
