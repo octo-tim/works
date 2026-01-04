@@ -37,9 +37,8 @@
                         {% for p in scheduled %}
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4 font-medium text-blue-600">
-                                <a href="javascript:void(0)"
-                                    onclick='openProjectTasksModal({{ p.id|tojson }}, {{ p.name|tojson }})'
-                                    class="hover:underline">{{ p.name }}</a>
+                                <a href="javascript:void(0)" class="project-task-link hover:underline"
+                                    data-project-id="{{ p.id }}" data-project-name="{{ p.name }}">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
                                 {% if p.department == 'System' %}
@@ -113,9 +112,8 @@
                         {% for p in inprogress %}
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4 font-medium text-blue-600">
-                                <a href="javascript:void(0)"
-                                    onclick='openProjectTasksModal({{ p.id|tojson }}, {{ p.name|tojson }})'
-                                    class="hover:underline">{{ p.name }}</a>
+                                <a href="javascript:void(0)" class="project-task-link hover:underline"
+                                    data-project-id="{{ p.id }}" data-project-name="{{ p.name }}">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
                                 {% if p.department == 'System' %}
@@ -189,9 +187,8 @@
                         {% for p in completed %}
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4 font-medium text-blue-600">
-                                <a href="javascript:void(0)"
-                                    onclick='openProjectTasksModal({{ p.id|tojson }}, {{ p.name|tojson }})'
-                                    class="hover:underline">{{ p.name }}</a>
+                                <a href="javascript:void(0)" class="project-task-link hover:underline"
+                                    data-project-id="{{ p.id }}" data-project-name="{{ p.name }}">{{ p.name }}</a>
                             </td>
                             <td class="px-6 py-4">
                                 {% if p.department == '시스템사업부' %}
@@ -746,8 +743,23 @@
         });
     });
 
+    // Delegated event listener for project task links
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.classList.contains('project-task-link')) {
+            e.preventDefault();
+            const pid = e.target.getAttribute('data-project-id');
+            const pname = e.target.getAttribute('data-project-name');
+            console.log("Project link clicked via delegation:", pid, pname);
+            openProjectTasksModal(pid, pname);
+        }
+    });
+
     // Attach to window to ensure global availability
     window.openProjectTasksModal = function (projectId, projectName) {
+        if (!projectId) {
+            console.error("No project ID provided to openProjectTasksModal");
+            return;
+        }
         console.log("Opening tasks for project:", projectId, projectName);
         const modal = document.getElementById('projectTasksModal');
         const titleEl = document.getElementById('projectTasksModalTitle');
