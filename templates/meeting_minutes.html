@@ -75,12 +75,60 @@
 
         <h3 class="text-xl font-bold text-gray-800 mb-6">새 회의록 작성</h3>
 
-        <form action="/meeting_minutes" method="post" enctype="multipart/form-data" class="space-y-4">
+        <form action="/meeting_minutes" method="post" enctype="multipart/form-data" class="space-y-4" id="createForm">
+            <!-- AI Analysis Section -->
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <span>⚡ AI 회의록 분석</span>
+                    <span class="text-xs font-normal text-white bg-purple-600 px-2 py-0.5 rounded">BETA</span>
+                </label>
+                <div class="relative">
+                    <textarea id="rawNotes" rows="4"
+                        class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none mb-2"
+                        placeholder="회의 녹취록이나 메모를 이곳에 붙여넣고 'AI 분석'을 눌러보세요. 요약과 업무를 자동으로 추출합니다."></textarea>
+
+                    <button type="button" onclick="analyzeMeeting()"
+                        class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 flex items-center gap-2 transition w-full justify-center">
+                        <svg id="aiIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span id="aiBtnText">AI 요약 및 분석 실행</span>
+                    </button>
+
+                    <!-- Analysis Result Preview -->
+                    <div id="aiResult" class="hidden mt-4 border-t pt-4">
+                        <div class="space-y-3">
+                            <div>
+                                <h4 class="text-sm font-bold text-gray-700 mb-1">📝 요약 미리보기</h4>
+                                <div id="previewSummary"
+                                    class="text-xs text-gray-600 bg-white p-2 rounded border max-h-32 overflow-y-auto">
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 class="text-sm font-bold text-gray-700 mb-1">✅ 발견된 업무 (체크하여 자동생성)</h4>
+                                <div id="previewTasks" class="space-y-1 max-h-40 overflow-y-auto">
+                                    <!-- Tasks checkboxes will go here -->
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="applyAIResult()"
+                                class="w-full bg-blue-100 text-blue-700 py-2 rounded-lg text-sm font-bold hover:bg-blue-200 transition mt-2">
+                                결과 적용하기 (본문에 삽입)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">회의 주제</label>
                 <input type="text" name="topic" required
                     class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
             </div>
+
+            <input type="hidden" name="tasks_data" id="tasksDataInput">
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -108,8 +156,6 @@
                 </div>
             </div>
 
-
-
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">회의 내용</label>
                 <textarea name="content" rows="10" required
@@ -136,5 +182,117 @@
 <script>
     // Set default date to today
     document.querySelector('input[name="date_str"]').valueAsDate = new Date();
+
+    let aiAnalysisData = null;
+
+    async function analyzeMeeting() {
+        const rawText = document.getElementById('rawNotes').value;
+        const btnText = document.getElementById('aiBtnText');
+        const icon = document.getElementById('aiIcon');
+
+        if (!rawText.trim()) {
+            alert('분석할 회의 내용을 입력해주세요.');
+            return;
+        }
+
+        // Loading State
+        btnText.innerText = '분석 중...';
+        icon.classList.add('animate-spin');
+
+        try {
+            const response = await fetch('/api/minutes/ai-analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: rawText })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                aiAnalysisData = result;
+                showPreview(result);
+            } else {
+                alert('분석 실패: ' + (result.detail || '오류 발생'));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('네트워크 오류가 발생했습니다.');
+        } finally {
+            btnText.innerText = 'AI 요약 및 분석 실행';
+            icon.classList.remove('animate-spin');
+        }
+    }
+
+    function showPreview(data) {
+        document.getElementById('aiResult').classList.remove('hidden');
+
+        // 1. Summary
+        const summaryHtml = `
+            <div class="mb-2"><strong>📌 요약:</strong><br>${data.summary || '-'}</div>
+            <div class="mb-2"><strong>🛑 결정사항:</strong><br>${(data.decisions || []).join('<br> - ')}</div>
+            <div><strong>⚠️ 리스크:</strong><br>${(data.risks || []).join('<br> - ')}</div>
+        `;
+        document.getElementById('previewSummary').innerHTML = summaryHtml;
+
+        // 2. Tasks
+        const tasksContainer = document.getElementById('previewTasks');
+        tasksContainer.innerHTML = '';
+        if (data.action_items && data.action_items.length > 0) {
+            data.action_items.forEach((task, idx) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-2 p-2 border rounded bg-white hover:bg-gray-50';
+                div.innerHTML = `
+                    <input type="checkbox" id="task_chk_${idx}" class="task-checkbox w-4 h-4 text-purple-600 rounded" checked>
+                    <div class="flex-1 text-xs">
+                        <div class="font-bold text-gray-800">${task.title}</div>
+                        <div class="text-gray-500">
+                            담당: <span class="text-blue-600 font-medium">${task.assignee_name || '미지정'}</span> | 
+                            기한: ${task.due_date || '미정'} | 
+                            우선순위: ${task.priority || 'Normal'}
+                        </div>
+                    </div>
+                `;
+                tasksContainer.appendChild(div);
+            });
+        } else {
+            tasksContainer.innerHTML = '<div class="text-xs text-gray-400">발견된 업무가 없습니다.</div>';
+        }
+    }
+
+    function applyAIResult() {
+        if (!aiAnalysisData) return;
+
+        // 1. Apply to Content
+        const contentArea = document.querySelector('textarea[name="content"]');
+        const formattedContent = `
+## 📌 회의 요약
+${aiAnalysisData.summary}
+
+## 🛑 결정사항
+${(aiAnalysisData.decisions || []).map(d => `- ${d}`).join('\n')}
+
+## ⚠️ 리스크 및 중요사항
+${(aiAnalysisData.risks || []).map(r => `- ${r}`).join('\n')}
+
+---
+## ✅ 액션 아이템
+${(aiAnalysisData.action_items || []).map(t => `- [ ] ${t.title} (${t.assignee_name || '미지정'}, ~${t.due_date || ''})`).join('\n')}
+        `;
+
+        contentArea.value = formattedContent.trim();
+
+        // 2. Extract Selected Tasks
+        const selectedTasks = [];
+        const checkboxes = document.querySelectorAll('.task-checkbox');
+        checkboxes.forEach((chk, idx) => {
+            if (chk.checked) {
+                selectedTasks.push(aiAnalysisData.action_items[idx]);
+            }
+        });
+
+        document.getElementById('tasksDataInput').value = JSON.stringify(selectedTasks);
+
+        alert('내용이 적용되었습니다. 저장 시 선택된 업무가 자동으로 생성됩니다.');
+    }
 </script>
 {% endblock %}

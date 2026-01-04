@@ -1015,25 +1015,25 @@ def read_meeting_minutes(request: Request, db: Session = Depends(get_db), curren
     })
 
 @app.post("/meeting_minutes", response_class=RedirectResponse)
-async def create_meeting_minute(request: Request, 
+async def create_meeting_minute(
                           topic: str = Form(...), 
                           date_str: str = Form(...),
                           time: str = Form(None),
                           location: str = Form(None),
                           attendees: str = Form(None),
                           content: str = Form(...),
+                          tasks_data: str = Form(None), # JSON string of selected tasks
                           files: List[UploadFile] = File(None),
                           db: Session = Depends(get_db),
                           current_user: models.User = Depends(get_current_user)):
-    """회의록 생성"""
+    """회의록 생성 및 업무 자동 등록"""
     if not current_user:
         return RedirectResponse(url="/login", status_code=303)
-    
+        
     m_date = utils.parse_date(date_str, "%Y-%m-%d")
-    if not m_date:
-        return RedirectResponse(url="/meeting_minutes?error=invalid_date", status_code=303)
     
-    new_minute = models.MeetingMinutes(
+    # 1. Create Meeting Minute
+    new_minute = models.MeetingMinute(
         topic=topic,
         date=m_date,
         time=time,
@@ -1045,6 +1045,47 @@ async def create_meeting_minute(request: Request,
     db.add(new_minute)
     db.commit()
     db.refresh(new_minute)
+    
+    # 2. Process Auto-Tasks
+    if tasks_data:
+        try:
+            print(f"[DEBUG] Processing AI Tasks: {tasks_data}")
+            import json
+            from datetime import timedelta
+            tasks_list = json.loads(tasks_data)
+            
+            for t in tasks_list:
+                # Find assignee
+                assignee_id = None
+                if t.get("assignee_name"):
+                    # Simple fuzzy match or exact match
+                    u = db.query(models.User).filter(models.User.username == t["assignee_name"]).first()
+                    if u: assignee_id = u.id
+                
+                new_task = models.Task(
+                    title=t.get("title", "New Task"),
+                    description=f"[From Meeting: {topic}] Auto-generated task.",
+                    status="Todo",
+                    # Default to meeting date + 7 days if no due date
+                    due_date=utils.parse_date(t.get("due_date"), "%Y-%m-%d") if t.get("due_date") else (m_date + timedelta(days=7)),
+                    priority=t.get("priority", "Normal"),
+                    creator_id=current_user.id,
+                    project_id=None # No project link for now
+                )
+                db.add(new_task)
+                db.flush() # to get ID
+                
+                if assignee_id:
+                    u = db.query(models.User).get(assignee_id)
+                    new_task.assignees.append(u)
+                    
+            db.commit()
+            print("[DEBUG] AI Tasks Created Successfully")
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to create AI tasks: {e}")
+            # Don't fail the whole request, just log it
+
 
     # 파일 업로드 처리
     if files:
@@ -1223,9 +1264,9 @@ class AIHelper:
         if not config.GEMINI_API_KEY:
              raise Exception("No AI API Key configured")
         genai.configure(api_key=config.GEMINI_API_KEY)
-        # Use experimental model (often freer quota)
+        # Use standard stable model for free tier compatibility
         self.model = genai.GenerativeModel(
-            'gemini-2.0-flash-exp',
+            'gemini-1.5-flash',
             generation_config={"response_mime_type": "application/json"}
         )
 
@@ -1274,6 +1315,62 @@ class AIHelper:
         """
         response = self.model.generate_content(prompt)
         return json.loads(response.text)
+
+    def analyze_meeting_minutes(self, text, user_context):
+        prompt = f"""
+        You are a professional meeting secretary. Analyze the following meeting notes.
+
+        Current Date: {date.today()}
+        Participants Context: {user_context}
+        Raw Notes:
+        "{text}"
+
+        Tasks:
+        1. Summarize the meeting (5 bullet points max).
+        2. Extract key decisions (Decisions).
+        3. Identify risks or dependencies (Risks).
+        4. Extract actionable tasks (Action Items). Try to match assignees from the context.
+
+        Output Schema (JSON):
+        {{
+            "summary": "string (markdown bullet points)",
+            "decisions": ["string"],
+            "risks": ["string"],
+            "action_items": [
+                {{
+                    "title": "string",
+                    "assignee_name": "string (or null)",
+                    "due_date": "YYYY-MM-DD" (or null),
+                    "priority": "High" | "Normal" | "Low"
+                }}
+            ]
+        }}
+        """
+        response = self.model.generate_content(prompt)
+        return json.loads(response.text)
+
+@app.post("/api/minutes/ai-analyze")
+async def analyze_minutes(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """AI Meeting Analysis Endpoint"""
+    try:
+        data = await request.json()
+        text = data.get("text")
+        if not text:
+            raise HTTPException(status_code=400, detail="No text provided")
+        
+        users = db.query(models.User).all()
+        user_ctx = ", ".join([f"{u.username}" for u in users])
+        
+        ai = AIHelper()
+        result = ai.analyze_meeting_minutes(text, user_ctx)
+        return result
+    except Exception as e:
+        print(f"AI Analysis Error: {e}")
+        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
 
 @app.post("/api/tasks/ai")
 async def create_task_from_ai(
