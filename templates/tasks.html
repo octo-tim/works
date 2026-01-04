@@ -253,15 +253,21 @@
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">담당자 (다중 선택)</label>
-                        <select name="assignee_ids" multiple class="w-full border rounded-lg px-3 py-2 text-sm h-24">
-                            {% for u in users %}
-                            <option value="{{ u.id }}">{{ u.username }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">사업부</label>
+                    <select name="department" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="">미지정 (전체)</option>
+                        <option value="시스템사업부">시스템사업부</option>
+                        <option value="유통사업부">유통사업부</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">담당자 (다중 선택)</label>
+                    <select name="assignee_ids" multiple class="w-full border rounded-lg px-3 py-2 text-sm h-24">
+                        {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.username }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트</label>
@@ -317,6 +323,14 @@
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">사업부</label>
+                    <select name="department" id="edit_department" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="">미지정 (전체)</option>
+                        <option value="시스템사업부">시스템사업부</option>
+                        <option value="유통사업부">유통사업부</option>
+                    </select>
+                </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">담당자 (다중 선택)</label>
                     <select name="assignee_ids" id="edit_assignee_ids" multiple
