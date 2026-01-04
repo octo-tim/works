@@ -1065,11 +1065,17 @@ async def create_meeting_minute(
                 for t in tasks_list:
                     # Find assignee
                     assignee_id = None
+                    assignee_dept = None
                     if t.get("assignee_name"):
                         # Simple fuzzy match or exact match
                         u = db.query(models.User).filter(models.User.username == t["assignee_name"]).first()
-                        if u: assignee_id = u.id
+                        if u: 
+                            assignee_id = u.id
+                            assignee_dept = u.department
                     
+                    # Use assignee's department if available, else creator's
+                    dept = assignee_dept if assignee_dept else current_user.department
+
                     new_task = models.Task(
                         title=t.get("title", "New Task"),
                         description=f"[From Meeting: {topic}] Auto-generated task.",
@@ -1078,7 +1084,8 @@ async def create_meeting_minute(
                         due_date=utils.parse_date(t.get("due_date"), "%Y-%m-%d") if t.get("due_date") else (m_date + timedelta(days=7)),
                         priority=t.get("priority", "Normal"),
                         creator_id=current_user.id,
-                        project_id=None # No project link for now
+                        project_id=None, # No project link for now
+                        department=dept
                     )
                     db.add(new_task)
                     db.flush() # to get ID
