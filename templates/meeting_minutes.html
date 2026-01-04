@@ -351,21 +351,28 @@ ${(aiAnalysisData.action_items || []).map(t => `- [ ] ${t.title} (${t.assignee_n
     }
 
     function prepareSubmit() {
-        // If AI analysis was done, ensure we capture selected tasks even if "Apply" wasn't clicked
-        if (aiAnalysisData && aiAnalysisData.action_items) {
-            const selectedTasks = [];
-            const checkboxes = document.querySelectorAll('.task-checkbox');
-            checkboxes.forEach((chk, idx) => {
-                if (chk.checked) {
-                    selectedTasks.push(aiAnalysisData.action_items[idx]);
-                }
-            });
+        try {
+            // If AI analysis was done, ensure we capture selected tasks even if "Apply" wasn't clicked
+            if (typeof aiAnalysisData !== 'undefined' && aiAnalysisData && aiAnalysisData.action_items) {
+                const selectedTasks = [];
+                const checkboxes = document.querySelectorAll('.task-checkbox');
+                checkboxes.forEach((chk, idx) => {
+                    if (chk.checked) {
+                        selectedTasks.push(aiAnalysisData.action_items[idx]);
+                    }
+                });
 
-            // Only update if we found selected tasks, otherwise keep existing value (if any)
-            if (selectedTasks.length > 0) {
-                document.getElementById('tasksDataInput').value = JSON.stringify(selectedTasks);
+                // Only update if we found selected tasks, otherwise keep existing value (if any)
+                if (selectedTasks.length > 0) {
+                    document.getElementById('tasksDataInput').value = JSON.stringify(selectedTasks);
+                }
             }
+        } catch (e) {
+            console.error("Error preparing submit:", e);
+            // Allow submission to proceed even if task preparation fails
         }
+        return true;
     }
 </script>
 {% endblock %}
+```

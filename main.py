@@ -1038,10 +1038,15 @@ async def create_meeting_minute(
             return RedirectResponse(url="/login", status_code=303)
             
         # DEBUG LOGGING
-        with open("debug_tasks.log", "a") as f:
-            f.write(f"\n[{datetime.now()}] Create Meeting Request\n")
-            f.write(f"Topic: {topic}\n")
-            f.write(f"Tasks Data: {tasks_data}\n")
+        print(f"[DEBUG] Create Meeting Request Received. Topic: {topic}")
+        print(f"[DEBUG] Tasks Data: {tasks_data}")
+        try:
+            with open("debug_tasks.log", "a") as f:
+                f.write(f"\n[{datetime.now()}] Create Meeting Request\n")
+                f.write(f"Topic: {topic}\n")
+                f.write(f"Tasks Data: {tasks_data}\n")
+        except Exception as log_e:
+            print(f"[ERROR] Failed to write debug log: {log_e}")
             
         m_date = utils.parse_date(date_str, "%Y-%m-%d")
         
