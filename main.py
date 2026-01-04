@@ -1037,6 +1037,12 @@ async def create_meeting_minute(
         if not current_user:
             return RedirectResponse(url="/login", status_code=303)
             
+        # DEBUG LOGGING
+        with open("debug_tasks.log", "a") as f:
+            f.write(f"\n[{datetime.now()}] Create Meeting Request\n")
+            f.write(f"Topic: {topic}\n")
+            f.write(f"Tasks Data: {tasks_data}\n")
+            
         m_date = utils.parse_date(date_str, "%Y-%m-%d")
         
         # 1. Create Meeting Minute
