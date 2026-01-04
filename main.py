@@ -671,21 +671,27 @@ def read_projects(request: Request, db: Session = Depends(get_db), current_user:
     if not current_user:
         return RedirectResponse(url="/login")
     
-    projects = db.query(models.Project).all()
-    scheduled = [p for p in projects if p.status == 'Scheduled']
-    inprogress = [p for p in projects if p.status == 'In Progress']
-    completed = [p for p in projects if p.status == 'Completed']
-    
-    users = db.query(models.User).all()
+    try:
+        projects = db.query(models.Project).all()
+        scheduled = [p for p in projects if p.status == 'Scheduled']
+        inprogress = [p for p in projects if p.status == 'In Progress']
+        completed = [p for p in projects if p.status == 'Completed']
+        
+        users = db.query(models.User).all()
 
-    return templates.TemplateResponse("projects.html", {
-        "request": request,
-        "user": current_user,
-        "scheduled": scheduled, 
-        "inprogress": inprogress, 
-        "completed": completed,
-        "users": users
-    })
+        return templates.TemplateResponse("projects.html", {
+            "request": request,
+            "user": current_user,
+            "scheduled": scheduled, 
+            "inprogress": inprogress, 
+            "completed": completed,
+            "users": users
+        })
+    except Exception as e:
+        print(f"Project Page Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return HTMLResponse(content=f"<h1>Internal Server Error</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", status_code=500)
 
 @app.post("/projects", response_class=RedirectResponse)
 def create_project(name: str = Form(...), description: str = Form(None), 
