@@ -1158,6 +1158,41 @@ def create_event(
     db.commit()
     return {"status": "success"}
 
+@app.put("/api/events/{event_id}")
+def update_event(
+    event_id: int,
+    title: str = Form(...),
+    description: str = Form(None),
+    start_time: str = Form(...),
+    end_time: str = Form(...),
+    is_all_day: bool = Form(False),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """일정 수정 API"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    # Permission check: Only creator or admin can update
+    if event.user_id != current_user.id and current_user.role != 'admin':
+         raise HTTPException(status_code=403, detail="Not authorized to update this event")
+
+    start_dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M")
+    end_dt = datetime.strptime(end_time, "%Y-%m-%dT%H:%M")
+    
+    event.title = title
+    event.description = description
+    event.start_time = start_dt
+    event.end_time = end_dt
+    event.is_all_day = is_all_day
+    
+    db.commit()
+    return {"status": "success"}
+
 @app.delete("/api/events/{event_id}")
 def delete_event(event_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """일정 삭제 API"""
