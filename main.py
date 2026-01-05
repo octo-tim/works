@@ -294,22 +294,12 @@ def read_root(request: Request,
     
     query = db.query(models.Task)
     
-    # 부서별 필터링 로직
-    if current_user.role == "admin":
-        if department:
-            query = query.filter(models.Task.department == department)
-    else:
+    # 부서별 필터링 로직 (일반 사용자만 강제 적용, 관리자는 전체)
+    if current_user.role != "admin":
         # 일반 사용자는 자신의 부서 데이터만 조회
         department = current_user.department
         query = query.filter(models.Task.department == department)
     
-    a_id = int(assignee_id) if assignee_id and assignee_id.isdigit() else None
-    proj_id = int(project_id) if project_id and project_id.isdigit() else None
-
-    
-    if proj_id:
-        query = query.filter(models.Task.project_id == proj_id)
-
     tasks = query.all()
 
     # Organized for Kanban
@@ -357,7 +347,7 @@ def read_root(request: Request,
 
         calendar_events.append(event)
 
-    calendar_events.append(event)
+
 
     # Fetch Today's Checks
     today = datetime.now().date()
@@ -406,9 +396,6 @@ def read_root(request: Request,
         "users": users,
         "users": users,
         "projects": db.query(models.Project).all(), # Pass projects for modal
-        "selected_assignee": a_id,
-        "selected_project": proj_id,
-        "selected_department": department, # Pass back to UI
         "selected_month": target_month,
         "goals": {
             "annual_2026": db.query(models.AnnualGoal).filter(models.AnnualGoal.year == config.TARGET_YEAR).first(),
