@@ -976,6 +976,18 @@ def read_tasks_page(request: Request, db: Session = Depends(get_db), current_use
         "projects": projects
     })
 
+@app.get("/work-templates", response_class=HTMLResponse)
+def read_work_templates_page(request: Request, current_user: models.User = Depends(get_current_user)):
+    """업무 템플릿 페이지"""
+    if not current_user:
+        return RedirectResponse(url="/login")
+    
+    return templates.TemplateResponse("work_templates.html", {
+        "request": request,
+        "user": current_user,
+        "templates": wbs_templates.TEMPLATES
+    })
+
 @app.post("/tasks", response_class=RedirectResponse)
 def create_task_page(request: Request, 
                 title: str = Form(...), 
