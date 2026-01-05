@@ -131,8 +131,65 @@
     </div>
 </form>
 
-<!-- Dashboard Content: Today's Schedule & In-Progress Tasks -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full pb-10">
+<!-- Dashboard Content: Today's Check, Today's Schedule & In-Progress Tasks -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-full pb-10">
+
+    <!-- Today's Check -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-full overflow-hidden">
+        <div
+            class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-white flex justify-between items-center">
+            <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                <span class="text-orange-500">✨</span> Today's Check
+            </h3>
+        </div>
+        <div class="flex-1 flex flex-col p-4">
+            <!-- Message List -->
+            <div class="flex-1 overflow-y-auto space-y-3 mb-4 max-h-[300px]">
+                {% if todays_checks %}
+                {% for check in todays_checks %}
+                <div
+                    class="p-3 rounded-lg border {{ 'bg-blue-50 border-blue-100' if check.sender_id == user.id else 'bg-green-50 border-green-100' }}">
+                    <div class="flex justify-between items-start mb-1">
+                        <span
+                            class="text-xs font-bold {{ 'text-blue-600' if check.sender_id == user.id else 'text-green-600' }}">
+                            {% if check.sender_id == user.id %}
+                            To: {{ check.receiver.username }}
+                            {% else %}
+                            From: {{ check.sender.username }}
+                            {% endif %}
+                        </span>
+                        <span class="text-xs text-gray-400">{{ check.created_at.strftime('%H:%M') }}</span>
+                    </div>
+                    <p class="text-sm text-gray-800">{{ check.content }}</p>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-center text-gray-400 text-sm mt-10">오늘 주고받은 메시지가 없습니다.</p>
+                {% endif %}
+            </div>
+
+            <!-- Input Form -->
+            <form action="/todays_check/create" method="post" class="mt-auto border-t pt-4">
+                <div class="mb-2">
+                    <select name="receiver_id" required
+                        class="w-full text-sm border rounded px-2 py-1.5 focus:ring-2 focus:ring-orange-500 outline-none">
+                        <option value="">받는 사람 선택</option>
+                        {% for u in users %}
+                        {% if u.id != user.id %}
+                        <option value="{{ u.id }}">{{ u.username }} ({{ u.department }})</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <textarea name="content" required rows="3" placeholder="메시지를 입력하세요..."
+                    class="w-full text-sm border rounded px-3 py-2 focus:ring-2 focus:ring-orange-500 outline-none resize-none mb-2"></textarea>
+                <button type="submit"
+                    class="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2 rounded transition">
+                    보내기
+                </button>
+            </form>
+        </div>
+    </div>
 
     <!-- Left Column: Today's Schedule -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-full overflow-hidden">

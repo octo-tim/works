@@ -357,6 +357,15 @@ def read_root(request: Request,
 
         calendar_events.append(event)
 
+    calendar_events.append(event)
+
+    # Fetch Today's Checks
+    today = datetime.now().date()
+    todays_checks = db.query(models.TodaysCheck).filter(
+        models.TodaysCheck.date == today,
+        (models.TodaysCheck.sender_id == current_user.id) | (models.TodaysCheck.receiver_id == current_user.id)
+    ).all()
+
     users = db.query(models.User).all()
 
     return templates.TemplateResponse("dashboard.html", {
@@ -365,6 +374,7 @@ def read_root(request: Request,
         "tasks_todo": tasks_todo,
         "tasks_inprogress": tasks_inprogress,
         "tasks_done": tasks_done,
+        "todays_checks": todays_checks, # Pass to template
         "calendar_events": calendar_events, # Pass to template
         "users": users,
         "users": users,
@@ -573,7 +583,23 @@ def update_task_status(task_id: int, status: str = Form(...), db: Session = Depe
         db.commit()
     return RedirectResponse(url="/", status_code=303)
 
+    return RedirectResponse(url="/", status_code=303)
 
+
+@app.post("/todays_check/create", response_class=RedirectResponse)
+def create_todays_check(receiver_id: int = Form(...), content: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """오늘의 확인 메시지 생성"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    new_check = models.TodaysCheck(
+        content=content,
+        sender_id=current_user.id,
+        receiver_id=receiver_id
+    )
+    db.add(new_check)
+    db.commit()
+    return RedirectResponse(url="/", status_code=303)
 @app.get("/admin", response_class=HTMLResponse)
 def read_admin(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
     """관리자 페이지"""

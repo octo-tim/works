@@ -183,3 +183,23 @@ class Event(Base):
     department = Column(String, nullable=True) # For easier department filtering
 
     user = relationship("User", backref="events")
+
+
+class TodaysCheck(Base):
+    __tablename__ = "todays_checks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(String)
+    created_at = Column(DateTime, default=datetime.datetime.now)
+    # Using 'date' specifically for easy filtering by day, 
+    # though created_at covers it, having a dedicated date column can be simpler for queries if needed
+    # but the plan stuck to created_at is fine. Let's add date for robustness since plan mentioned it originally
+    # Plan said: Fields: id, sender_id, receiver_id, content, created_at, date.
+    # Code snippet in plan didn't have date, but text did. I'll add it to be safe/cleaner.
+    date = Column(Date, default=datetime.date.today)
+    
+    sender_id = Column(Integer, ForeignKey("users.id"))
+    receiver_id = Column(Integer, ForeignKey("users.id"))
+
+    sender = relationship("User", foreign_keys=[sender_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
