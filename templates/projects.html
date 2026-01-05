@@ -814,7 +814,7 @@
 
         // Force robust display styles
         modal.style.setProperty('display', 'flex', 'important');
-        modal.style.setProperty('z-index', '2147483647', 'important'); // Max int value
+        modal.style.setProperty('z-index', '10000', 'important'); // Set to High but not Max, allowing Edit Modal (10001+) to sit on top
         modal.style.setProperty('visibility', 'visible', 'important');
         modal.style.setProperty('opacity', '1', 'important');
         modal.style.setProperty('position', 'fixed', 'important');
@@ -1497,7 +1497,7 @@
 
 <!-- Edit Task Modal (Copied from Dashboard) -->
 <div id="editTaskModal"
-    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm z-[10000]">
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm z-[20000]">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">업무 진행</h3>
