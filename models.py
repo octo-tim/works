@@ -76,8 +76,8 @@ class Task(Base):
     assignee = relationship("User", foreign_keys=[assignee_id]) # Legacy single assignee
     creator = relationship("User", foreign_keys=[creator_id])
     assignees = relationship("User", secondary=task_assignees, backref="tasks_multi_assigned")
-    assignees = relationship("User", secondary=task_assignees, backref="tasks_multi_assigned")
     files = relationship("TaskFile", back_populates="task")
+    progresses = relationship("TaskProgress", back_populates="task", order_by="desc(TaskProgress.date)")
 
 
 class TaskFile(Base):
@@ -203,3 +203,17 @@ class TodaysCheck(Base):
 
     sender = relationship("User", foreign_keys=[sender_id])
     receiver = relationship("User", foreign_keys=[receiver_id])
+
+
+class TaskProgress(Base):
+    __tablename__ = "task_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"))
+    writer_id = Column(Integer, ForeignKey("users.id"))
+    content = Column(Text)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    date = Column(Date, default=datetime.date.today) # User specified date for the progress
+
+    task = relationship("Task", back_populates="progresses")
+    writer = relationship("User")

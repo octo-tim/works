@@ -901,7 +901,13 @@ def get_project_tasks(project_id: int, db: Session = Depends(get_db), current_us
             "due_date": t.due_date.strftime("%Y-%m-%d") if t.due_date else None,
             "project_id": t.project_id,
             "filenames": [f.filename for f in t.files],
-            "filepaths": [f.filepath for f in t.files]
+            "filepaths": [f.filepath for f in t.files],
+            "progresses": [{
+                "id": p.id,
+                "content": p.content,
+                "date": p.date.strftime("%Y-%m-%d") if p.date else "",
+                "writer": p.writer.username if p.writer else "Unknown"
+            } for p in t.progresses]
         })
         
     return JSONResponse(content=data)
@@ -1016,6 +1022,8 @@ def update_task_details(task_id: int,
                         due_date: str = Form(None),
                         project_id: int = Form(0),
                         department: str = Form(None),
+                        progress_content: str = Form(None),
+                        progress_date: str = Form(None),
                         db: Session = Depends(get_db),
                         current_user: models.User = Depends(get_current_user)):
     """업무 상세 정보 업데이트"""
@@ -1044,6 +1052,21 @@ def update_task_details(task_id: int,
     task.due_date = utils.parse_date(due_date, '%Y-%m-%d')
     task.project_id = None if project_id == 0 else project_id
     task.department = department
+    
+    # Progress Entry
+    if progress_content and progress_content.strip():
+        p_date = utils.parse_date(progress_date, '%Y-%m-%d')
+        if not p_date:
+            p_date = datetime.date.today()
+            
+        new_progress = models.TaskProgress(
+            task_id=task.id,
+            writer_id=current_user.id,
+            content=progress_content,
+            date=p_date
+        )
+        db.add(new_progress)
+
     db.commit()
     return RedirectResponse(url="/tasks", status_code=303)
 

@@ -47,8 +47,13 @@
                         </thead>
                         <tbody>
                             {% for t in scheduled %}
+                            {% set progress_list = [] %}
+                            {% for p in t.progresses %}
+                            {% set _ = progress_list.append({'content': p.content, 'date': p.date|string, 'writer':
+                            p.writer.username if p.writer else 'Unknown'}) %}
+                            {% endfor %}
                             <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                                onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
+                                onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }}, {{ progress_list|tojson|forceescape }})">
                                 <td class="px-6 py-4" onclick="event.stopPropagation()">
                                     <input type="checkbox" name="task_ids" value="{{ t.id }}"
                                         class="task-checkbox rounded text-blue-600 focus:ring-blue-500"
@@ -124,8 +129,13 @@
                         </thead>
                         <tbody>
                             {% for t in inprogress %}
+                            {% set progress_list = [] %}
+                            {% for p in t.progresses %}
+                            {% set _ = progress_list.append({'content': p.content, 'date': p.date|string, 'writer':
+                            p.writer.username if p.writer else 'Unknown'}) %}
+                            {% endfor %}
                             <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                                onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
+                                onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }}, {{ progress_list|tojson|forceescape }})">
                                 <td class="px-6 py-4" onclick="event.stopPropagation()">
                                     <input type="checkbox" name="task_ids" value="{{ t.id }}"
                                         class="task-checkbox rounded text-blue-600 focus:ring-blue-500"
@@ -200,8 +210,13 @@
                         </thead>
                         <tbody>
                             {% for t in completed %}
+                            {% set progress_list = [] %}
+                            {% for p in t.progresses %}
+                            {% set _ = progress_list.append({'content': p.content, 'date': p.date|string, 'writer':
+                            p.writer.username if p.writer else 'Unknown'}) %}
+                            {% endfor %}
                             <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                                onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
+                                onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }}, {{ progress_list|tojson|forceescape }})">
                                 <td class="px-6 py-4" onclick="event.stopPropagation()">
                                     <input type="checkbox" name="task_ids" value="{{ t.id }}"
                                         class="task-checkbox rounded text-blue-600 focus:ring-blue-500"
@@ -329,7 +344,7 @@
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" style="position: relative; z-index: 2147483647;"
         onclick="event.stopPropagation();">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-800">업무 수정</h3>
+            <h3 class="text-xl font-bold text-gray-800">업무 진행</h3>
             <button onclick="closeEditTaskModal();" class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         <form id="editTaskForm" method="post" class="space-y-4">
@@ -387,6 +402,28 @@
                 </select>
             </div>
 
+            <!-- Progress Section -->
+            <div class="border-t border-gray-200 pt-4 mt-4">
+                <h4 class="font-bold text-gray-800 mb-2">진행 이력</h4>
+                <div class="bg-gray-50 rounded-lg p-3 h-40 overflow-y-auto mb-4 border border-gray-200"
+                    id="progressHistoryList">
+                    <!-- Dynamic Progress Items -->
+                    <p class="text-gray-400 text-sm italic">이력이 없습니다.</p>
+                </div>
+
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">진행 사항 작성</label>
+                    <textarea name="progress_content"
+                        class="w-full border rounded-lg px-3 py-2 text-sm h-20 resize-none"
+                        placeholder="진행 상황을 입력하세요..."></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">작성일</label>
+                    <input type="date" name="progress_date" id="edit_progress_date"
+                        class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+
             <div class="flex gap-2">
                 <button type="button" onclick="deleteTask()"
                     class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition font-medium">삭제</button>
@@ -419,7 +456,7 @@
 </div>
 
 <script>
-    function openEditModal(id, title, description, status, assignee_ids, start_date, due_date, project_id, department, filenames, filepaths) {
+    function openEditModal(id, title, description, status, assignee_ids, start_date, due_date, project_id, department, filenames, filepaths, progresses) {
         // Helper function to safely set value
         const setValue = (id, value) => {
             const element = document.getElementById(id);
@@ -460,6 +497,32 @@
         setValue('edit_due_date', due_date);
         setValue('edit_project_id', project_id);
         setValue('edit_department', department);
+
+        // Set default progress date to today
+        const today = new Date().toISOString().split('T')[0];
+        setValue('edit_progress_date', today);
+
+        // Populate Progress History
+        const progressList = document.getElementById('progressHistoryList');
+        if (progressList) {
+            progressList.innerHTML = '';
+            if (progresses && progresses.length > 0) {
+                progresses.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = "mb-2 pb-2 border-b border-gray-100 last:border-0";
+                    div.innerHTML = `
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="font-bold text-xs text-gray-700">${p.writer || 'Unknown'}</span>
+                            <span class="text-xs text-gray-500">${p.date || ''}</span>
+                        </div>
+                        <p class="text-sm text-gray-800 whitespace-pre-wrap">${p.content}</p>
+                    `;
+                    progressList.appendChild(div);
+                });
+            } else {
+                progressList.innerHTML = '<p class="text-gray-400 text-sm italic">이력이 없습니다.</p>';
+            }
+        }
 
         // Set form actions
         const editForm = document.getElementById('editTaskForm');
