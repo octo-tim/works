@@ -348,9 +348,10 @@
     {% for t in custom_templates %}
     try {
         templateData["custom_{{ t.id }}"] = {
-            "name": {{ t.name | tojson }},
-            "category": {{ t.category | tojson }},
-            "description": {{ t.description | tojson }},
+            "name": {{ t.name | tojson }
+    },
+    "category": { { t.category | tojson } },
+    "description": { { t.description | tojson } },
     "phases": JSON.parse({{ t.content_json | tojson }})
         };
     } catch (e) {
@@ -449,4 +450,5 @@
     }
 
 
-    {% endblock %}
+</script>
+{% endblock %}
