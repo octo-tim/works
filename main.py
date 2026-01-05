@@ -303,9 +303,30 @@ def read_root(request: Request,
     
     tasks = query.all()
 
-    # Organized for Kanban
+    today = datetime.now().date()
+
+    # Organized for Dashboard
     tasks_todo = [t for t in tasks if t.status == 'Todo']
-    tasks_inprogress = [t for t in tasks if t.status == 'In Progress']
+    
+    # In Progress: Status is 'In Progress' OR (Date matches Today AND Status != 'Done')
+    tasks_inprogress = []
+    for t in tasks:
+        is_active_today = False
+        if t.start_date and t.due_date:
+            if t.start_date <= today <= t.due_date:
+                is_active_today = True
+        elif t.start_date: # Start date only
+             if t.start_date <= today:
+                 is_active_today = True
+        elif t.due_date: # Due date only
+             if t.due_date >= today: # Looser condition? Or strict? Let's say if due date is today or future. Actually usually if due date only, it's active until then.
+                 # Let's keep it simple: matches existing In Progress logic or explicitly overlaps today.
+                 if t.due_date == today:
+                     is_active_today = True
+
+        if t.status == 'In Progress' or (is_active_today and t.status != 'Done'):
+             tasks_inprogress.append(t)
+
     tasks_done = [t for t in tasks if t.status == 'Done']
 
     # Serialize for Calendar
@@ -351,7 +372,7 @@ def read_root(request: Request,
 
 
     # Fetch Today's Checks
-    today = datetime.now().date()
+    # today predefined above
     todays_checks = db.query(models.TodaysCheck).filter(
         models.TodaysCheck.date == today,
         (models.TodaysCheck.sender_id == current_user.id) | (models.TodaysCheck.receiver_id == current_user.id)
