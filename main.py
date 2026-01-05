@@ -366,6 +366,31 @@ def read_root(request: Request,
         (models.TodaysCheck.sender_id == current_user.id) | (models.TodaysCheck.receiver_id == current_user.id)
     ).all()
 
+    # Fetch Today's Events (Schedule)
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+    
+    event_query = db.query(models.Event).filter(
+        models.Event.start_time >= today_start,
+        models.Event.start_time <= today_end
+    )
+    
+    if current_user.role != "admin":
+        event_query = event_query.filter(models.Event.department == current_user.department)
+        
+    db_events = event_query.all()
+    
+    todays_events = []
+    for e in db_events:
+        todays_events.append({
+            "title": e.title,
+            "description": e.description,
+            "start_time": e.start_time.strftime("%H:%M"),
+            "end_time": e.end_time.strftime("%H:%M") if e.end_time else "",
+            "is_all_day": e.is_all_day,
+            "user_name": e.user.username if e.user else "Unknown"
+        })
+
     users = db.query(models.User).all()
 
     return templates.TemplateResponse("dashboard.html", {
@@ -374,8 +399,10 @@ def read_root(request: Request,
         "tasks_todo": tasks_todo,
         "tasks_inprogress": tasks_inprogress,
         "tasks_done": tasks_done,
-        "todays_checks": todays_checks, # Pass to template
+        "todays_checks": todays_checks, 
+        "todays_events": todays_events, # Pass to template
         "calendar_events": calendar_events, # Pass to template
+
         "users": users,
         "users": users,
         "projects": db.query(models.Project).all(), # Pass projects for modal
