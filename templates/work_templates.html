@@ -64,8 +64,12 @@
                                 상세
                             </button>
                             <button onclick="openEditModal('custom_{{ t.id }}')"
-                                class="bg-gray-100 text-gray-600 text-sm font-bold py-2 px-4 rounded-lg hover:bg-gray-200 transition">
+                                class="bg-gray-100 text-gray-600 text-sm font-bold py-2 px-3 rounded-lg hover:bg-gray-200 transition">
                                 ✏️
+                            </button>
+                            <button onclick="deleteTemplate('custom_{{ t.id }}')"
+                                class="bg-red-50 text-red-500 text-sm font-bold py-2 px-3 rounded-lg hover:bg-red-100 transition">
+                                🗑️
                             </button>
                         </div>
                     </div>
@@ -418,9 +422,10 @@
     {% for t in custom_templates %}
     try {
         templateData["custom_{{ t.id }}"] = {
-            "name": {{ t.name | tojson }},
-            "category": {{ t.category | tojson }},
-            "description": {{ t.description | tojson }},
+            "name": {{ t.name | tojson }
+    },
+    "category": { { t.category | tojson } },
+    "description": { { t.description | tojson } },
     "phases": JSON.parse({{ t.content_json | tojson }})
         };
     } catch (e) {
@@ -556,6 +561,25 @@
         const modal = document.getElementById('editTemplateModal');
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+    }
+
+    async function deleteTemplate(id) {
+        if (!confirm("정말로 이 템플릿을 삭제하시겠습니까? (삭제 후 복구 불가)")) return;
+
+        const dbId = id.replace('custom_', '');
+        try {
+            const response = await fetch(`/work-templates/${dbId}/delete`, {
+                method: 'POST'
+            });
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert("삭제 실패");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("오류 발생: " + e.message);
+        }
     }
 
 
