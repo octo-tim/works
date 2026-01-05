@@ -344,10 +344,11 @@
     {% for t in custom_templates %}
     try {
         templateData["custom_{{ t.id }}"] = {
-            "name": "{{ t.name }}",
-            "category": "{{ t.category }}",
-            "description": "{{ t.description }}",
-            "phases": JSON.parse(`{{ t.content_json | safe }}`)
+            "name": {{ t.name | tojson }
+    },
+    "category": { { t.category | tojson } },
+    "description": { { t.description | tojson } },
+    "phases": JSON.parse({{ t.content_json | tojson }})
         };
     } catch (e) {
         console.error("Failed to parse custom template {{ t.id }}", e);
