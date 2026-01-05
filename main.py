@@ -72,7 +72,7 @@ try:
 except Exception as e:
     print(f"Startup DB Error: {e}")
 
-app = FastAPI(title="비즈니스 일정 관리 시스템", version="1.0.0")
+app = FastAPI(title="비즈니스 일정 공유 시스템", version="1.0.0")
 
 # 전역 예외 핸들러
 @app.exception_handler(Exception)

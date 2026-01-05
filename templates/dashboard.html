@@ -131,47 +131,76 @@
     </div>
 </form>
 
-<!-- Kanban Board -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-full pb-10">
-    <!-- Todo Column -->
-    <div class="bg-gray-50 rounded-xl p-4 flex flex-col h-full border border-gray-200">
-        <div class="bg-gray-50 px-6 py-3 border-b border-gray-200 flex items-center">
-            <span class="w-2.5 h-2.5 rounded-full bg-gray-400 mr-2"></span>
-            <h3 class="font-bold text-gray-800">예정</h3>
-            <span class="ml-2 bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">{{ tasks_todo|length }}</span>
+<!-- Dashboard Content: Today's Schedule & In-Progress Tasks -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full pb-10">
+
+    <!-- Left Column: Today's Schedule -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-full overflow-hidden">
+        <div
+            class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white flex justify-between items-center">
+            <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                <span class="text-blue-500">📅</span> 오늘의 일정
+            </h3>
+            <a href="/calendar" class="text-xs text-blue-600 hover:text-blue-800 font-medium">전체보기 &rarr;</a>
         </div>
-        <div class="space-y-3 overflow-y-auto flex-1 pr-1">
-            {% for task in tasks_todo %}
-            {% include 'task_card.html' %}
+        <div class="flex-1 overflow-y-auto p-4 space-y-3">
+            {% if todays_events %}
+            {% for event in todays_events %}
+            <div
+                class="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition border border-transparent hover:border-gray-100 group">
+                <div class="min-w-[4.5rem] text-center">
+                    {% if event.is_all_day %}
+                    <span
+                        class="inline-block px-2 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded">종일</span>
+                    {% else %}
+                    <p class="text-gray-900 font-bold">{{ event.start_time }}</p>
+                    <p class="text-gray-400 text-xs">{{ event.end_time }}</p>
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    <h4 class="font-bold text-gray-800 group-hover:text-blue-600 transition">{{ event.title }}</h4>
+                    {% if event.description %}
+                    <p class="text-sm text-gray-500 line-clamp-1">{{ event.description }}</p>
+                    {% endif %}
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ event.user_name
+                            }}</span>
+                    </div>
+                </div>
+            </div>
             {% endfor %}
+            {% else %}
+            <div class="h-full flex flex-col items-center justify-center text-gray-400">
+                <p class="mb-2 text-2xl">☕️</p>
+                <p>오늘 예정된 일정이 없습니다.</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 
-    <!-- In Progress Column -->
-    <div class="bg-blue-50 rounded-xl p-4 flex flex-col h-full border border-blue-100">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-blue-800">진행 중</h3>
-            <span class="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full">{{ tasks_inprogress|length }}</span>
+    <!-- Right Column: In-Progress Tasks -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-full overflow-hidden">
+        <div
+            class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-green-50 to-white flex justify-between items-center">
+            <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                <span class="text-green-500">🚀</span> 진행 중 업무
+            </h3>
+            <a href="/tasks" class="text-xs text-green-600 hover:text-green-800 font-medium">전체보기 &rarr;</a>
         </div>
-        <div class="space-y-3 overflow-y-auto flex-1 pr-1">
+        <div class="flex-1 overflow-y-auto p-4 space-y-3">
+            {% if tasks_inprogress %}
             {% for task in tasks_inprogress %}
             {% include 'task_card.html' %}
             {% endfor %}
+            {% else %}
+            <div class="h-full flex flex-col items-center justify-center text-gray-400">
+                <p class="mb-2 text-2xl">✨</p>
+                <p>진행 중인 업무가 없습니다.</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 
-    <!-- Done Column -->
-    <div class="bg-green-50 rounded-xl p-4 flex flex-col h-full border border-green-100">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-green-800">완료</h3>
-            <span class="bg-green-200 text-green-800 text-xs px-2 py-1 rounded-full">{{ tasks_done|length }}</span>
-        </div>
-        <div class="space-y-3 overflow-y-auto flex-1 pr-1">
-            {% for task in tasks_done %}
-            {% include 'task_card.html' %}
-            {% endfor %}
-        </div>
-    </div>
 </div>
 
 <!-- Calendar Section -->
