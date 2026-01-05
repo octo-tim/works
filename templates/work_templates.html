@@ -344,9 +344,10 @@
     {% for t in custom_templates %}
     try {
         templateData["custom_{{ t.id }}"] = {
-            "name": {{ t.name | tojson }},
-            "category": {{ t.category | tojson }},
-            "description": {{ t.description | tojson }},
+            "name": {{ t.name | tojson }
+    },
+    "category": { { t.category | tojson } },
+    "description": { { t.description | tojson } },
     "phases": JSON.parse({{ t.content_json | tojson }})
         };
     } catch (e) {
@@ -366,8 +367,23 @@
         const contentDiv = document.getElementById('detailContent');
         let html = '';
 
-        if (data.phases && Array.isArray(data.phases)) {
-            data.phases.forEach((phase, idx) => {
+        let phases = data.phases;
+        // Normalize phases data
+        if (typeof phases === 'string') {
+            try {
+                phases = JSON.parse(phases);
+            } catch (e) {
+                console.error("Error parsing phases JSON", e);
+                phases = [];
+            }
+        }
+        // Handle { "phases": [...] } wrapper structure
+        if (phases && !Array.isArray(phases) && phases.phases && Array.isArray(phases.phases)) {
+            phases = phases.phases;
+        }
+
+        if (phases && Array.isArray(phases)) {
+            phases.forEach((phase, idx) => {
                 html += `
                     <div class="mb-6 last:mb-0">
                         <h4 class="font-bold text-gray-800 text-base mb-3 flex items-center">
