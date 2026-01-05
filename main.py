@@ -17,6 +17,7 @@ import utils
 import google.generativeai as genai
 import json
 import re
+import wbs_templates # Template Module
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -1653,6 +1654,28 @@ async def generate_project_wbs(
             detail = "AI 서비스 사용량이 많아 잠시 후 다시 시도해주세요. (Rate Limit)"
             
         raise HTTPException(status_code=status_code, detail=detail)
+
+
+
+@app.get("/api/projects/templates")
+def get_wbs_templates():
+    """Available WBS Templates List"""
+    return [
+        {
+            "key": key, 
+            "name": val["name"], 
+            "description": val["description"],
+            "category": val.get("category", "Other") 
+        }
+        for key, val in wbs_templates.TEMPLATES.items()
+    ]
+
+@app.get("/api/projects/templates/{key}")
+def get_wbs_template_detail(key: str):
+    """Get specific WBS template data"""
+    if key not in wbs_templates.TEMPLATES:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return wbs_templates.TEMPLATES[key]
 
 
 @app.post("/api/minutes/ai-analyze")

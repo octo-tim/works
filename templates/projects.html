@@ -1072,6 +1072,117 @@
         // Mock a phase structure for compatibility
         displayWBSPhases([{ phase_name: "제안된 업무", tasks: tasks }]);
     }
+
+    // --- Template Library Logic ---
+    let wbsTemplatesCache = {};
+
+    function switchWBSTab(mode) {
+        const aiInput = document.getElementById('wbs_ai_input');
+        const tmplInput = document.getElementById('wbs_template_input');
+        const tabAi = document.getElementById('tab_ai');
+        const tabTmpl = document.getElementById('tab_template');
+
+        if (mode === 'ai') {
+            aiInput.classList.remove('hidden');
+            tmplInput.classList.add('hidden');
+
+            tabAi.className = "px-3 py-1 rounded bg-indigo-100 text-indigo-700 font-bold transition-all";
+            tabTmpl.className = "px-3 py-1 rounded text-gray-500 hover:bg-gray-50 transition-all";
+        } else {
+            aiInput.classList.add('hidden');
+            tmplInput.classList.remove('hidden');
+
+            tabTmpl.className = "px-3 py-1 rounded bg-indigo-100 text-indigo-700 font-bold transition-all";
+            tabAi.className = "px-3 py-1 rounded text-gray-500 hover:bg-gray-50 transition-all";
+
+            // Load templates if empty
+            if (Object.keys(wbsTemplatesCache).length === 0) {
+                fetchWBSTemplates();
+            }
+        }
+    }
+
+    function fetchWBSTemplates() {
+        const select = document.getElementById('template_select');
+        select.innerHTML = '<option value="" disabled selected>로딩 중...</option>';
+
+        fetch('/api/projects/templates')
+            .then(res => res.json())
+            .then(data => {
+                select.innerHTML = '<option value="" disabled selected>템플릿을 선택하세요</option>';
+
+                // Group by category
+                const groups = {};
+                data.forEach(t => {
+                    const cat = t.category || '기타';
+                    if (!groups[cat]) groups[cat] = [];
+                    groups[cat].push(t);
+                    // Cache
+                    wbsTemplatesCache[t.key] = t;
+                });
+
+                // Render Optgroups
+                const sortedCats = Object.keys(groups).sort();
+
+                sortedCats.forEach(cat => {
+                    const groupEl = document.createElement('optgroup');
+                    groupEl.label = cat;
+
+                    groups[cat].forEach(t => {
+                        const option = document.createElement('option');
+                        option.value = t.key;
+                        option.textContent = t.name;
+                        groupEl.appendChild(option);
+                    });
+
+                    select.appendChild(groupEl);
+                });
+
+                // Add change listener for description
+                select.onchange = function () {
+                    const key = this.value;
+                    const descEl = document.getElementById('template_desc');
+                    if (wbsTemplatesCache[key]) {
+                        descEl.textContent = wbsTemplatesCache[key].description;
+                    }
+                };
+            })
+            .catch(err => {
+                console.error(err);
+                select.innerHTML = '<option value="" disabled>로드 실패</option>';
+            });
+    }
+
+    function loadWBSTemplate() {
+        const key = document.getElementById('template_select').value;
+        if (!key) {
+            alert('템플릿을 선택해주세요.');
+            return;
+        }
+
+        const btn = document.getElementById('btnLoadTemplate');
+        const originalText = btn.textContent;
+        btn.textContent = "불러오는 중...";
+        btn.disabled = true;
+
+        fetch(`/api/projects/templates/${key}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.phases) {
+                    displayWBSPhases(data.phases);
+                } else {
+                    alert('유효하지 않은 템플릿 데이터입니다.');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('템플릿 로드 실패');
+            })
+            .finally(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            });
+    }
 </script>
 {% endblock %}
 
@@ -1098,12 +1209,22 @@
                     class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
             </div>
 
-            <!-- AI Task Suggestion Section -->
+            <!-- WBS Generation Section (AI & Templates) -->
             <div class="border border-indigo-100 bg-indigo-50 rounded-lg p-4 mt-2 mb-2">
-                <h4 class="font-bold text-indigo-800 text-sm mb-2 flex items-center">
-                    <span class="mr-1">✨</span> AI 업무 리스트 자동 제안
+                <h4 class="font-bold text-indigo-800 text-sm mb-3 flex items-center justify-between">
+                    <span class="flex items-center"><span class="mr-1">✨</span> 업무 리스트 생성기</span>
+                    <!-- Tabs -->
+                    <div class="flex text-xs bg-white rounded-lg p-1 border border-indigo-100">
+                        <button type="button" onclick="switchWBSTab('ai')" id="tab_ai"
+                            class="px-3 py-1 rounded bg-indigo-100 text-indigo-700 font-bold transition-all">AI
+                            제안</button>
+                        <button type="button" onclick="switchWBSTab('template')" id="tab_template"
+                            class="px-3 py-1 rounded text-gray-500 hover:bg-gray-50 transition-all">템플릿</button>
+                    </div>
                 </h4>
-                <div class="space-y-3">
+
+                <!-- 1. AI Input Section -->
+                <div id="wbs_ai_input" class="space-y-3">
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 mb-1">프로젝트 목표/산출물</label>
                         <textarea id="ai_goal" rows="2" placeholder="예: 일정관리 웹 1차 배포, 디자인 리뉴얼"
@@ -1143,8 +1264,30 @@
                     </div>
                     <button type="button" onclick="generateWBS()" id="btnGenerateWBS"
                         class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2 rounded-lg transition flex justify-center items-center">
-                        리스트 제안받기
+                        AI 리스트 제안받기
                     </button>
+                </div>
+
+                <!-- 2. Template Input Section -->
+                <div id="wbs_template_input" class="space-y-3 hidden">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">템플릿 선택</label>
+                        <select id="template_select"
+                            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <!-- Populated by JS -->
+                            <option value="" disabled selected>로딩 중...</option>
+                        </select>
+                        <p id="template_desc" class="text-xs text-gray-500 mt-1 pl-1"></p>
+                    </div>
+
+                    <button type="button" onclick="loadWBSTemplate()" id="btnLoadTemplate"
+                        class="w-full bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-sm font-bold py-2 rounded-lg transition flex justify-center items-center">
+                        선택 템플릿 불러오기
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+
 
                     <!-- Result Area -->
                     <div id="ai_result_area"
