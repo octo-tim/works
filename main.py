@@ -982,11 +982,61 @@ def read_work_templates_page(request: Request, db: Session = Depends(get_db), cu
     if not current_user:
         return RedirectResponse(url="/login")
     
+    # Serialize Custom Templates for easy usage
+    raw_templates = db.query(models.WorkTemplate).all()
+    custom_templates_list = []
+    
+    import json # ensure json is imported or use existing
+    
+    for t in raw_templates:
+        # Safe JSON parsing for phases
+        phases_data = []
+        try:
+            if t.content_json:
+                phases_data = json.loads(t.content_json)
+        except:
+            phases_data = []
+            
+        custom_templates_list.append({
+            "id": t.id,
+            "name": t.name,
+            "category": t.category,
+            "description": t.description,
+            "phases": phases_data,
+            "created_at": t.created_at,
+            "updated_at": t.updated_at,
+            "editor": t.editor, # Relationship might be tricky for pure dict if we want to default render,
+                                # but for the HTML loop we can stick to 'raw_templates' 
+                                # OR just pass raw_templates for logic and this list for JS?
+                                # Let's pass BOTH or just use raw for Jinja and Serializable for JS.
+                                # But datetime and User objects are not JSON serializable easily.
+            # Let's simplify: Pass raw_templates for the UI loop (it works fine with relationships).
+            # Pass a separate 'custom_templates_json' list for the JS data variable.
+            # We need to serialize datetimes and remove objects.
+        })
+        
+    # Create a JSON-friendly structure for the JS variable
+    js_templates = []
+    for t in raw_templates:
+        try:
+            phases_obj = json.loads(t.content_json) if t.content_json else []
+        except:
+            phases_obj = []
+            
+        js_templates.append({
+            "id": t.id,
+            "name": t.name,
+            "category": t.category,
+            "description": t.description,
+            "phases": phases_obj, # This is a dict/list
+        })
+        
     return templates.TemplateResponse("work_templates.html", {
         "request": request,
         "user": current_user,
-        "templates": wbs_templates.TEMPLATES, # Static templates
-        "custom_templates": db.query(models.WorkTemplate).all() # Custom DB templates
+        "templates": wbs_templates.TEMPLATES,
+        "custom_templates": raw_templates,
+        "custom_templates_data": js_templates
     })
 
 

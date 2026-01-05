@@ -54,7 +54,7 @@
                             {% if t.updated_at %}
                             Updated: {{ t.updated_at.strftime('%y.%m.%d') }}
                             {% if t.editor %} by {{ t.editor.username }} {% endif %}
-                            {% else %}
+                            {% elif t.created_at %}
                             Created: {{ t.created_at.strftime('%y.%m.%d') }}
                             {% endif %}
                         </p>
@@ -418,20 +418,13 @@
     templateData["{{ key }}"] = {{ t | tojson }};
     {% endfor %}
 
-    {% if custom_templates %}
-    {% for t in custom_templates %}
-    try {
-        templateData["custom_{{ t.id }}"] = {
-            "name": {{ t.name | tojson }},
-    "category": {{ t.category | tojson }},
-    "description": {{ t.description | tojson }},
-    "phases": JSON.parse({{ t.content_json | tojson }})
-        };
-    } catch (e) {
-        console.error("Failed to parse custom template {{ t.id }}", e);
+    // Inject Custom Templates Data securely
+    const customTemplatesDB = {{ custom_templates_data | tojson | safe }};
+    if (customTemplatesDB && Array.isArray(customTemplatesDB)) {
+        customTemplatesDB.forEach(t => {
+            templateData["custom_" + t.id] = t;
+        });
     }
-    {% endfor %}
-    {% endif %}
 
     function openDetailModal(id) {
         console.log("Attempting to open modal for:", id);
