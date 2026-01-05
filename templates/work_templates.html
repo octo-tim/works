@@ -52,10 +52,10 @@
                     <div class="mt-auto">
                         <p class="text-[10px] text-gray-400 mb-2 text-right">
                             {% if t.updated_at %}
-                            Updated: {{ t.updated_at.strftime('%y.%m.%d') }}
+                            Updated: {{ t.updated_at|string|truncate(10, True, '') }}
                             {% if t.editor %} by {{ t.editor.username }} {% endif %}
                             {% elif t.created_at %}
-                            Created: {{ t.created_at.strftime('%y.%m.%d') }}
+                            Created: {{ t.created_at|string|truncate(10, True, '') }}
                             {% endif %}
                         </p>
                         <div class="flex space-x-2">
