@@ -977,7 +977,7 @@ def read_tasks_page(request: Request, db: Session = Depends(get_db), current_use
     })
 
 @app.get("/work-templates", response_class=HTMLResponse)
-def read_work_templates_page(request: Request, current_user: models.User = Depends(get_current_user)):
+def read_work_templates_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """업무 템플릿 페이지"""
     if not current_user:
         return RedirectResponse(url="/login")
@@ -985,8 +985,10 @@ def read_work_templates_page(request: Request, current_user: models.User = Depen
     return templates.TemplateResponse("work_templates.html", {
         "request": request,
         "user": current_user,
-        "templates": wbs_templates.TEMPLATES
+        "templates": wbs_templates.TEMPLATES, # Static templates
+        "custom_templates": db.query(models.WorkTemplate).all() # Custom DB templates
     })
+
 
 @app.post("/tasks", response_class=RedirectResponse)
 def create_task_page(request: Request, 
@@ -1685,6 +1687,46 @@ class AIHelper:
                     time.sleep(wait_time)
                 else:
                     raise e
+    
+    def generate_template_json(self, topic):
+        prompt = f"""
+        You are a process improvement expert. Create a new Work Template for the following topic:
+        Topic: "{topic}"
+        
+        The template should follow the standard structure with Phases and Tasks.
+        Language: KOREAN (한국어) - Titles and descriptions must be in Korean.
+        
+        Output Schema (JSON):
+        {{
+            "name": "string (Template Name)",
+            "category": "string (Category Name e.g. 'Marketing', 'Development', 'HR')",
+            "description": "string (Brief description of this process)",
+            "phases": [
+                {{
+                    "phase_name": "string (e.g., 기획, 실행, 검토)",
+                    "tasks": [
+                        {{
+                            "title": "string",
+                            "description": "string",
+                            "estimated_days": int,
+                            "is_core": boolean,
+                            "checklist": ["string", "string"]
+                        }}
+                    ]
+                }}
+            ]
+        }}
+        """
+        response = self.model.generate_content(prompt)
+        return json.loads(response.text)
+
+                if is_rate_limit and attempt < max_retries - 1:
+                    wait_time = base_delay * (2 ** attempt)
+                    print(f"AI Rate Limit hit. Retrying in {wait_time}s... (Attempt {attempt+1}/{max_retries})")
+                    import time
+                    time.sleep(wait_time)
+                else:
+                    raise e
 
 @app.post("/api/projects/ai-wbs")
 async def generate_project_wbs(
@@ -1710,6 +1752,56 @@ async def generate_project_wbs(
     except Exception as e:
         print(f"AI WBS Error: {e}")
         status_code = 500
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+
+@app.post("/api/work-templates/generate")
+async def generate_work_template_api(
+    request: Request,
+    current_user: models.User = Depends(get_current_user)
+):
+    """AI로 새 업무 템플릿 생성"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    try:
+        data = await request.json()
+        topic = data.get("topic")
+        if not topic:
+            raise HTTPException(status_code=400, detail="Topic is required")
+            
+        ai = AIHelper()
+        result = ai.generate_template_json(topic)
+        return result
+    except Exception as e:
+        print(f"Template Gen Error: {e}")
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@app.post("/work-templates")
+async def create_work_template(
+    name: str = Form(...),
+    category: str = Form(...),
+    description: str = Form(...),
+    content_json: str = Form(...), # JSON string of phases
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """새 템플릿 저장"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+        
+    new_template = models.WorkTemplate(
+        name=name,
+        category=category,
+        description=description,
+        content_json=content_json,
+        creator_id=current_user.id
+    )
+    db.add(new_template)
+    db.commit()
+    
+    return RedirectResponse(url="/work-templates", status_code=303)
+
         detail = f"AI Error: {str(e)}"
         
         if "429" in str(e) or "ResourceExhausted" in str(e):

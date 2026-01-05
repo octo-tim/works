@@ -217,3 +217,17 @@ class TaskProgress(Base):
 
     task = relationship("Task", back_populates="progresses")
     writer = relationship("User")
+
+
+class WorkTemplate(Base):
+    __tablename__ = "work_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    category = Column(String)
+    description = Column(String)
+    content_json = Column(Text) # Stores phases/tasks as JSON string
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    creator_id = Column(Integer, ForeignKey("users.id"))
+
+    creator = relationship("User")
