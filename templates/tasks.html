@@ -9,216 +9,249 @@
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm text-sm font-medium">
             + 새 업무
         </button>
+        <button onclick="deleteSelectedTasks()" id="bulkDeleteBtn" style="display: none;"
+            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow-sm text-sm font-medium transition ml-2">
+            선택 삭제
+        </button>
     </div>
 
-    <!-- AI Input -->
+    <form id="bulkDeleteForm" action="/tasks/delete_bulk" method="post">
+
+        <!-- AI Input -->
 
 
-    <div class="flex-1 overflow-y-auto pr-2 space-y-8">
+        <div class="flex-1 overflow-y-auto pr-2 space-y-8">
 
-        <!-- Scheduled (Todo) Section -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="bg-gray-50 px-6 py-3 border-b border-gray-200 flex items-center">
-                <span class="w-2.5 h-2.5 rounded-full bg-gray-400 mr-2"></span>
-                <h3 class="font-bold text-gray-800">예정</h3>
-                <span class="ml-2 bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">{{ scheduled|length
-                    }}</span>
+            <!-- Scheduled (Todo) Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="bg-gray-50 px-6 py-3 border-b border-gray-200 flex items-center">
+                    <span class="w-2.5 h-2.5 rounded-full bg-gray-400 mr-2"></span>
+                    <h3 class="font-bold text-gray-800">예정</h3>
+                    <span class="ml-2 bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">{{ scheduled|length
+                        }}</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 w-4">
+                                    <input type="checkbox" onclick="toggleAll(this)"
+                                        class="rounded text-blue-600 focus:ring-blue-500">
+                                </th>
+                                <th scope="col" class="px-6 py-3">업무명</th>
+                                <th scope="col" class="px-6 py-3">사업부</th>
+                                <th scope="col" class="px-6 py-3">프로젝트</th>
+                                <th scope="col" class="px-6 py-3">담당자/마감일</th>
+                                <th scope="col" class="px-6 py-3">생성자</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in scheduled %}
+                            <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
+                                onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
+                                <td class="px-6 py-4" onclick="event.stopPropagation()">
+                                    <input type="checkbox" name="task_ids" value="{{ t.id }}"
+                                        class="task-checkbox rounded text-blue-600 focus:ring-blue-500"
+                                        onchange="updateDeleteBtn()">
+                                </td>
+                                <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
+                                <td class="px-6 py-4">
+                                    {% if t.department == 'System' or t.department == '시스템사업부' %}
+                                    <span
+                                        class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
+                                    {% elif t.department == 'Distribution' or t.department == '유통사업부' %}
+                                    <span
+                                        class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
+                                    {% else %}
+                                    <span class="text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    {% if t.project %}
+                                    <span
+                                        class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold mb-1 block w-fit">{{
+                                        t.project.name }}</span>
+                                    {% endif %}
+
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-gray-800">
+                                            {% if t.assignees %}
+                                            {% for u in t.assignees %}
+                                            {{ u.username }}{% if not loop.last %}, {% endif %}
+                                            {% endfor %}
+                                            {% else %}
+                                            미지정
+                                            {% endif %}
+                                        </span>
+                                        <span class="text-xs text-gray-500">{{ t.due_date }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-400">등록된 업무가 없습니다.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left text-gray-500">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
-                        <tr>
-                            <th scope="col" class="px-6 py-3">업무명</th>
-                            <th scope="col" class="px-6 py-3">사업부</th>
-                            <th scope="col" class="px-6 py-3">프로젝트</th>
-                            <th scope="col" class="px-6 py-3">담당자/마감일</th>
-                            <th scope="col" class="px-6 py-3">생성자</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for t in scheduled %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
-                            <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
-                            <td class="px-6 py-4">
-                                {% if t.department == 'System' or t.department == '시스템사업부' %}
-                                <span
-                                    class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
-                                {% elif t.department == 'Distribution' or t.department == '유통사업부' %}
-                                <span
-                                    class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
-                                {% else %}
-                                <span class="text-gray-400">-</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4">
-                                {% if t.project %}
-                                <span
-                                    class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold mb-1 block w-fit">{{
-                                    t.project.name }}</span>
-                                {% endif %}
 
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex flex-col">
-                                    <span class="font-medium text-gray-800">
-                                        {% if t.assignees %}
-                                        {% for u in t.assignees %}
-                                        {{ u.username }}{% if not loop.last %}, {% endif %}
-                                        {% endfor %}
-                                        {% else %}
-                                        미지정
-                                        {% endif %}
-                                    </span>
-                                    <span class="text-xs text-gray-500">{{ t.due_date }}</span>
-                                </div>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-400">등록된 업무가 없습니다.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <!-- In Progress Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="bg-blue-50 px-6 py-3 border-b border-blue-100 flex items-center">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500 mr-2"></span>
+                    <h3 class="font-bold text-blue-800">진행 중</h3>
+                    <span class="ml-2 bg-blue-200 text-blue-800 text-xs px-2 py-0.5 rounded-full">{{ inprogress|length
+                        }}</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 w-4">
+                                    <input type="checkbox" onclick="toggleAll(this)"
+                                        class="rounded text-blue-600 focus:ring-blue-500">
+                                </th>
+                                <th scope="col" class="px-6 py-3">업무명</th>
+                                <th scope="col" class="px-6 py-3">사업부</th>
+                                <th scope="col" class="px-6 py-3">프로젝트</th>
+                                <th scope="col" class="px-6 py-3">담당자/마감일</th>
+                                <th scope="col" class="px-6 py-3">생성자</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in inprogress %}
+                            <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
+                                onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
+                                <td class="px-6 py-4" onclick="event.stopPropagation()">
+                                    <input type="checkbox" name="task_ids" value="{{ t.id }}"
+                                        class="task-checkbox rounded text-blue-600 focus:ring-blue-500"
+                                        onchange="updateDeleteBtn()">
+                                </td>
+                                <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
+                                <td class="px-6 py-4">
+                                    {% if t.department == 'System' or t.department == '시스템사업부' %}
+                                    <span
+                                        class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
+                                    {% elif t.department == 'Distribution' or t.department == '유통사업부' %}
+                                    <span
+                                        class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
+                                    {% else %}
+                                    <span class="text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    {% if t.project %}
+                                    <span
+                                        class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold mb-1 block w-fit">{{
+                                        t.project.name }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-gray-800">
+                                            {% if t.assignees %}
+                                            {% for u in t.assignees %}
+                                            {{ u.username }}{% if not loop.last %}, {% endif %}
+                                            {% endfor %}
+                                            {% else %}
+                                            미지정
+                                            {% endif %}
+                                        </span>
+                                        <span class="text-xs text-gray-500">{{ t.due_date }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-400">진행 중인 업무가 없습니다.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
+            <!-- Done Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="bg-green-50 px-6 py-3 border-b border-green-100 flex items-center">
+                    <span class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2"></span>
+                    <h3 class="font-bold text-green-800">종료</h3>
+                    <span class="ml-2 bg-green-200 text-green-800 text-xs px-2 py-0.5 rounded-full">{{ completed|length
+                        }}</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 w-4">
+                                    <input type="checkbox" onclick="toggleAll(this)"
+                                        class="rounded text-blue-600 focus:ring-blue-500">
+                                </th>
+                                <th scope="col" class="px-6 py-3">업무명</th>
+                                <th scope="col" class="px-6 py-3">사업부</th>
+                                <th scope="col" class="px-6 py-3">프로젝트</th>
+                                <th scope="col" class="px-6 py-3">담당자/마감일</th>
+                                <th scope="col" class="px-6 py-3">생성자</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in completed %}
+                            <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
+                                onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
+                                <td class="px-6 py-4" onclick="event.stopPropagation()">
+                                    <input type="checkbox" name="task_ids" value="{{ t.id }}"
+                                        class="task-checkbox rounded text-blue-600 focus:ring-blue-500"
+                                        onchange="updateDeleteBtn()">
+                                </td>
+                                <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
+                                <td class="px-6 py-4">
+                                    {% if t.department == 'System' or t.department == '시스템사업부' %}
+                                    <span
+                                        class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
+                                    {% elif t.department == 'Distribution' or t.department == '유통사업부' %}
+                                    <span
+                                        class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
+                                    {% else %}
+                                    <span class="text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    {% if t.project %}
+                                    <span
+                                        class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold mb-1 block w-fit">{{
+                                        t.project.name }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-gray-800">
+                                            {% if t.assignees %}
+                                            {% for u in t.assignees %}
+                                            {{ u.username }}{% if not loop.last %}, {% endif %}
+                                            {% endfor %}
+                                            {% else %}
+                                            미지정
+                                            {% endif %}
+                                        </span>
+                                        <span class="text-xs text-gray-500">{{ t.due_date }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-400">종료된 업무가 없습니다.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
-
-        <!-- In Progress Section -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="bg-blue-50 px-6 py-3 border-b border-blue-100 flex items-center">
-                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 mr-2"></span>
-                <h3 class="font-bold text-blue-800">진행 중</h3>
-                <span class="ml-2 bg-blue-200 text-blue-800 text-xs px-2 py-0.5 rounded-full">{{ inprogress|length
-                    }}</span>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left text-gray-500">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
-                        <tr>
-                            <th scope="col" class="px-6 py-3">업무명</th>
-                            <th scope="col" class="px-6 py-3">사업부</th>
-                            <th scope="col" class="px-6 py-3">프로젝트</th>
-                            <th scope="col" class="px-6 py-3">담당자/마감일</th>
-                            <th scope="col" class="px-6 py-3">생성자</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for t in inprogress %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
-                            <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
-                            <td class="px-6 py-4">
-                                {% if t.department == 'System' or t.department == '시스템사업부' %}
-                                <span
-                                    class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
-                                {% elif t.department == 'Distribution' or t.department == '유통사업부' %}
-                                <span
-                                    class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
-                                {% else %}
-                                <span class="text-gray-400">-</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4">
-                                {% if t.project %}
-                                <span
-                                    class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold mb-1 block w-fit">{{
-                                    t.project.name }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex flex-col">
-                                    <span class="font-medium text-gray-800">
-                                        {% if t.assignees %}
-                                        {% for u in t.assignees %}
-                                        {{ u.username }}{% if not loop.last %}, {% endif %}
-                                        {% endfor %}
-                                        {% else %}
-                                        미지정
-                                        {% endif %}
-                                    </span>
-                                    <span class="text-xs text-gray-500">{{ t.due_date }}</span>
-                                </div>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-400">진행 중인 업무가 없습니다.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Done Section -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="bg-green-50 px-6 py-3 border-b border-green-100 flex items-center">
-                <span class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2"></span>
-                <h3 class="font-bold text-green-800">종료</h3>
-                <span class="ml-2 bg-green-200 text-green-800 text-xs px-2 py-0.5 rounded-full">{{ completed|length
-                    }}</span>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left text-gray-500">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
-                        <tr>
-                            <th scope="col" class="px-6 py-3">업무명</th>
-                            <th scope="col" class="px-6 py-3">사업부</th>
-                            <th scope="col" class="px-6 py-3">프로젝트</th>
-                            <th scope="col" class="px-6 py-3">담당자/마감일</th>
-                            <th scope="col" class="px-6 py-3">생성자</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for t in completed %}
-                        <tr class="bg-white border-b hover:bg-gray-50 cursor-pointer"
-                            onclick="openEditModal({{ t.id|tojson|forceescape }}, {{ t.title|tojson|forceescape }}, {{ (t.description or '')|tojson|forceescape }}, {{ t.status|tojson|forceescape }}, {{ t.assignees|map(attribute='id')|list|tojson|forceescape }}, {{ (t.start_date|string if t.start_date else '')|tojson|forceescape }}, {{ (t.due_date|string if t.due_date else '')|tojson|forceescape }}, {{ (t.project_id or 0)|tojson|forceescape }}, {{ (t.department or '')|tojson|forceescape }}, {{ t.files|map(attribute='filename')|list|tojson|forceescape }}, {{ t.files|map(attribute='filepath')|list|tojson|forceescape }})">
-                            <td class="px-6 py-4 font-medium text-gray-900">{{ t.title }}</td>
-                            <td class="px-6 py-4">
-                                {% if t.department == 'System' or t.department == '시스템사업부' %}
-                                <span
-                                    class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">시스템</span>
-                                {% elif t.department == 'Distribution' or t.department == '유통사업부' %}
-                                <span
-                                    class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">유통</span>
-                                {% else %}
-                                <span class="text-gray-400">-</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4">
-                                {% if t.project %}
-                                <span
-                                    class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold mb-1 block w-fit">{{
-                                    t.project.name }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex flex-col">
-                                    <span class="font-medium text-gray-800">
-                                        {% if t.assignees %}
-                                        {% for u in t.assignees %}
-                                        {{ u.username }}{% if not loop.last %}, {% endif %}
-                                        {% endfor %}
-                                        {% else %}
-                                        미지정
-                                        {% endif %}
-                                    </span>
-                                    <span class="text-xs text-gray-500">{{ t.due_date }}</span>
-                                </div>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-400">종료된 업무가 없습니다.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </div>
 </div>
 
 <!-- Create Task Modal -->
@@ -649,5 +682,33 @@
     });
 
 
+    function toggleAll(source) {
+        checkboxes = document.getElementsByName('task_ids');
+        for (var i = 0, n = checkboxes.length; i < n; i++) {
+            checkboxes[i].checked = source.checked;
+        }
+        updateDeleteBtn();
+    }
+
+    function updateDeleteBtn() {
+        const checkboxes = document.getElementsByName('task_ids');
+        let checkedCount = 0;
+        for (var i = 0; i < checkboxes.length; i++) {
+            if (checkboxes[i].checked) checkedCount++;
+        }
+        const btn = document.getElementById('bulkDeleteBtn');
+        if (checkedCount > 0) {
+            btn.style.display = 'inline-block';
+            btn.innerText = `선택 삭제 (${checkedCount})`;
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+
+    function deleteSelectedTasks() {
+        if (confirm('선택한 업무를 정말 삭제하시겠습니까?')) {
+            document.getElementById('bulkDeleteForm').submit();
+        }
+    }
 </script>
 {% endblock %}

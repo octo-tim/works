@@ -1015,6 +1015,49 @@ def delete_task(task_id: int, request: Request, db: Session = Depends(get_db), c
     return RedirectResponse(url="/tasks", status_code=303)
 
 
+@app.post("/tasks/delete_bulk", response_class=RedirectResponse)
+def delete_bulk_tasks(task_ids: List[int] = Form(...),
+                      db: Session = Depends(get_db),
+                      current_user: models.User = Depends(get_current_user)):
+    """업무 일괄 삭제"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    if not task_ids:
+        return RedirectResponse(url="/tasks", status_code=303)
+
+    try:
+        # 안전한 삭제를 위해 조회 후 삭제
+        tasks = db.query(models.Task).filter(models.Task.id.in_(task_ids)).all()
+        for t in tasks:
+            # 권한 체크: 관리자, 작성자, 담당자만 삭제 가능
+            can_delete = False
+            if current_user.role == "admin":
+                can_delete = True
+            elif t.creator_id == current_user.id:
+                can_delete = True
+            elif t.assignee_id == current_user.id: # Legacy check
+                can_delete = True
+            else:
+                # Multi-assignee check
+                for assignee in t.assignees:
+                    if assignee.id == current_user.id:
+                        can_delete = True
+                        break
+            
+            if can_delete:
+                db.delete(t)
+            else:
+                print(f"[WARNING] User {current_user.username} tried to delete task {t.id} without permission")
+            
+        db.commit()
+    except Exception as e:
+        print(f"Bulk Delete Tasks Error: {e}")
+        db.rollback()
+        
+    return RedirectResponse(url="/tasks", status_code=303)
+
+
 
 # --- Meeting Minutes Routes ---
 
