@@ -93,6 +93,10 @@
                                         <span class="text-xs text-gray-500">{{ t.due_date }}</span>
                                     </div>
                                 </td>
+                                <td class="px-6 py-4">
+                                    <span class="text-xs text-gray-500">{{ t.creator.username if t.creator else '시스템'
+                                        }}</span>
+                                </td>
                             </tr>
                             {% else %}
                             <tr>
@@ -174,6 +178,10 @@
                                         <span class="text-xs text-gray-500">{{ t.due_date }}</span>
                                     </div>
                                 </td>
+                                <td class="px-6 py-4">
+                                    <span class="text-xs text-gray-500">{{ t.creator.username if t.creator else '시스템'
+                                        }}</span>
+                                </td>
                             </tr>
                             {% else %}
                             <tr>
@@ -254,6 +262,10 @@
                                         </span>
                                         <span class="text-xs text-gray-500">{{ t.due_date }}</span>
                                     </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="text-xs text-gray-500">{{ t.creator.username if t.creator else '시스템'
+                                        }}</span>
                                 </td>
                             </tr>
                             {% else %}
