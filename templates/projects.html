@@ -839,6 +839,8 @@
                 }
 
                 data.forEach(task => {
+                    projectTasksCache[task.id] = task; // Cache for edit
+
                     const tr = document.createElement('tr');
                     tr.className = "bg-white border-b hover:bg-gray-50";
 
@@ -857,7 +859,11 @@
                         <td class="px-6 py-4">
                             <span class="${statusClass} text-xs font-medium px-2.5 py-0.5 rounded">${statusText}</span>
                         </td>
-                        <td class="px-6 py-4 font-medium text-gray-900">${task.title}</td>
+                        <td class="px-6 py-4 font-medium text-gray-900">
+                             <a href="#" onclick="openProjectTaskEdit(${task.id}); return false;" class="text-blue-600 hover:underline">
+                                ${task.title}
+                            </a>
+                        </td>
                         <td class="px-6 py-4">${task.assignees_str || '-'}</td>
                         <td class="px-6 py-4">${task.due_date || '-'}</td>
                     `;
@@ -1487,4 +1493,196 @@
         </div>
     </div>
 </div>
+</div>
+
+<!-- Edit Task Modal (Copied from Dashboard) -->
+<div id="editTaskModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm z-[10000]">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">업무 수정</h3>
+            <button onclick="document.getElementById('editTaskModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <form id="editTaskForm" method="post" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">업무명</label>
+                <input type="text" name="title" id="edit_title" required
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                <textarea name="description" id="edit_description" rows="2"
+                    class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">상태</label>
+                    <select name="status" id="edit_status" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="Todo">예정</option>
+                        <option value="In Progress">진행 중</option>
+                        <option value="Done">종료</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">시작일</label>
+                    <input type="date" name="start_date" id="edit_start_date"
+                        class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">마감일</label>
+                    <input type="date" name="due_date" id="edit_due_date"
+                        class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">사업부</label>
+                    <select name="department" id="edit_department" class="w-full border rounded-lg px-3 py-2 text-sm"
+                        onchange="filterAssignees('edit_department', 'edit_assignee_ids')">
+                        <option value="">미지정 (전체)</option>
+                        <option value="시스템사업부">시스템사업부</option>
+                        <option value="유통사업부">유통사업부</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">담당자 (다중 선택)</label>
+                    <select name="assignee_ids" id="edit_assignee_ids" multiple
+                        class="w-full border rounded-lg px-3 py-2 text-sm h-24">
+                        {% for u in users %}
+                        <option value="{{ u.id }}" data-department="{{ u.department }}">{{ u.username }} ({{
+                            u.department }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트</label>
+                <select name="project_id" id="edit_project_id" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <option value="0">Inbox (프로젝트 없음)</option>
+                    {% for p in projects %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="button" onclick="deleteTask()"
+                    class="w-1/3 bg-red-100 text-red-600 font-bold py-2 rounded-lg hover:bg-red-200 transition">삭제</button>
+                <button type="submit"
+                    class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">저장</button>
+            </div>
+        </form>
+
+        <!-- Delete Form (Hidden) -->
+        <form id="deleteTaskForm" method="post" class="hidden"></form>
+
+        <!-- Divider -->
+        <hr class="my-6 border-gray-200">
+
+        <!-- File Upload Section -->
+        <div>
+            <h4 class="font-bold text-gray-800 mb-2">첨부 파일</h4>
+            <ul id="taskFileList" class="mb-4 space-y-2 text-sm text-gray-600">
+                <!-- Dynamically populated -->
+            </ul>
+
+            <form id="taskUploadForm" method="post" enctype="multipart/form-data" class="flex gap-2">
+                <input type="file" name="file" required
+                    class="flex-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <button type="submit"
+                    class="bg-gray-800 text-white text-xs px-3 py-2 rounded hover:bg-gray-700">업로드</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let projectTasksCache = {};
+
+    function openProjectTaskEdit(id) {
+        const task = projectTasksCache[id];
+        if (!task) return;
+
+        openEditModal(
+            task.id,
+            task.title,
+            task.description,
+            task.status,
+            task.department,
+            task.assignee_ids,
+            task.start_date,
+            task.due_date,
+            task.project_id,
+            task.filenames,
+            task.filepaths
+        );
+    }
+
+    function filterAssignees(deptSelectId, assigneeSelectId) {
+        const deptSelect = document.getElementById(deptSelectId);
+        const assigneeSelect = document.getElementById(assigneeSelectId);
+        const selectedDept = deptSelect.value;
+        Array.from(assigneeSelect.options).forEach(option => {
+            const userDept = option.getAttribute('data-department');
+            if (selectedDept === "" || userDept === selectedDept) {
+                option.style.display = "";
+                option.disabled = false;
+            } else {
+                option.style.display = "none";
+                option.disabled = true;
+                option.selected = false;
+            }
+        });
+    }
+
+    function openEditModal(id, title, description, status, department, assignee_ids, start_date, due_date, project_id, filenames, filepaths) {
+        document.getElementById('edit_title').value = title;
+        document.getElementById('edit_description').value = description;
+        document.getElementById('edit_status').value = status;
+        document.getElementById('edit_department').value = department || "";
+
+        const select = document.getElementById('edit_assignee_ids');
+        Array.from(select.options).forEach(o => o.selected = false);
+        if (assignee_ids) {
+            Array.from(select.options).forEach(option => {
+                option.selected = assignee_ids.includes(parseInt(option.value));
+            });
+        }
+
+        document.getElementById('edit_start_date').value = start_date || "";
+        document.getElementById('edit_due_date').value = due_date || "";
+        document.getElementById('edit_project_id').value = project_id;
+
+        document.getElementById('editTaskForm').action = "/tasks/" + id + "/update";
+        document.getElementById('taskUploadForm').action = "/tasks/" + id + "/upload";
+        document.getElementById('deleteTaskForm').action = "/tasks/" + id + "/delete";
+
+        const fileList = document.getElementById('taskFileList');
+        fileList.innerHTML = '';
+        if (filenames && filenames.length > 0) {
+            filenames.forEach((name, index) => {
+                const li = document.createElement('li');
+                const link = document.createElement('a');
+                link.href = filepaths[index];
+                link.textContent = name;
+                link.target = "_blank";
+                link.className = "text-blue-600 hover:underline flex items-center";
+                link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
+                li.appendChild(link);
+                fileList.appendChild(li);
+            });
+        } else {
+            fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
+        }
+
+        document.getElementById('editTaskModal').classList.remove('hidden');
+    }
+
+    function deleteTask() {
+        if (confirm('정말 이 업무를 삭제하시겠습니까?')) {
+            document.getElementById('deleteTaskForm').submit();
+        }
+    }
+</script>
 {% endblock %}

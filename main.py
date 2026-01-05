@@ -891,12 +891,17 @@ def get_project_tasks(project_id: int, db: Session = Depends(get_db), current_us
         data.append({
             "id": t.id,
             "title": t.title,
+            "description": t.description or "",
             "status": t.status,
+            "department": t.department or "",
             "assignees": assignees,
+            "assignee_ids": [u.id for u in t.assignees], 
             "assignees_str": ", ".join(assignees),
             "start_date": t.start_date.strftime("%Y-%m-%d") if t.start_date else None,
             "due_date": t.due_date.strftime("%Y-%m-%d") if t.due_date else None,
-            "priority": "Normal" # Priority field doesn't exist yet, defaulting
+            "project_id": t.project_id,
+            "filenames": [f.filename for f in t.files],
+            "filepaths": [f.filepath for f in t.files]
         })
         
     return JSONResponse(content=data)
