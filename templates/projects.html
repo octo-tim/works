@@ -1623,23 +1623,40 @@
     let projectTasksCache = {};
 
     function openProjectTaskEdit(id) {
-        const task = projectTasksCache[id];
-        if (!task) return;
+        console.log("openProjectTaskEdit called with ID:", id);
+        try {
+            if (!projectTasksCache) {
+                alert("Error: projectTasksCache is undefined!");
+                return;
+            }
+            const task = projectTasksCache[id];
+            if (!task) {
+                console.error("Task not found in cache for ID:", id);
+                console.log("Current cache keys:", Object.keys(projectTasksCache));
+                // Try to find it manually or fetch it?
+                alert("오류: 업무 데이터를 찾을 수 없습니다. (ID: " + id + ")");
+                return;
+            }
+            console.log("Found task in cache:", task);
 
-        openEditModal(
-            task.id,
-            task.title,
-            task.description,
-            task.status,
-            task.department,
-            task.assignee_ids,
-            task.start_date,
-            task.due_date,
-            task.project_id,
-            task.filenames,
-            task.filepaths,
-            task.progresses
-        );
+            openEditModal(
+                task.id,
+                task.title,
+                task.description,
+                task.status,
+                task.department,
+                task.assignee_ids,
+                task.start_date,
+                task.due_date,
+                task.project_id,
+                task.filenames,
+                task.filepaths,
+                task.progresses
+            );
+        } catch (e) {
+            console.error("Error in openProjectTaskEdit:", e);
+            alert("업무 수정 창을 여는 중 오류가 발생했습니다: " + e.message);
+        }
     }
 
     function filterAssignees(deptSelectId, assigneeSelectId) {
