@@ -1587,6 +1587,8 @@ class AIHelper:
     def analyze_meeting_minutes(self, text, user_context):
         prompt = f"""
         You are a professional meeting secretary. Analyze the following meeting notes.
+        
+        IMPORTANT: All output (summary, decisions, risks, tasks) MUST be in KOREAN (한국어).
 
         Current Date: {date.today()}
         Participants Context: {user_context}
@@ -1594,10 +1596,10 @@ class AIHelper:
         "{text}"
 
         Tasks:
-        1. Summarize the meeting (5 bullet points max).
-        2. Extract key decisions (Decisions).
-        3. Identify risks or dependencies (Risks).
-        4. Extract actionable tasks (Action Items). Try to match assignees from the context.
+        1. Summarize the meeting (5 bullet points max) in Korean.
+        2. Extract key decisions (Decisions) in Korean.
+        3. Identify risks or dependencies (Risks) in Korean.
+        4. Extract actionable tasks (Action Items) in Korean. Try to match assignees from the context.
 
         Output Schema (JSON):
         {{
