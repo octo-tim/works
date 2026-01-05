@@ -892,14 +892,9 @@
         const goal = document.getElementById('ai_goal').value;
         const pType = document.getElementById('ai_type').value;
         const scope = document.getElementById('ai_scope').value;
-        // Stakeholders: get all checked values
         const stakeholderCbs = document.querySelectorAll('.ai-stakeholder:checked');
         const stakeholders = Array.from(stakeholderCbs).map(cb => cb.value).join(', ');
 
-        // Use project end date as deadline if available (find input in the same form)
-        // Since modal is unique, we can grab it by name from the newProjectModal form
-        // But there might be duplicate names if edit form has same names.
-        // We are inside newProjectModal, so let's scope it.
         const modal = document.getElementById('newProjectModal');
         let deadline = modal.querySelector('input[name="end_date"]').value;
 
@@ -915,9 +910,7 @@
 
         fetch('/api/projects/ai-wbs', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 goal: goal,
                 deadline: deadline,
@@ -929,10 +922,14 @@
             .then(response => response.json())
             .then(data => {
                 if (data.detail) throw new Error(data.detail);
-                if (data.tasks) {
-                    displayWBSTasks(data.tasks);
+
+                // Phase based check
+                if (data.phases) {
+                    displayWBSPhases(data.phases);
+                } else if (data.tasks) {
+                    displayWBSTasks(data.tasks); // Fallback
                 } else {
-                    throw new Error("No tasks returned");
+                    throw new Error("No phases/tasks returned");
                 }
             })
             .catch(error => {
@@ -945,43 +942,135 @@
             });
     }
 
-    let currentSuggestedTasks = [];
+    let globalAIPhases = []; // Store full hierarchical data for phases
+    let currentSuggestedTasks = []; // Legacy flat list
 
-    function displayWBSTasks(tasks) {
-        currentSuggestedTasks = tasks;
+    // New Hierarchical Display
+    function displayWBSPhases(phases) {
+        globalAIPhases = phases;
         const listEl = document.getElementById('ai_task_list');
         listEl.innerHTML = '';
 
-        tasks.forEach((task, index) => {
-            const div = document.createElement('div');
-            div.className = "flex items-start gap-2 p-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200";
-
-            div.innerHTML = `
-                <input type="checkbox" id="ai_task_${index}" class="mt-1 ai-task-cb" checked onchange="updateSuggestedTasksInput()">
-                <label for="ai_task_${index}" class="text-sm cursor-pointer flex-1">
-                    <div class="font-bold text-gray-800">${task.title}</div>
-                    <div class="text-xs text-gray-500">${task.description}</div>
-                    <div class="text-xs text-indigo-500 mt-1">예상 기간: ${task.estimated_days}일</div>
-                </label>
+        phases.forEach((phase, pIndex) => {
+            // Phase Header
+            const phaseDiv = document.createElement('div');
+            phaseDiv.className = "mb-4 last:mb-0";
+            phaseDiv.innerHTML = `
+                <div class="flex items-center gap-2 mb-2 sticky top-0 bg-white z-10 py-1">
+                    <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full ring-1 ring-indigo-200">
+                        ${phase.phase_name}
+                    </span>
+                    <div class="h-px bg-gray-200 flex-1"></div>
+                </div>
+                <div class="space-y-2 pl-1" id="phase_tasks_${pIndex}">
+                    <!-- Tasks go here -->
+                </div>
             `;
-            listEl.appendChild(div);
+
+            const tasksContainer = phaseDiv.querySelector(`#phase_tasks_${pIndex}`);
+
+            phase.tasks.forEach((task, tIndex) => {
+                const isCore = task.is_core !== false;
+                const taskDiv = document.createElement('div');
+                taskDiv.className = "flex items-start gap-3 p-2.5 bg-gray-50 hover:bg-white rounded-lg border border-gray-200 shadow-sm transition-all group";
+
+                // Checklist HTML
+                let checklistHtml = '';
+                if (task.checklist && task.checklist.length > 0) {
+                    checklistHtml = `<ul class="text-[11px] text-gray-500 mt-1.5 space-y-0.5 list-disc pl-3 opacity-90">
+                        ${task.checklist.map(item => `<li>${item}</li>`).join('')}
+                     </ul>`;
+                }
+
+                taskDiv.innerHTML = `
+                    <div class="pt-0.5">
+                         <input type="checkbox" id="ai_task_${pIndex}_${tIndex}" 
+                            class="ai-task-cb w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" 
+                            data-phase="${phase.phase_name}" 
+                            data-pindex="${pIndex}" 
+                            data-tindex="${tIndex}"
+                            ${isCore ? 'checked' : ''} 
+                            data-is-core="${isCore}"
+                            onchange="updateSuggestedTasksInput()">
+                    </div>
+                    <label for="ai_task_${pIndex}_${tIndex}" class="cursor-pointer flex-1 user-select-none">
+                        <div class="flex justify-between items-start">
+                            <span class="font-bold text-gray-800 text-sm group-hover:text-indigo-700 transition-colors">${task.title}</span>
+                            <span class="text-[10px] bg-white border border-gray-200 text-gray-400 px-1.5 rounded">${task.estimated_days}일</span>
+                        </div>
+                         ${checklistHtml}
+                    </label>
+                `;
+                tasksContainer.appendChild(taskDiv);
+            });
+
+            listEl.appendChild(phaseDiv);
         });
 
         document.getElementById('ai_result_area').classList.remove('hidden');
         updateSuggestedTasksInput();
     }
 
+    // Helper: Select All
+    function selectAllAI(checked) {
+        const cbs = document.querySelectorAll('.ai-task-cb');
+        cbs.forEach(cb => cb.checked = checked);
+        updateSuggestedTasksInput();
+    }
+
+    // Helper: Select Core Only
+    function selectCoreAI() {
+        const cbs = document.querySelectorAll('.ai-task-cb');
+        cbs.forEach(cb => {
+            // Only check if it's core, otherwise uncheck
+            const isCore = cb.getAttribute('data-is-core') === 'true';
+            cb.checked = isCore; // If core=true, checked. If core=false, unchecked.
+        });
+        updateSuggestedTasksInput();
+    }
+
     function updateSuggestedTasksInput() {
-        const checkboxes = document.querySelectorAll('.ai-task-cb');
+        const checkBoxes = document.querySelectorAll('.ai-task-cb');
         const selectedTasks = [];
 
-        checkboxes.forEach((cb, index) => {
+        checkBoxes.forEach((cb) => {
             if (cb.checked) {
-                selectedTasks.push(currentSuggestedTasks[index]);
+                // Determine if it came from phase or flat list
+                const pIndex = cb.getAttribute('data-pindex');
+                const tIndex = cb.getAttribute('data-tindex');
+
+                if (pIndex !== null && tIndex !== null && globalAIPhases.length > 0) {
+                    // Hierarchical
+                    const phaseName = cb.getAttribute('data-phase');
+                    const taskObj = globalAIPhases[pIndex].tasks[tIndex];
+
+                    let description = `[${phaseName}] ${taskObj.description || ''}`;
+                    if (taskObj.checklist && taskObj.checklist.length > 0) {
+                        description += `\n\n✅ 체크리스트:\n` + taskObj.checklist.map(s => `- ${s}`).join('\n');
+                    }
+
+                    selectedTasks.push({
+                        title: taskObj.title,
+                        description: description,
+                        estimated_days: taskObj.estimated_days,
+                        is_milestone: taskObj.is_milestone
+                    });
+                } else {
+                    // Flat (Legacy/Fallback)
+                    const index = cb.id.replace('ai_task_', '');
+                    selectedTasks.push(currentSuggestedTasks[index]);
+                }
             }
         });
 
         document.getElementById('suggested_tasks_input').value = JSON.stringify(selectedTasks);
+    }
+
+    // Legacy support
+    function displayWBSTasks(tasks) {
+        currentSuggestedTasks = tasks;
+        // Mock a phase structure for compatibility
+        displayWBSPhases([{ phase_name: "제안된 업무", tasks: tasks }]);
     }
 </script>
 {% endblock %}
@@ -1058,9 +1147,19 @@
                     </button>
 
                     <!-- Result Area -->
-                    <div id="ai_result_area" class="hidden mt-3 bg-white rounded border p-3">
-                        <p class="text-xs text-gray-500 mb-2">추가할 업무를 선택하세요:</p>
-                        <div id="ai_task_list" class="space-y-2 max-h-40 overflow-y-auto">
+                    <div id="ai_result_area"
+                        class="hidden mt-3 bg-white rounded border p-3 border-l-4 border-l-indigo-500">
+                        <div class="flex justify-between items-center mb-3">
+                            <p class="text-xs font-bold text-gray-700">추가할 업무 선택</p>
+                            <div class="text-xs space-x-1">
+                                <button type="button" onclick="selectAllAI(true)"
+                                    class="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600">전체 선택</button>
+                                <button type="button" onclick="selectCoreAI()"
+                                    class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 rounded text-indigo-600 font-bold">핵심만
+                                    선택</button>
+                            </div>
+                        </div>
+                        <div id="ai_task_list" class="space-y-4 max-h-60 overflow-y-auto pr-1">
                             <!-- Tasks populated here -->
                         </div>
                     </div>

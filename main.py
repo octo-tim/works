@@ -1568,6 +1568,7 @@ class AIHelper:
         return json.loads(response.text)
 
 
+
     def generate_wbs_json(self, goal, deadline, p_type, scope, stakeholders):
         prompt = f"""
         You are a project management expert. Create a WBS (Work Breakdown Structure) for a new project.
@@ -1581,18 +1582,24 @@ class AIHelper:
         - Current Date: {date.today()}
 
         Task:
-        - Break down the project into 5-10 key executable tasks.
-        - Tasks should be chronological.
-        - Include specific deliverables where possible.
+        - Break down the project into standard phases: Planning, Preparation, Execution, Verification/Launch, Operation/Review.
+        - Create specific tasks for each phase.
+        - For each task, include a short checklist of sub-items.
         
         Output Schema (JSON):
         {{
-            "tasks": [
+            "phases": [
                 {{
-                    "title": "string (Action-oriented task name)",
-                    "description": "string (Brief description of what to do)",
-                    "estimated_days": int (rough duration),
-                    "is_milestone": boolean
+                    "phase_name": "string (e.g., Planning, Execution)",
+                    "tasks": [
+                        {{
+                            "title": "string (Action-oriented task name)",
+                            "checklist": ["string", "string"],
+                            "estimated_days": int,
+                            "is_milestone": boolean,
+                            "is_core": boolean (true if essential, false if optional)
+                        }}
+                    ]
                 }}
             ]
         }}
