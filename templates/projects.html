@@ -1660,53 +1660,69 @@
     }
 
     function openEditModal(id, title, description, status, department, assignee_ids, start_date, due_date, project_id, filenames, filepaths, progresses) {
-        document.getElementById('edit_title').value = title;
-        document.getElementById('edit_description').value = description;
-        document.getElementById('edit_status').value = status;
-        document.getElementById('edit_department').value = department || "";
+        console.log("openEditModal called for Task ID:", id);
+
+        // Helper to safely set value
+        const setValue = (elementId, value) => {
+            const el = document.getElementById(elementId);
+            if (el) el.value = value || "";
+            else console.warn(`Element ${elementId} not found`);
+        };
+
+        setValue('edit_title', title);
+        setValue('edit_description', description);
+        setValue('edit_status', status);
+        setValue('edit_department', department);
 
         const select = document.getElementById('edit_assignee_ids');
-        Array.from(select.options).forEach(o => o.selected = false);
-        if (assignee_ids) {
-            Array.from(select.options).forEach(option => {
-                option.selected = assignee_ids.includes(parseInt(option.value));
-            });
+        if (select) {
+            Array.from(select.options).forEach(o => o.selected = false);
+            if (assignee_ids) {
+                Array.from(select.options).forEach(option => {
+                    option.selected = assignee_ids.includes(parseInt(option.value));
+                });
+            }
         }
 
-        document.getElementById('edit_start_date').value = start_date || "";
-        document.getElementById('edit_due_date').value = due_date || "";
-        document.getElementById('edit_project_id').value = project_id;
+        setValue('edit_start_date', start_date);
+        setValue('edit_due_date', due_date);
+        setValue('edit_project_id', project_id);
 
-        document.getElementById('editTaskForm').action = "/tasks/" + id + "/update";
-        document.getElementById('taskUploadForm').action = "/tasks/" + id + "/upload";
-        document.getElementById('deleteTaskForm').action = "/tasks/" + id + "/delete";
+        const editForm = document.getElementById('editTaskForm');
+        if (editForm) editForm.action = "/tasks/" + id + "/update";
 
+        const uploadForm = document.getElementById('taskUploadForm');
+        if (uploadForm) uploadForm.action = "/tasks/" + id + "/upload";
+
+        const deleteForm = document.getElementById('deleteTaskForm');
+        if (deleteForm) deleteForm.action = "/tasks/" + id + "/delete";
+
+        // File List
         const fileList = document.getElementById('taskFileList');
-        fileList.innerHTML = '';
-        if (filenames && filenames.length > 0) {
-            filenames.forEach((name, index) => {
-                const li = document.createElement('li');
-                const link = document.createElement('a');
-                link.href = filepaths[index];
-                link.textContent = name;
-                link.target = "_blank";
-                link.className = "text-blue-600 hover:underline flex items-center";
-                link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
-                li.appendChild(link);
-                fileList.appendChild(li);
-            });
-        } else {
-            fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
+        if (fileList) {
+            fileList.innerHTML = '';
+            if (filenames && filenames.length > 0) {
+                filenames.forEach((name, index) => {
+                    const li = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.href = filepaths[index];
+                    link.textContent = name;
+                    link.target = "_blank";
+                    link.className = "text-blue-600 hover:underline flex items-center";
+                    link.innerHTML = `<span class="mr-2">📄</span> ${name}`;
+                    li.appendChild(link);
+                    fileList.appendChild(li);
+                });
+            } else {
+                fileList.innerHTML = '<li class="text-gray-400 italic">첨부된 파일이 없습니다.</li>';
+            }
         }
 
-        document.getElementById('editTaskModal').classList.remove('hidden');
-
-        // Set default progress date to today
+        // Progress Date Default
         const today = new Date().toISOString().split('T')[0];
-        const dateInput = document.getElementById('edit_progress_date');
-        if (dateInput) dateInput.value = today;
+        setValue('edit_progress_date', today);
 
-        // Populate Progress History
+        // Progress History
         const progressList = document.getElementById('progressHistoryList');
         if (progressList) {
             progressList.innerHTML = '';
@@ -1727,6 +1743,37 @@
                 progressList.innerHTML = '<p class="text-gray-400 text-sm italic">이력이 없습니다.</p>';
             }
         }
+
+        // Show Modal with Robust Logic
+        let modal = document.getElementById('editTaskModal');
+        if (!modal) {
+            console.error("editTaskModal not found");
+            alert("수정 팝업을 찾을 수 없습니다.");
+            return;
+        }
+
+        // Move to body if needed
+        if (modal.parentElement !== document.body) {
+            console.log("Moving editTaskModal to body");
+            const modalClone = modal.cloneNode(true);
+            modal.remove();
+            document.body.appendChild(modalClone);
+            modal = document.getElementById('editTaskModal');
+
+            // Re-attach event listeners if needed (form actions are simple attributes, so they persist)
+            // But if there were specific JS listeners, they might be lost. 
+            // Fortunately this modal mostly uses inline onclick or form attributes set above.
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        // Force Styles
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.setProperty('z-index', '20000', 'important'); // Higher than Project List (10000)
+        modal.style.setProperty('visibility', 'visible', 'important');
+        modal.style.setProperty('opacity', '1', 'important');
+        modal.style.setProperty('background-color', 'rgba(0, 0, 0, 0.5)', 'important');
     }
 
     function deleteTask() {
