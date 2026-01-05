@@ -34,7 +34,10 @@
                             class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-blue-600 bg-blue-50 rounded-full mb-2">
                             {{ t.category }}
                         </span>
-                        <h3 class="text-lg font-bold text-gray-800 leading-tight">{{ t.name }}</h3>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('custom_{{ t.id }}')">
+                            {{ t.name }}
+                        </h3>
                     </div>
 
                     <p class="text-gray-600 text-sm mb-6 flex-grow">{{ t.description }}</p>
@@ -46,9 +49,9 @@
                          We'll use a small script to render it or just simple "View Details" logic later. 
                          Wait, I can parse it in the loop if I add a template filter, OR I can just skip the list preview for now. 
                          Let's try to pass parsed data from backend next time. For now, just basic card. -->
-                    <button
+                    <button onclick="openDetailModal('custom_{{ t.id }}')"
                         class="mt-auto w-full bg-blue-50 text-blue-600 text-sm font-bold py-2 rounded-lg hover:bg-blue-100 transition">
-                        상세 보기 (준비중)
+                        상세 보기
                     </button>
                 </div>
                 {% endfor %}
@@ -73,7 +76,10 @@
                             class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
                             {{ t.category }}
                         </span>
-                        <h3 class="text-lg font-bold text-gray-800 leading-tight">{{ t.name }}</h3>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('{{ key }}')">
+                            {{ t.name }}
+                        </h3>
                     </div>
 
                     <p class="text-gray-600 text-sm mb-6 flex-grow">{{ t.description }}</p>
@@ -282,4 +288,134 @@
         }
     }
 </script>
-{% endblock %}
+
+<!-- Template Detail Modal -->
+<div id="detailModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
+    style="z-index: 60;">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-0 flex flex-col max-h-[85vh]">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+            <div>
+                <span id="detailCategory"
+                    class="inline-block px-2 py-1 text-[10px] font-bold tracking-wide text-gray-500 bg-white border border-gray-200 rounded-full mb-1">
+                    CATEGORY
+                </span>
+                <h3 id="detailName" class="text-xl font-bold text-gray-800">
+                    Template Name
+                </h3>
+            </div>
+            <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+            <p id="detailDescription"
+                class="text-gray-600 mb-6 bg-blue-50/50 p-4 rounded-lg border border-blue-50/50 text-sm">
+                Description goes here...
+            </p>
+
+            <div id="detailContent" class="space-y-6">
+                <!-- Phases and Tasks will be rendered here -->
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end rounded-b-xl">
+            <button onclick="closeDetailModal()"
+                class="bg-white border border-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg hover:bg-gray-50 transition shadow-sm">
+                닫기
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Construct Grid Data for Static and Custom Templates
+    const templateData = {};
+
+    {% for key, t in templates.items() %}
+    templateData["{{ key }}"] = {{ t | tojson }};
+    {% endfor %}
+
+    {% if custom_templates %}
+    {% for t in custom_templates %}
+    try {
+        templateData["custom_{{ t.id }}"] = {
+            "name": "{{ t.name }}",
+            "category": "{{ t.category }}",
+            "description": "{{ t.description }}",
+            "phases": JSON.parse(`{{ t.content_json | safe }}`)
+        };
+    } catch (e) {
+        console.error("Failed to parse custom template {{ t.id }}", e);
+    }
+    {% endfor %}
+    {% endif %}
+
+    function openDetailModal(id) {
+        const data = templateData[id];
+        if (!data) return;
+
+        document.getElementById('detailCategory').textContent = data.category;
+        document.getElementById('detailName').textContent = data.name;
+        document.getElementById('detailDescription').textContent = data.description;
+
+        const contentDiv = document.getElementById('detailContent');
+        let html = '';
+
+        if (data.phases && Array.isArray(data.phases)) {
+            data.phases.forEach((phase, idx) => {
+                html += `
+                    <div class="mb-6 last:mb-0">
+                        <h4 class="font-bold text-gray-800 text-base mb-3 flex items-center">
+                            <span class="bg-gray-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">${idx + 1}</span>
+                            ${phase.phase_name}
+                        </h4>
+                        <div class="ml-8 space-y-3">
+                            ${phase.tasks.map(t => `
+                                <div class="bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-300 transition-colors">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <h5 class="font-bold text-sm text-blue-700">${t.title}</h5>
+                                        <span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                                            ${t.estimated_days}일
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-gray-600 mb-2">${t.description}</p>
+                                    ${t.checklist && t.checklist.length > 0 ? `
+                                        <div class="bg-gray-50 rounded p-2">
+                                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Checklist</p>
+                                            <ul class="space-y-1">
+                                                ${t.checklist.map(item => `
+                                                    <li class="flex items-center text-xs text-gray-500">
+                                                        <span class="w-1 h-1 bg-gray-400 rounded-full mr-2"></span>
+                                                        ${item}
+                                                    </li>
+                                                `).join('')}
+                                            </ul>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        contentDiv.innerHTML = html;
+
+        const modal = document.getElementById('detailModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeDetailModal() {
+        const modal = document.getElementById('detailModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    {% endblock %}

@@ -485,7 +485,7 @@ def update_monthly_performance(request: Request, year: int = Form(...), month: i
 
 @app.get("/octovision", response_class=HTMLResponse)
 def read_octovision(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """옥토비전 페이지"""
+    """목표관리 페이지"""
     if not current_user:
         return RedirectResponse(url="/login")
     
