@@ -1720,13 +1720,6 @@ class AIHelper:
         response = self.model.generate_content(prompt)
         return json.loads(response.text)
 
-                if is_rate_limit and attempt < max_retries - 1:
-                    wait_time = base_delay * (2 ** attempt)
-                    print(f"AI Rate Limit hit. Retrying in {wait_time}s... (Attempt {attempt+1}/{max_retries})")
-                    import time
-                    time.sleep(wait_time)
-                else:
-                    raise e
 
 @app.post("/api/projects/ai-wbs")
 async def generate_project_wbs(
@@ -1802,13 +1795,6 @@ async def create_work_template(
     
     return RedirectResponse(url="/work-templates", status_code=303)
 
-        detail = f"AI Error: {str(e)}"
-        
-        if "429" in str(e) or "ResourceExhausted" in str(e):
-            status_code = 503
-            detail = "AI 서비스 사용량이 많아 잠시 후 다시 시도해주세요. (Rate Limit)"
-            
-        raise HTTPException(status_code=status_code, detail=detail)
 
 
 
