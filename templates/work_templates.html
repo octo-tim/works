@@ -348,9 +348,10 @@
     {% for t in custom_templates %}
     try {
         templateData["custom_{{ t.id }}"] = {
-            "name": {{ t.name | tojson }},
-            "category": {{ t.category | tojson }},
-            "description": {{ t.description | tojson }},
+            "name": {{ t.name | tojson }
+    },
+    "category": { { t.category | tojson } },
+    "description": { { t.description | tojson } },
     "phases": JSON.parse({{ t.content_json | tojson }})
         };
     } catch (e) {
@@ -360,34 +361,41 @@
     {% endif %}
 
     function openDetailModal(id) {
-        const data = templateData[id];
-        if (!data) return;
-
-        document.getElementById('detailCategory').textContent = data.category;
-        document.getElementById('detailName').textContent = data.name;
-        document.getElementById('detailDescription').textContent = data.description;
-
-        const contentDiv = document.getElementById('detailContent');
-        let html = '';
-
-        let phases = data.phases;
-        // Normalize phases data
-        if (typeof phases === 'string') {
-            try {
-                phases = JSON.parse(phases);
-            } catch (e) {
-                console.error("Error parsing phases JSON", e);
-                phases = [];
+        console.log("Attempting to open modal for:", id);
+        try {
+            const data = templateData[id];
+            if (!data) {
+                console.error("No data found for id:", id);
+                alert("템플릿 데이터를 찾을 수 없습니다: " + id);
+                return;
             }
-        }
-        // Handle { "phases": [...] } wrapper structure
-        if (phases && !Array.isArray(phases) && phases.phases && Array.isArray(phases.phases)) {
-            phases = phases.phases;
-        }
+            console.log("Template Data:", data);
 
-        if (phases && Array.isArray(phases)) {
-            phases.forEach((phase, idx) => {
-                html += `
+            document.getElementById('detailCategory').textContent = data.category;
+            document.getElementById('detailName').textContent = data.name;
+            document.getElementById('detailDescription').textContent = data.description;
+
+            const contentDiv = document.getElementById('detailContent');
+            let html = '';
+
+            let phases = data.phases;
+            // Normalize phases data
+            if (typeof phases === 'string') {
+                try {
+                    phases = JSON.parse(phases);
+                } catch (e) {
+                    console.error("Error parsing phases JSON", e);
+                    phases = [];
+                }
+            }
+            // Handle { "phases": [...] } wrapper structure
+            if (phases && !Array.isArray(phases) && phases.phases && Array.isArray(phases.phases)) {
+                phases = phases.phases;
+            }
+
+            if (phases && Array.isArray(phases)) {
+                phases.forEach((phase, idx) => {
+                    html += `
                     <div class="mb-6 last:mb-0">
                         <h4 class="font-bold text-gray-800 text-base mb-3 flex items-center">
                             <span class="bg-gray-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">${idx + 1}</span>
@@ -421,21 +429,21 @@
                         </div>
                     </div>
                 `;
-            });
+                });
+            }
+
+            contentDiv.innerHTML = html;
+
+            const modal = document.getElementById('detailModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
-        contentDiv.innerHTML = html;
-
-        const modal = document.getElementById('detailModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
-
     function closeDetailModal() {
-        const modal = document.getElementById('detailModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
+            const modal = document.getElementById('detailModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
 
 
-{% endblock %}
+        {% endblock %}
