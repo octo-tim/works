@@ -749,6 +749,7 @@ def create_project(name: str = Form(...), description: str = Form(None),
                    status: str = Form(...),
                    department: str = Form(None),
                    assignee_ids: List[int] = Form([]),
+                   suggested_tasks: str = Form(None), # JSON string of tasks
                    db: Session = Depends(get_db),
                    current_user: models.User = Depends(get_current_user)):
     """프로젝트 생성"""
@@ -781,6 +782,34 @@ def create_project(name: str = Form(...), description: str = Form(None),
         users = db.query(models.User).filter(models.User.id.in_(assignee_ids)).all()
         new_project.assignees = users
         db.commit()
+
+    # AI 제안 업무 생성
+    if suggested_tasks:
+        try:
+            tasks_list = json.loads(suggested_tasks)
+            for t_data in tasks_list:
+                if not t_data.get('title'): continue
+                
+                # 날짜 계산: 프로젝트 시작일 기준 (없으면 오늘)
+                p_start = s_date if s_date else date.today()
+                est_days = int(t_data.get('estimated_days', 1))
+                t_due = p_start + timedelta(days=est_days)
+                
+                new_task = models.Task(
+                    title=t_data['title'],
+                    description=t_data.get('description'),
+                    status="Todo",
+                    start_date=p_start,
+                    due_date=t_due,
+                    project_id=new_project.id,
+                    department=department or current_user.department,
+                    creator_id=current_user.id
+                )
+                db.add(new_task)
+            db.commit()
+        except Exception as e:
+            print(f"Error creating suggested tasks: {e}")
+
     return RedirectResponse(url="/projects", status_code=303)
 
 
@@ -1537,6 +1566,64 @@ class AIHelper:
         """
         response = self.model.generate_content(prompt)
         return json.loads(response.text)
+
+    def generate_wbs_json(self, goal, deadline, p_type, scope, stakeholders):
+        prompt = f"""
+        You are a project management expert. Create a WBS (Work Breakdown Structure) for a new project.
+        
+        Project Details:
+        - Goal/Deliverables: {goal}
+        - Deadline: {deadline}
+        - Type: {p_type}
+        - Scope: {scope}
+        - Stakeholders: {stakeholders}
+        - Current Date: {date.today()}
+
+        Task:
+        - Break down the project into 5-10 key executable tasks.
+        - Tasks should be chronological.
+        - Include specific deliverables where possible.
+        
+        Output Schema (JSON):
+        {{
+            "tasks": [
+                {{
+                    "title": "string (Action-oriented task name)",
+                    "description": "string (Brief description of what to do)",
+                    "estimated_days": int (rough duration),
+                    "is_milestone": boolean
+                }}
+            ]
+        }}
+        """
+        response = self.model.generate_content(prompt)
+        return json.loads(response.text)
+
+@app.post("/api/projects/ai-wbs")
+async def generate_project_wbs(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """AI Project WBS Generation Endpoint"""
+    try:
+        data = await request.json()
+        goal = data.get("goal")
+        deadline = data.get("deadline")
+        p_type = data.get("type")
+        scope = data.get("scope")
+        stakeholders = data.get("stakeholders")
+        
+        if not goal:
+            raise HTTPException(status_code=400, detail="Project goal is required")
+            
+        ai = AIHelper()
+        result = ai.generate_wbs_json(goal, deadline, p_type, scope, stakeholders)
+        return result
+    except Exception as e:
+        print(f"AI WBS Error: {e}")
+        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
+
 
 @app.post("/api/minutes/ai-analyze")
 async def analyze_minutes(

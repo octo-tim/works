@@ -886,6 +886,103 @@
             document.body.style.overflow = ''; // Restore scrolling
         }
     }
+
+    // AI WBS Generation Logic
+    function generateWBS() {
+        const goal = document.getElementById('ai_goal').value;
+        const pType = document.getElementById('ai_type').value;
+        const scope = document.getElementById('ai_scope').value;
+        // Stakeholders: get all checked values
+        const stakeholderCbs = document.querySelectorAll('.ai-stakeholder:checked');
+        const stakeholders = Array.from(stakeholderCbs).map(cb => cb.value).join(', ');
+
+        // Use project end date as deadline if available (find input in the same form)
+        // Since modal is unique, we can grab it by name from the newProjectModal form
+        // But there might be duplicate names if edit form has same names.
+        // We are inside newProjectModal, so let's scope it.
+        const modal = document.getElementById('newProjectModal');
+        let deadline = modal.querySelector('input[name="end_date"]').value;
+
+        if (!goal) {
+            alert("프로젝트 목표/산출물을 입력해주세요.");
+            return;
+        }
+
+        const btn = document.getElementById('btnGenerateWBS');
+        const originalText = btn.textContent;
+        btn.textContent = "생성 중...";
+        btn.disabled = true;
+
+        fetch('/api/projects/ai-wbs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                goal: goal,
+                deadline: deadline,
+                type: pType,
+                scope: scope,
+                stakeholders: stakeholders
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.detail) throw new Error(data.detail);
+                if (data.tasks) {
+                    displayWBSTasks(data.tasks);
+                } else {
+                    throw new Error("No tasks returned");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('업무 제안 생성 중 오류가 발생했습니다: ' + error.message);
+            })
+            .finally(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            });
+    }
+
+    let currentSuggestedTasks = [];
+
+    function displayWBSTasks(tasks) {
+        currentSuggestedTasks = tasks;
+        const listEl = document.getElementById('ai_task_list');
+        listEl.innerHTML = '';
+
+        tasks.forEach((task, index) => {
+            const div = document.createElement('div');
+            div.className = "flex items-start gap-2 p-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200";
+
+            div.innerHTML = `
+                <input type="checkbox" id="ai_task_${index}" class="mt-1 ai-task-cb" checked onchange="updateSuggestedTasksInput()">
+                <label for="ai_task_${index}" class="text-sm cursor-pointer flex-1">
+                    <div class="font-bold text-gray-800">${task.title}</div>
+                    <div class="text-xs text-gray-500">${task.description}</div>
+                    <div class="text-xs text-indigo-500 mt-1">예상 기간: ${task.estimated_days}일</div>
+                </label>
+            `;
+            listEl.appendChild(div);
+        });
+
+        document.getElementById('ai_result_area').classList.remove('hidden');
+        updateSuggestedTasksInput();
+    }
+
+    function updateSuggestedTasksInput() {
+        const checkboxes = document.querySelectorAll('.ai-task-cb');
+        const selectedTasks = [];
+
+        checkboxes.forEach((cb, index) => {
+            if (cb.checked) {
+                selectedTasks.push(currentSuggestedTasks[index]);
+            }
+        });
+
+        document.getElementById('suggested_tasks_input').value = JSON.stringify(selectedTasks);
+    }
 </script>
 {% endblock %}
 
@@ -911,6 +1008,66 @@
                 <textarea name="description" rows="2"
                     class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
             </div>
+
+            <!-- AI Task Suggestion Section -->
+            <div class="border border-indigo-100 bg-indigo-50 rounded-lg p-4 mt-2 mb-2">
+                <h4 class="font-bold text-indigo-800 text-sm mb-2 flex items-center">
+                    <span class="mr-1">✨</span> AI 업무 리스트 자동 제안
+                </h4>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">프로젝트 목표/산출물</label>
+                        <textarea id="ai_goal" rows="2" placeholder="예: 일정관리 웹 1차 배포, 디자인 리뉴얼"
+                            class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">유형</label>
+                            <select id="ai_type" class="w-full border rounded-lg px-2 py-1.5 text-sm">
+                                <option value="개발">개발</option>
+                                <option value="마케팅">마케팅</option>
+                                <option value="유통">유통</option>
+                                <option value="행사">행사</option>
+                                <option value="영업">영업</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">범위</label>
+                            <select id="ai_scope" class="w-full border rounded-lg px-2 py-1.5 text-sm">
+                                <option value="표준">표준</option>
+                                <option value="간단">간단</option>
+                                <option value="확장">확장</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="block text-xs font-semibold text-gray-600 mb-1">이해관계자</span>
+                        <div class="flex gap-3 text-sm">
+                            <label class="flex items-center"><input type="checkbox" class="mr-1 ai-stakeholder"
+                                    value="고객">고객</label>
+                            <label class="flex items-center"><input type="checkbox" class="mr-1 ai-stakeholder"
+                                    value="내부" checked>내부</label>
+                            <label class="flex items-center"><input type="checkbox" class="mr-1 ai-stakeholder"
+                                    value="벤더">벤더</label>
+                        </div>
+                    </div>
+                    <button type="button" onclick="generateWBS()" id="btnGenerateWBS"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2 rounded-lg transition flex justify-center items-center">
+                        리스트 제안받기
+                    </button>
+
+                    <!-- Result Area -->
+                    <div id="ai_result_area" class="hidden mt-3 bg-white rounded border p-3">
+                        <p class="text-xs text-gray-500 mb-2">추가할 업무를 선택하세요:</p>
+                        <div id="ai_task_list" class="space-y-2 max-h-40 overflow-y-auto">
+                            <!-- Tasks populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" name="suggested_tasks" id="suggested_tasks_input">
+
             <div class="grid grid-cols-2 gap-4">
 
                 <div>
