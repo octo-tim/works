@@ -348,10 +348,9 @@
     {% for t in custom_templates %}
     try {
         templateData["custom_{{ t.id }}"] = {
-            "name": {{ t.name | tojson }
-    },
-    "category": { { t.category | tojson } },
-    "description": { { t.description | tojson } },
+            "name": {{ t.name | tojson }},
+            "category": {{ t.category | tojson }},
+            "description": {{ t.description | tojson }},
     "phases": JSON.parse({{ t.content_json | tojson }})
         };
     } catch (e) {
@@ -437,13 +436,17 @@
             const modal = document.getElementById('detailModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+        } catch (e) {
+            console.error(e);
+            alert("Error: " + e.message);
         }
+    }
 
     function closeDetailModal() {
-            const modal = document.getElementById('detailModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
+        const modal = document.getElementById('detailModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
 
 
-        {% endblock %}
+    {% endblock %}
