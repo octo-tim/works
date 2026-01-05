@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비즈니스 일정 공유 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100 font-sans text-gray-800 h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <!-- Mobile: Fixed, Z-Index High. Desktop: Static, Flex -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()"
+        class="fixed inset-0 bg-black/50 z-40 hidden md:hidden glass transition-opacity duration-300 opacity-0"></div>
+
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transform -translate-x-full md:translate-x-0 md:static md:flex transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800 text-primary">
+                <a href="/"><img src="/static/logo.png" alt="Octo Works" class="h-8"></a>
+            </h1>
+            <!-- Mobile Close Button -->
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+        <div class="px-6 pt-6 pb-2">
+            
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-2 text-center">
+                <p class="text-sm text-gray-500 mb-2">로그인이 필요합니다</p>
+                <a href="/login"
+                    class="block w-full text-center text-sm bg-blue-600 text-white font-bold rounded py-2 hover:bg-blue-700 transition">
+                    로그인
+                </a>
+            </div>
+            
+        </div>
+        <nav class="flex-1 overflow-y-auto px-3">
+            <ul class="space-y-1">
+                <li>
+                    <a href="/" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
+                        <span class="font-medium">대시보드</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/projects"
+                        class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
+                        <span class="font-medium">프로젝트 관리</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/tasks"
+                        class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
+                        <span class="font-medium">업무관리</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/calendar"
+                        class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
+                        <span class="font-medium">일정공유</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/meeting_minutes"
+                        class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
+                        <span class="font-medium">회의록</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/work-templates"
+                        class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
+                        <span class="font-medium">업무 템플릿</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/octovision"
+                        class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
+                        <span class="font-medium">목표관리</span>
+                    </a>
+                </li>
+
+                
+            </ul>
+        </nav>
+        <div class="p-4 border-t border-gray-100">
+            <p class="text-xs text-center text-gray-400">&copy; 2023 Work Manager</p>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <!-- Mobile Header (Visible only on small screens) -->
+        <header
+            class="bg-white border-b border-gray-200 p-4 md:hidden flex justify-between items-center z-10 sticky top-0">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="text-gray-600 hover:text-blue-600 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+                <h1 class="text-lg font-bold">일정 공유</h1>
+            </div>
+            <div class="w-8"></div>
+        </header>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-auto p-4 md:p-8 bg-gray-50/50">
+            
+<div class="h-full flex flex-col">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">업무 템플릿</h2>
+            <p class="text-gray-600 text-sm">표준화된 업무 프로세스 템플릿 목록입니다.</p>
+        </div>
+        <button onclick="openCreateTemplateModal()"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm text-sm font-medium transition flex items-center">
+            <span class="mr-1">✨</span> AI 템플릿 생성
+        </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto pr-2 pb-6 space-y-8">
+
+        <!-- Custom Templates Section -->
+        
+        <div>
+            <h3 class="font-bold text-gray-700 mb-3 flex items-center">
+                <span class="w-2 h-6 bg-blue-500 rounded-sm mr-2"></span>
+                사용자 정의 템플릿
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-blue-100 p-6 hover:shadow-md transition-shadow flex flex-col h-full relative overflow-hidden">
+                    <div
+                        class="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+                        CUSTOM</div>
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-blue-600 bg-blue-50 rounded-full mb-2">
+                            Cat
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('custom_1')">
+                            Custom 1
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">Desc</p>
+
+                    <!-- We need to parse JSON here for custom templates -->
+                    <!-- Simpler logic: relying on Jinja to allow basic iteration if backend passed objects, but it's a string -->
+                    <!-- For simplicity in this iteration, we'll skip detailed phase list for custom unless we deserialize in backend. 
+                         However, user wants "same content". Backend passed 'custom_templates' model objects. 'content_json' is text.
+                         We'll use a small script to render it or just simple "View Details" logic later. 
+                         Wait, I can parse it in the loop if I add a template filter, OR I can just skip the list preview for now. 
+                         Let's try to pass parsed data from backend next time. For now, just basic card. -->
+                    <button onclick="openDetailModal('custom_1')"
+                        class="mt-auto w-full bg-blue-50 text-blue-600 text-sm font-bold py-2 rounded-lg hover:bg-blue-100 transition">
+                        상세 보기
+                    </button>
+                </div>
+                
+            </div>
+        </div>
+        
+
+        <!-- Standard Templates Section -->
+        <div>
+            
+            <h3 class="font-bold text-gray-700 mb-3 flex items-center">
+                <span class="w-2 h-6 bg-gray-400 rounded-sm mr-2"></span>
+                기본 템플릿
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            A. 유아용품 (Baby Products)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('baby_npd')">
+                            1. 유아용품 신제품 개발 (Stage-Gate)
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">아이디어부터 런칭까지의 Stage-Gate 프로세스 (젖병/유모차 등)</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">Stage 1: 아이디어/기획</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">Stage 2: 사업성/요구사항</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">Stage 3: 개발/샘플</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">Stage 4: 시험/검증</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">Stage 5: 런칭</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            A. 유아용품 (Baby Products)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('baby_kc')">
+                            2. 유아용품 KC 대응 (안전확인/인증)
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">어린이제품 안전 특별법 대응 프로세스</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">준비 (Preparation)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">시험 (Testing)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">인증/신고 (Certification)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">표시 (Labeling)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(1개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            A. 유아용품 (Baby Products)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('baby_sourcing')">
+                            3. ODM/OEM 소싱 & 제조사 선정
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">중국 제조 등 외주 생산 파트너 발굴 및 계약</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">소싱 (Sourcing)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">평가 (Evaluation)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">계약 (Contract)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">양산 (Mass Production)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            A. 유아용품 (Baby Products)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('baby_packaging')">
+                            4. 패키징/라벨/설명서 표준화
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">CS/규정 준수를 위한 패키지 및 동봉물 제작</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">기획 (Planning)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">제작 (Production)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">물류 (Logistics)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(1개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            A. 유아용품 (Baby Products)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('baby_global')">
+                            5. 아마존/글로벌 이커머스 런칭
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">해외 마켓플레이스 입점 및 판매 프로세스</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">준비 (Preparation)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">물류 (Logistics)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">마케팅 (Marketing)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            A. 유아용품 (Baby Products)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('baby_recall')">
+                            6. 리콜/클레임 대응 (품질 이슈)
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">불량/안전 이슈 발생 시 체계적인 대응 절차</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">접수/분석 (Analysis)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">조치 (Action)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            B. 건축자재 (Construction Materials)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('const_import')">
+                            7. 해외 건축자재 수입/총판 론칭
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">해외 브랜드 자재 국내 도입 및 유통망 구축</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">소싱/계약 (Sourcing)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">물류/가격 (Logistics & Pricing)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">영업 준비 (Sales Prep)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            B. 건축자재 (Construction Materials)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('const_specin')">
+                            8. 건축자재 스펙인 (설계/시공 영업)
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">설계 단계에서 자재를 반영시키는 영업 프로세스</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">영업 (Sales)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">제안 (Proposal)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">시공 (Construction)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(1개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            B. 건축자재 (Construction Materials)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('const_manual')">
+                            9. 현장 시공 표준화 (매뉴얼+교육)
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">시공 품질 확보를 위한 표준 가이드 및 교육</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">표준화 (Standardization)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">교육자료 (Materials)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">적용 (Implementation)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(1개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            B. 건축자재 (Construction Materials)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('const_ce')">
+                            10. CE/CPR 문서 패키징
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">유럽 규격(Construction Products Regulation) 대응 문서화</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">규격 확인 (Standards)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">문서화 (Documentation)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            B. 건축자재 (Construction Materials)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('const_showroom')">
+                            11. 샘플룸/쇼룸 구축
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">고객 체험을 위한 오프라인 전시 공간 조성</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">기획 (Planning)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">시공 (Construction)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">운영 (Operation)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(1개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            B. 건축자재 (Construction Materials)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('const_project')">
+                            12. 견적/수주/납기 (프로젝트 영업)
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">건설 프로젝트 단위 계약 및 납품 관리</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">견적 (Estimation)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">계약/발주 (Contract)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">납품 (Delivery)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            B. 건축자재 (Construction Materials)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('const_as')">
+                            13. A/S 및 부품 운영 체계
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">지속적인 유지보수 및 고객 만족 관리 시스템</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">체계 수립 (Setup)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">운영 (Operation)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            C. 공통 (Common)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('comm_ve')">
+                            14. 원가절감/리디자인 (VE)
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">수익성 개선을 위한 가치 공학 (Value Engineering) 프로젝트</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">분석 (Analysis)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">제안/검증 (Proposal)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">적용 (Implementation)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="mb-4">
+                        <span
+                            class="inline-block px-3 py-1 text-xs font-bold tracking-wide text-gray-600 bg-gray-100 rounded-full mb-2">
+                            C. 공통 (Common)
+                        </span>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="openDetailModal('comm_renewal')">
+                            15. 브랜드/제품군 라인업 리뉴얼
+                        </h3>
+                    </div>
+
+                    <p class="text-gray-600 text-sm mb-6 flex-grow">포트폴리오 최적화 및 브랜드 재정비</p>
+
+                    <div class="border-t border-gray-100 pt-4 mt-auto">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">포함된 단계 (Phases)</h4>
+                        <ul class="space-y-2">
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">진단 (Diagnosis)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                            <li class="text-sm text-gray-700 flex items-start">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                                <span>
+                                    <span class="font-medium">기획 (Planning)</span>
+                                    <span class="text-xs text-gray-400 ml-1">(2개 업무)</span>
+                                </span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+        </div>
+    </main>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            if (sidebar.classList.contains('-translate-x-full')) {
+                // Open
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                // Trigger reflow to enable transition
+                void overlay.offsetWidth;
+                overlay.classList.remove('opacity-0');
+            } else {
+                // Close
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 300);
+            }
+        }
+    </script>
+
+    
+<!-- Create Template Modal -->
+<div id="createTemplateModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
+    style="z-index: 50;">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-0 flex flex-col max-h-[90vh]">
+        <div
+            class="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-blue-600 to-blue-500 rounded-t-xl">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <span class="mr-2">✨</span> AI 템플릿 생성
+            </h3>
+            <button onclick="closeCreateTemplateModal()"
+                class="text-white/80 hover:text-white text-2xl">&times;</button>
+        </div>
+
+        <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+            <!-- Step 1: Input -->
+            <div id="step1">
+                <label class="block text-gray-700 text-sm font-bold mb-2">
+                    어떤 업무 프로세스를 만들고 싶으신가요?
+                </label>
+                <textarea id="templateTopic"
+                    class="w-full h-32 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-base"
+                    placeholder="예: 신규 모바일 앱 런칭 마케팅 프로세스, 사내 워크숍 준비 체크리스트, 커피 프랜차이즈 신규 매장 오픈 절차 등"></textarea>
+                <p class="text-xs text-gray-500 mt-2">* 구체적으로 적을수록 더 정확한 템플릿이 생성됩니다.</p>
+
+                <div class="mt-6 flex justify-end">
+                    <button onclick="generateTemplate()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg transition shadow-lg flex items-center">
+                        <span class="text-lg mr-2">🔮</span> 생성하기
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loadingStep" class="hidden py-10 flex-col items-center justify-center text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                <p class="text-gray-600 font-medium">AI가 업무 프로세스를 분석하고 있습니다...</p>
+                <p class="text-sm text-gray-400 mt-1">약 5~10초 정도 소요됩니다.</p>
+            </div>
+
+            <!-- Step 2: Preview & Save -->
+            <div id="step2" class="hidden">
+                <div class="bg-green-50 text-green-700 p-4 rounded-lg mb-6 flex items-start">
+                    <span class="text-xl mr-3">✅</span>
+                    <div>
+                        <h4 class="font-bold">템플릿이 생성되었습니다!</h4>
+                        <p class="text-sm">내용을 확인하고 저장하세요.</p>
+                    </div>
+                </div>
+
+                <form action="/work-templates" method="post" id="saveTemplateForm">
+                    <input type="hidden" name="content_json" id="resultContentJson">
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">템플릿 이름</label>
+                            <input type="text" name="name" id="resultName"
+                                class="w-full bg-gray-50 border border-gray-200 rounded px-3 py-2 font-bold text-gray-800">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">카테고리</label>
+                            <input type="text" name="category" id="resultCategory"
+                                class="w-full bg-gray-50 border border-gray-200 rounded px-3 py-2">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">설명</label>
+                        <input type="text" name="description" id="resultDescription"
+                            class="w-full bg-gray-50 border border-gray-200 rounded px-3 py-2 text-gray-600">
+                    </div>
+
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 px-4 py-2 border-b border-gray-200 font-bold text-sm text-gray-600">
+                            미리보기
+                        </div>
+                        <div class="p-4 max-h-60 overflow-y-auto bg-white text-sm" id="previewArea">
+                            <!-- Preview Content -->
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex gap-3">
+                        <button type="button" onclick="resetModal()"
+                            class="flex-1 bg-gray-100 text-gray-600 font-bold py-2 rounded-lg hover:bg-gray-200 transition">
+                            다시 만들기
+                        </button>
+                        <button type="submit"
+                            class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition shadow-lg">
+                            저장하기
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openCreateTemplateModal() {
+        const modal = document.getElementById('createTemplateModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        resetModal();
+    }
+
+    function closeCreateTemplateModal() {
+        const modal = document.getElementById('createTemplateModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function resetModal() {
+        document.getElementById('step1').classList.remove('hidden');
+        document.getElementById('loadingStep').classList.add('hidden');
+        document.getElementById('step2').classList.add('hidden');
+        document.getElementById('templateTopic').value = '';
+    }
+
+    async function generateTemplate() {
+        const topic = document.getElementById('templateTopic').value;
+        if (!topic.trim()) {
+            alert("생성할 템플릿의 내용을 입력해주세요.");
+            return;
+        }
+
+        // Show loading
+        document.getElementById('step1').classList.add('hidden');
+        document.getElementById('loadingStep').classList.remove('hidden');
+        document.getElementById('loadingStep').classList.add('flex');
+
+        try {
+            const response = await fetch('/api/work-templates/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ topic: topic })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || '생성 실패');
+            }
+
+            const data = await response.json();
+
+            // Populate form
+            document.getElementById('resultName').value = data.name;
+            document.getElementById('resultCategory').value = data.category;
+            document.getElementById('resultDescription').value = data.description;
+            document.getElementById('resultContentJson').value = JSON.stringify(data.phases); // Store just phases array or whole object? Backend expects 'phases' usually. Let's store whole phases array as JSON.
+
+            // Render Preview
+            const previewArea = document.getElementById('previewArea');
+            let html = '<ul class="space-y-4">';
+            if (data.phases && Array.isArray(data.phases)) {
+                data.phases.forEach(phase => {
+                    html += `
+                        <li class="border-b border-gray-100 last:border-0 pb-3 last:pb-0">
+                            <h5 class="font-bold text-blue-600 mb-1">${phase.phase_name}</h5>
+                            <ul class="pl-4 list-disc text-gray-600 space-y-1">
+                                ${phase.tasks.map(t => `<li class="text-xs">
+                                    <span class="font-medium text-gray-800">${t.title}</span> 
+                                    - ${t.description}
+                                </li>`).join('')}
+                            </ul>
+                        </li>
+                    `;
+                });
+            }
+            html += '</ul>';
+            previewArea.innerHTML = html;
+
+            // Show Step 2
+            document.getElementById('loadingStep').classList.add('hidden');
+            document.getElementById('loadingStep').classList.remove('flex');
+            document.getElementById('step2').classList.remove('hidden');
+
+        } catch (error) {
+            alert("오류 발생: " + error.message);
+            resetModal();
+        }
+    }
+</script>
+
+<!-- Template Detail Modal -->
+<div id="detailModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
+    style="z-index: 60;">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-0 flex flex-col max-h-[85vh]">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+            <div>
+                <span id="detailCategory"
+                    class="inline-block px-2 py-1 text-[10px] font-bold tracking-wide text-gray-500 bg-white border border-gray-200 rounded-full mb-1">
+                    CATEGORY
+                </span>
+                <h3 id="detailName" class="text-xl font-bold text-gray-800">
+                    Template Name
+                </h3>
+            </div>
+            <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+            <p id="detailDescription"
+                class="text-gray-600 mb-6 bg-blue-50/50 p-4 rounded-lg border border-blue-50/50 text-sm">
+                Description goes here...
+            </p>
+
+            <div id="detailContent" class="space-y-6">
+                <!-- Phases and Tasks will be rendered here -->
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end rounded-b-xl">
+            <button onclick="closeDetailModal()"
+                class="bg-white border border-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg hover:bg-gray-50 transition shadow-sm">
+                닫기
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Construct Grid Data for Static and Custom Templates
+    const templateData = {};
+
+    
+    templateData["baby_npd"] = {"category": "A. \uc720\uc544\uc6a9\ud488 (Baby Products)", "description": "\uc544\uc774\ub514\uc5b4\ubd80\ud130 \ub7f0\uce6d\uae4c\uc9c0\uc758 Stage-Gate \ud504\ub85c\uc138\uc2a4 (\uc816\ubcd1/\uc720\ubaa8\ucc28 \ub4f1)", "name": "1. \uc720\uc544\uc6a9\ud488 \uc2e0\uc81c\ud488 \uac1c\ubc1c (Stage-Gate)", "phases": [{"phase_name": "Stage 1: \uc544\uc774\ub514\uc5b4/\uae30\ud68d", "tasks": [{"checklist": ["\ub9d8\uce74\ud398 \ud0a4\uc6cc\ub4dc \ubd84\uc11d", "\uacbd\uc7c1\uc0ac \uc2a4\ud399 \ube44\uad50\ud45c"], "description": "\uae30\uc874 \uc81c\ud488 \ubd88\ub9cc\uc0ac\ud56d \ubc0f \uacbd\uc7c1\uc0ac \ub9ac\ubdf0 \ubd84\uc11d", "estimated_days": 5, "is_core": true, "title": "\uc2dc\uc7a5 \ud2b8\ub80c\ub4dc \ubc0f VOC \ubd84\uc11d"}, {"checklist": ["USP \uc815\uc758\uc11c", "\ud0c0\uac9f \uace0\uac1d \uc815\uc758"], "description": "\ud575\uc2ec USP \ub3c4\ucd9c \ubc0f \ud0c0\uac9f \ud398\ub974\uc18c\ub098 \uc124\uc815", "estimated_days": 3, "is_core": true, "title": "\ucee8\uc149 \uc815\uc758 \ubc0f \uc2a4\ucf54\ud551"}]}, {"phase_name": "Stage 2: \uc0ac\uc5c5\uc131/\uc694\uad6c\uc0ac\ud56d", "tasks": [{"checklist": ["PRD \ucd08\uc548", "\uc6d0\uac00 \ubaa9\ud45c \uc124\uc815"], "description": "\uae30\ub2a5, \ub514\uc790\uc778, \uc18c\uc7ac, \uc548\uc804 \uae30\uc900 \uba85\uc138", "estimated_days": 5, "is_core": true, "title": "PRD (\uc81c\ud488 \uc694\uad6c\uc0ac\ud56d) \uc791\uc131"}, {"checklist": ["\uc190\uc775\ubd84\uae30\uc810(BEP) \ubd84\uc11d"], "description": "\uc608\uc0c1 \ud310\ub9e4\ub7c9 \ubc0f \uc218\uc775\uc131 \uc2dc\ubbac\ub808\uc774\uc158", "estimated_days": 2, "is_core": true, "title": "\uc0ac\uc5c5\uc131 \uac80\ud1a0"}]}, {"phase_name": "Stage 3: \uac1c\ubc1c/\uc0d8\ud50c", "tasks": [{"checklist": ["3D \ubaa9\uc5c5", "\uc791\ub3d9 \ud14c\uc2a4\ud2b8"], "description": "\ud615\uc0c1 \ubc0f \uae30\ubcf8 \uae30\ub2a5 \uad6c\ud604", "estimated_days": 10, "is_core": true, "title": "1\ucc28 \ud504\ub85c\ud1a0\ud0c0\uc785 \uc81c\uc791"}, {"checklist": ["\uae08\ud615 \uc218\uc815 \uc0ac\ud56d \ubc18\uc601", "\ucd5c\uc885 \uc2a4\ud399 \ud655\uc815"], "description": "\uc591\uc0b0 \uc9c1\uc804 \ucd5c\uc885 \uc0ac\uc591 \ud655\uc815", "estimated_days": 7, "is_core": true, "title": "\uac1c\uc120 \ubc0f 2\ucc28 \uc0d8\ud50c (Golden Sample)"}]}, {"phase_name": "Stage 4: \uc2dc\ud5d8/\uac80\uc99d", "tasks": [{"checklist": ["\uccb4\ud5d8\ub2e8 \ud53c\ub4dc\ubc31 \uc218\uc9d1", "\uc0ac\uc6a9\uc131 \uac1c\uc120"], "description": "\ud0c0\uac9f \uace0\uac1d \ub300\uc0c1 \uc2e4\uc0ac\uc6a9 \ud14c\uc2a4\ud2b8", "estimated_days": 5, "is_core": false, "title": "\uc0ac\uc6a9\uc790 \ud14c\uc2a4\ud2b8 (FGI)"}, {"checklist": ["\uc2dc\ub8cc \uc900\ube44", "\uc2dc\ud5d8 \uc2e0\uccad\uc11c"], "description": "\uacf5\uc778 \uae30\uad00 \uc2dc\ud5d8 \uc811\uc218", "estimated_days": 1, "is_core": true, "title": "KC \uc548\uc804 \uc2dc\ud5d8 \uc758\ub8b0"}]}, {"phase_name": "Stage 5: \ub7f0\uce6d", "tasks": [{"checklist": ["\ubc95\uc801 \ud45c\uc2dc\uc0ac\ud56d \uccb4\ud06c", "\ubc14\ucf54\ub4dc \uc0dd\uc131"], "description": "\ud45c\uc2dc\uc0ac\ud56d \uac80\uc218 \ubc0f \ud328\ud0a4\uc9c0 \ub514\uc790\uc778", "estimated_days": 3, "is_core": true, "title": "\ud328\ud0a4\uc9d5 \ubc0f \ub77c\ubca8\ub9c1 \ud655\uc815"}, {"checklist": ["\uc0c1\uc138\ud398\uc774\uc9c0 \uc624\ud508", "\uc7ac\uace0 \ub4f1\ub85d"], "description": "\ucd08\ub3c4 \ubb3c\ub7c9 \uc785\uace0 \ubc0f \ud310\ub9e4 \ucc44\ub110 \uc624\ud508", "estimated_days": 1, "is_core": true, "title": "\ucd9c\uace0 \ubc0f \ud310\ub9e4 \uac1c\uc2dc"}]}]};
+    
+    templateData["baby_kc"] = {"category": "A. \uc720\uc544\uc6a9\ud488 (Baby Products)", "description": "\uc5b4\ub9b0\uc774\uc81c\ud488 \uc548\uc804 \ud2b9\ubcc4\ubc95 \ub300\uc751 \ud504\ub85c\uc138\uc2a4", "name": "2. \uc720\uc544\uc6a9\ud488 KC \ub300\uc751 (\uc548\uc804\ud655\uc778/\uc778\uc99d)", "phases": [{"phase_name": "\uc900\ube44 (Preparation)", "tasks": [{"checklist": ["KTR/KATRI \ubb38\uc758", "HS\ucf54\ub4dc \ud655\uc778"], "description": "\uc548\uc804\uc778\uc99d/\uc548\uc804\ud655\uc778/\uacf5\uae09\uc790\uc801\ud569\uc131 \ub300\uc0c1 \uc5ec\ubd80 \ud655\uc778", "estimated_days": 1, "is_core": true, "title": "\ub300\uc0c1 \ud488\ubaa9 \ubd84\ub958 \ubc0f \ud655\uc778"}, {"checklist": ["\uc2e0\uccad\uc11c \uc791\uc131", "\ubd80\ud488 \ub9ac\uc2a4\ud2b8 \uc815\ub9ac"], "description": "\uc0ac\uc5c5\uc790\ub4f1\ub85d\uc99d, \uc81c\ud488\uc124\uba85\uc11c, \ubb3c\uc9c8\uc548\uc804\ubcf4\uac74\uc790\ub8cc(MSDS)", "estimated_days": 2, "is_core": true, "title": "\uc2dc\ud5d8 \uc2e0\uccad \uc11c\ub958 \uc900\ube44"}]}, {"phase_name": "\uc2dc\ud5d8 (Testing)", "tasks": [{"checklist": ["\uc0d8\ud50c 3\uac1c \uc900\ube44", "\uc811\uc218\ube44 \ub0a9\ubd80"], "description": "\uc2dc\ud5d8\uc6a9 \uc0d8\ud50c \uae30\uad00 \ubc1c\uc1a1", "estimated_days": 1, "is_core": true, "title": "\uc2dc\ub8cc \ubc1c\uc1a1 \ubc0f \uc2dc\ud5d8 \uc811\uc218"}, {"checklist": ["\uc2dc\ud5d8 \uc9c4\ud589\uc0c1\ud669 \uccb4\ud06c", "\ubcf4\uc644 \uc694\uccad \ub300\uc751"], "description": "\uc720\ud574\ubb3c\uc9c8(\ud504\ud0c8\ub808\uc774\ud2b8 \ub4f1) \ubc0f \ubb3c\ub9ac\uc801 \uc548\uc804\uc131 \ud14c\uc2a4\ud2b8", "estimated_days": 15, "is_core": true, "title": "\uc2dc\ud5d8 \uc9c4\ud589 \ubc0f \ubcf4\uc644"}]}, {"phase_name": "\uc778\uc99d/\uc2e0\uace0 (Certification)", "tasks": [{"checklist": ["\uc131\uc801\uc11c PDF \uc800\uc7a5"], "description": "\uc801\ud569 \ud310\uc815 \uc131\uc801\uc11c \uc6d0\ubcf8 \ud655\ubcf4", "estimated_days": 1, "is_core": true, "title": "\uc2dc\ud5d8 \uc131\uc801\uc11c \uc218\ub839"}, {"checklist": ["\uc2e0\uace0 \ud544\uc99d \uc218\ub839"], "description": "\uc81c\ud488\uc548\uc804\uad00\ub9ac\uc6d0 \uc2e0\uace0 \ubc0f \ubc88\ud638 \ubc1c\uae09", "estimated_days": 3, "is_core": true, "title": "\uc548\uc804\ud655\uc778 \uc2e0\uace0 (\ud574\ub2f9 \uc2dc)"}]}, {"phase_name": "\ud45c\uc2dc (Labeling)", "tasks": [{"checklist": ["\ub3c4\uc548 \uc801\uc6a9", "\uac00\ub3c5\uc131 \ud655\uc778"], "description": "\uc81c\ud488 \ubc0f \ud3ec\uc7a5\uc5d0 \ubc95\uc801 \ud45c\uc2dc\uc0ac\ud56d \uc778\uc1c4", "estimated_days": 2, "is_core": true, "title": "KC \ub9c8\ud06c \ubc0f \ud45c\uc2dc\uc0ac\ud56d \ubd80\ucc29"}]}]};
+    
+    templateData["baby_sourcing"] = {"category": "A. \uc720\uc544\uc6a9\ud488 (Baby Products)", "description": "\uc911\uad6d \uc81c\uc870 \ub4f1 \uc678\uc8fc \uc0dd\uc0b0 \ud30c\ud2b8\ub108 \ubc1c\uad74 \ubc0f \uacc4\uc57d", "name": "3. ODM/OEM \uc18c\uc2f1 \u0026 \uc81c\uc870\uc0ac \uc120\uc815", "phases": [{"phase_name": "\uc18c\uc2f1 (Sourcing)", "tasks": [{"checklist": ["\uacf5\uc7a5 \uaddc\ubaa8 \ud655\uc778", "\uc8fc\uc694 \ub808\ud37c\ub7f0\uc2a4 \uccb4\ud06c"], "description": "\uc54c\ub9ac\ubc14\ubc14, \uc804\uc2dc\ud68c \ub4f1\uc744 \ud1b5\ud55c \ud6c4\ubcf4\uad70 10\uacf3 \ubc1c\uad74", "estimated_days": 5, "is_core": true, "title": "\ud6c4\ubcf4 \uc81c\uc870\uc0ac \ub9ac\uc2a4\ud2b8\uc5c5 (Long-list)"}, {"checklist": ["RFQ \ud328\ud0a4\uc9c0 \uc791\uc131", "\ubaa9\ud45c\uac00 \uc81c\uc2dc"], "description": "\uc2a4\ud399, \uc218\ub7c9, \ud3ec\uc7a5 \uc870\uac74\uc744 \ud3ec\ud568\ud55c \uacac\uc801 \uc694\uccad", "estimated_days": 2, "is_core": true, "title": "RFQ (\uacac\uc801\uc694\uccad) \ubc1c\uc1a1"}]}, {"phase_name": "\ud3c9\uac00 (Evaluation)", "tasks": [{"checklist": ["\ube44\uad50\ud45c \uc791\uc131", "\uc0d8\ud50c \uc694\uccad"], "description": "\ub2e8\uac00, \ub0a9\uae30, MOQ \ube44\uad50 \ud6c4 3\uacf3 \uc120\uc815", "estimated_days": 3, "is_core": true, "title": "\uacac\uc801 \ube44\uad50 \ubc0f Short-list \uc120\uc815"}, {"checklist": ["\uc0d8\ud50c \ud3c9\uac00 \ub9ac\ud3ec\ud2b8"], "description": "\ub9c8\uac10, \ub0b4\uad6c\uc131, \uae30\ub2a5 \ud14c\uc2a4\ud2b8", "estimated_days": 7, "is_core": true, "title": "\uc0d8\ud50c \ud488\uc9c8 \ud3c9\uac00"}]}, {"phase_name": "\uacc4\uc57d (Contract)", "tasks": [{"checklist": ["\uacf5\uc7a5 \uc2ec\uc0ac \uccb4\ud06c\ub9ac\uc2a4\ud2b8"], "description": "\uc0dd\uc0b0 \uc124\ube44 \ubc0f QC \uc2dc\uc2a4\ud15c \ud604\uc7a5/\ud654\uc0c1 \uc810\uac80", "estimated_days": 3, "is_core": false, "title": "\uacf5\uc7a5 \uc2ec\uc0ac (Audit)"}, {"checklist": ["\uae08\ud615\ube44 \uc870\uac74", "\ubd88\ub7c9 \ud398\ub110\ud2f0 \uc870\ud56d"], "description": "\uacf5\uae09 \uacc4\uc57d\uc11c \ub0a0\uc778 (\ud488\uc9c8, \ub0a9\uae30, \uacb0\uc81c\uc870\uac74)", "estimated_days": 5, "is_core": true, "title": "\uacc4\uc57d \uccb4\uacb0"}]}, {"phase_name": "\uc591\uc0b0 (Mass Production)", "tasks": [{"checklist": ["\uc791\uc5c5 \ud45c\uc900\uc11c \ud655\uc778"], "description": "\uc18c\ub7c9 \uc2dc\uc0dd\uc0b0 \ubc0f \ubb38\uc81c\uc810 \uc810\uac80", "estimated_days": 7, "is_core": true, "title": "Pilot \uc0dd\uc0b0 (PP)"}, {"checklist": ["Golden Sample \ubcf4\uad00"], "description": "\uc591\uc0b0 \uc81c\ud488 \ucd5c\uc885 \uc2b9\uc778 \ubc0f \uc120\uc801 \ud5c8\uac00", "estimated_days": 1, "is_core": true, "title": "\uc591\uc0b0 \uc2b9\uc778 (PSA)"}]}]};
+    
+    templateData["baby_packaging"] = {"category": "A. \uc720\uc544\uc6a9\ud488 (Baby Products)", "description": "CS/\uaddc\uc815 \uc900\uc218\ub97c \uc704\ud55c \ud328\ud0a4\uc9c0 \ubc0f \ub3d9\ubd09\ubb3c \uc81c\uc791", "name": "4. \ud328\ud0a4\uc9d5/\ub77c\ubca8/\uc124\uba85\uc11c \ud45c\uc900\ud654", "phases": [{"phase_name": "\uae30\ud68d (Planning)", "tasks": [{"checklist": ["KC \ud45c\uc2dc\uc0ac\ud56d", "\uacbd\uace0 \ubb38\uad6c"], "description": "\uad6d\uac00\ubcc4/\ud488\ubaa9\ubcc4 \ud544\uc218 \ud45c\uae30 \ud56d\ubaa9 \uc815\ub9ac", "estimated_days": 2, "is_core": true, "title": "\ud45c\uc2dc\uc0ac\ud56d \uc694\uac74 \uc815\uc758"}, {"checklist": ["\uc9c0\uae30\uad6c\uc870 \ub3c4\uba74", "\ub099\ud558 \ud14c\uc2a4\ud2b8 \uace0\ub824"], "description": "\ubc15\uc2a4 \ud615\ud0dc, \ub0b4\ubd80 \ud2b8\ub808\uc774, \ubcf4\ud638\uc7ac \uc124\uacc4", "estimated_days": 3, "is_core": true, "title": "\ud328\ud0a4\uc9c0 \uad6c\uc870 \uc124\uacc4"}]}, {"phase_name": "\uc81c\uc791 (Production)", "tasks": [{"checklist": ["QR\ucf54\ub4dc \uc0bd\uc785", "CS \uc5f0\ub77d\ucc98 \ud3ec\ud568"], "description": "\ud55c/\uc601/\uc911 \uc0ac\uc6a9 \uc124\uba85\uc11c \ubc0f \ubcf4\uc99d\uc11c", "estimated_days": 5, "is_core": true, "title": "\ub2e4\uad6d\uc5b4 \ub9e4\ub274\uc5bc \uc791\uc131"}, {"checklist": ["\uc0c9\uc0c1 \uad50\uc815", "\uc624\ud0c0 \uc810\uac80"], "description": "\ud328\ud0a4\uc9c0 \uadf8\ub798\ud53d \ub514\uc790\uc778 \ubc0f \uc778\uc1c4 \uac10\ub9ac", "estimated_days": 3, "is_core": true, "title": "\ub514\uc790\uc778 \ubc0f \uac10\ub9ac"}]}, {"phase_name": "\ubb3c\ub958 (Logistics)", "tasks": [{"checklist": ["CBM \uacc4\uc0b0", "\ubc14\ucf54\ub4dc \ubd80\ucc29 \uc704\uce58 \uc9c0\uc815"], "description": "\ubb3c\ub958\ube44 \uc808\uac10\uc744 \uc704\ud55c \uc801\uc7ac \ud6a8\uc728 \uac80\ud1a0", "estimated_days": 1, "is_core": true, "title": "\ubc15\uc2a4 \uaddc\uaca9 \ubc0f \ud314\ub808\ud0c0\uc774\uc9d5 \ucd5c\uc801\ud654"}]}]};
+    
+    templateData["baby_global"] = {"category": "A. \uc720\uc544\uc6a9\ud488 (Baby Products)", "description": "\ud574\uc678 \ub9c8\ucf13\ud50c\ub808\uc774\uc2a4 \uc785\uc810 \ubc0f \ud310\ub9e4 \ud504\ub85c\uc138\uc2a4", "name": "5. \uc544\ub9c8\uc874/\uae00\ub85c\ubc8c \uc774\ucee4\uba38\uc2a4 \ub7f0\uce6d", "phases": [{"phase_name": "\uc900\ube44 (Preparation)", "tasks": [{"checklist": ["CPC \uc778\uc99d(\ubbf8\uad6d)", "\uc0ac\uc5c5\uc790 \uc815\ubcf4 \ub4f1\ub85d"], "description": "\uce74\ud14c\uace0\ub9ac \uc2b9\uc778 \ubc0f \ud544\uc694 \uc11c\ub958 \uc900\ube44", "estimated_days": 3, "is_core": true, "title": "\ucc44\ub110 \uc785\uc810 \uc694\uac74 \ud655\uc778"}, {"checklist": ["\ud0a4\uc6cc\ub4dc \ubd84\uc11d", "\uc601\ubb38 \uce74\ud53c\ub77c\uc774\ud305"], "description": "\uc601\ubb38 \uc0c1\uc138\ud398\uc774\uc9c0(A+ Content), \uc378\ub124\uc77c", "estimated_days": 7, "is_core": true, "title": "\ub9ac\uc2a4\ud305 \ucf58\ud150\uce20 \uc81c\uc791"}]}, {"phase_name": "\ubb3c\ub958 (Logistics)", "tasks": [{"checklist": ["Shipping Label \ubd80\ucc29", "\ud1b5\uad00 \uc9c4\ud589"], "description": "\ud574\uc678 \ucc3d\uace0 \ubc1c\uc1a1 \ubc0f \uc785\uace0 \ucc98\ub9ac", "estimated_days": 10, "is_core": true, "title": "FBA/3PL \uc785\uace0"}, {"checklist": ["\uc7ac\uace0 \uc218\ub7c9 \uccb4\ud06c"], "description": "\ud310\ub9e4 \uac00\ub2a5 \uc0c1\ud0dc \uc804\ud658 \ud655\uc778", "estimated_days": 1, "is_core": true, "title": "\uc7ac\uace0 \ubc18\uc601 \ud655\uc778"}]}, {"phase_name": "\ub9c8\ucf00\ud305 (Marketing)", "tasks": [{"checklist": ["VINE \ub4f1\ub85d"], "description": "\ucd08\uae30 \ub9ac\ubdf0 \ud655\ubcf4 \ud504\ub85c\uadf8\ub7a8 \uc2e0\uccad", "estimated_days": 1, "is_core": true, "title": "\ub9ac\ubdf0 \uc2dc\ub529 (VINE)"}, {"checklist": ["\uc790\ub3d9 \ucea0\ud398\uc778", "\uc218\ub3d9 \ud0c0\uac9f\ud305"], "description": "\ud0a4\uc6cc\ub4dc \uad11\uace0 \uc138\ud305", "estimated_days": 3, "is_core": true, "title": "PPC \uad11\uace0 \ucea0\ud398\uc778"}]}]};
+    
+    templateData["baby_recall"] = {"category": "A. \uc720\uc544\uc6a9\ud488 (Baby Products)", "description": "\ubd88\ub7c9/\uc548\uc804 \uc774\uc288 \ubc1c\uc0dd \uc2dc \uccb4\uacc4\uc801\uc778 \ub300\uc751 \uc808\ucc28", "name": "6. \ub9ac\ucf5c/\ud074\ub808\uc784 \ub300\uc751 (\ud488\uc9c8 \uc774\uc288)", "phases": [{"phase_name": "\uc811\uc218/\ubd84\uc11d (Analysis)", "tasks": [{"checklist": ["\ud53c\ud574 \uc0ac\ub840 \uc218\uc9d1", "\uc548\uc804\uc704\ud574\uc131 \ud3c9\uac00"], "description": "\uc548\uc804/\uc131\ub2a5/\uc678\uad00 \uc720\ud615 \ubd84\ub958 \ubc0f \uc2ec\uac01\ub3c4 \ud3c9\uac00", "estimated_days": 1, "is_core": true, "title": "\uc774\uc288 \ubd84\ub958 \ubc0f \uae34\uae09\ub3c4 \ud310\ub2e8"}, {"checklist": ["LOT \ucd94\uc801", "4M(Man,Machine,Material,Method) \ubd84\uc11d"], "description": "\uadfc\ubcf8 \uc6d0\uc778 \ud30c\uc545 \ubc0f \uc720\ucd9c \uacbd\ub85c \ucd94\uc801", "estimated_days": 2, "is_core": true, "title": "\uc6d0\uc778 \ubd84\uc11d (8D Report)"}]}, {"phase_name": "\uc870\uce58 (Action)", "tasks": [{"checklist": ["\uacf5\uc9c0\ubb38 \uc791\uc131", "CS \uc2a4\ud06c\ub9bd\ud2b8 \ubc30\ud3ec"], "description": "\uad50\ud658/\ud658\ubd88/\ub9ac\ucf5c \uc815\ucc45 \uacb0\uc815 \ubc0f \uc548\ub0b4", "estimated_days": 1, "is_core": true, "title": "\uace0\uac1d \uacf5\uc9c0 \ubc0f \ub300\uc751\uc548 \uc218\ub9bd"}, {"checklist": ["\uc7ac\ubc1c\ubc29\uc9c0 \ub300\ucc45", "\uac80\uc0ac \uae30\uc900 \uac15\ud654"], "description": "\uc124\uacc4 \ubcc0\uacbd \ub610\ub294 \ubd80\ud488 \uad50\uccb4", "estimated_days": 5, "is_core": true, "title": "\uac1c\uc120 \ub300\ucc45 \uc801\uc6a9"}]}]};
+    
+    templateData["const_import"] = {"category": "B. \uac74\ucd95\uc790\uc7ac (Construction Materials)", "description": "\ud574\uc678 \ube0c\ub79c\ub4dc \uc790\uc7ac \uad6d\ub0b4 \ub3c4\uc785 \ubc0f \uc720\ud1b5\ub9dd \uad6c\ucd95", "name": "7. \ud574\uc678 \uac74\ucd95\uc790\uc7ac \uc218\uc785/\ucd1d\ud310 \ub860\uce6d", "phases": [{"phase_name": "\uc18c\uc2f1/\uacc4\uc57d (Sourcing)", "tasks": [{"checklist": ["Distributorship Agreement", "\ub2e8\uac00\ud45c \ud655\uc815"], "description": "\ub3c5\uc810\uad8c, MOQ, \uac00\uaca9, \ub9ac\ub4dc\ud0c0\uc784 \ud655\uc815", "estimated_days": 7, "is_core": true, "title": "\uacf5\uae09 \uacc4\uc57d \uccb4\uacb0"}, {"checklist": ["\uc0d8\ud50c \ud1b5\uad00", "\uce74\ud0c8\ub85c\uadf8 \uad6d\ubb38\ud654"], "description": "\uc601\uc5c5\uc6a9 \uc0d8\ud50c\ubd81 \ubc0f \ubaa9\uc5c5 \uc218\uc785", "estimated_days": 5, "is_core": true, "title": "\uc0d8\ud50c \ubc0f \ub370\ubaa8 \uc790\uc7ac \ud655\ubcf4"}]}, {"phase_name": "\ubb3c\ub958/\uac00\uaca9 (Logistics \u0026 Pricing)", "tasks": [{"checklist": ["\uc6d0\uc0b0\uc9c0 \uc99d\uba85\uc11c", "\uc6b4\uc1a1\uc0ac \ubc30\ucc28"], "description": "HS\ucf54\ub4dc \ubd84\ub958 \ubc0f \uad00\uc138 \ub0a9\ubd80", "estimated_days": 3, "is_core": true, "title": "\uc218\uc785 \ud1b5\uad00 \ud504\ub85c\uc138\uc2a4"}, {"checklist": ["\ub9c8\uc9c4\ubbac \uc2dc\ubbac\ub808\uc774\uc158", "\ud560\uc778\uc728 \uc815\ucc45"], "description": "\uc18c\ube44\uc790\uac00/\ub300\ub9ac\uc810\uac00/\ud2b9\ud310\uac00 \uc124\uc815", "estimated_days": 2, "is_core": true, "title": "\uac00\uaca9 \uc815\ucc45 \ubc0f \ub9c8\uc9c4 \uad6c\uc870 \uc218\ub9bd"}]}, {"phase_name": "\uc601\uc5c5 \uc900\ube44 (Sales Prep)", "tasks": [{"checklist": ["\uc6cc\ub7f0\ud2f0 \uc815\ucc45", "A/S \uc811\uc218 \ucc44\ub110"], "description": "\ubd80\ud488 \ud655\ubcf4 \ubc0f \uc218\ub9ac \ub9e4\ub274\uc5bc", "estimated_days": 5, "is_core": true, "title": "\uad6d\ub0b4 A/S \uccb4\uacc4 \uad6c\ucd95"}, {"checklist": ["\ub300\ub9ac\uc810 \uacc4\uc57d\uc11c", "\uc81c\ud488 \uad50\uc721"], "description": "\uc9c0\uc5ed \uac70\uc810 \uc720\ud1b5\ub9dd \ud655\ubcf4", "estimated_days": 10, "is_core": false, "title": "\ub300\ub9ac\uc810 \ubaa8\uc9d1/\uad50\uc721"}]}]};
+    
+    templateData["const_specin"] = {"category": "B. \uac74\ucd95\uc790\uc7ac (Construction Materials)", "description": "\uc124\uacc4 \ub2e8\uacc4\uc5d0\uc11c \uc790\uc7ac\ub97c \ubc18\uc601\uc2dc\ud0a4\ub294 \uc601\uc5c5 \ud504\ub85c\uc138\uc2a4", "name": "8. \uac74\ucd95\uc790\uc7ac \uc2a4\ud399\uc778 (\uc124\uacc4/\uc2dc\uacf5 \uc601\uc5c5)", "phases": [{"phase_name": "\uc601\uc5c5 (Sales)", "tasks": [{"checklist": ["\uac74\ucd95\uc0ac\uc0ac\ubb34\uc18c \ucee8\ud0dd", "\uc2dc\uacf5\uc0ac \ud611\ub825\uc5c5\uccb4 \ub4f1\ub85d"], "description": "\uace0\uae09 \uc8fc\uac70, \ud638\ud154 \ub4f1 \ud0c0\uac9f \ud604\uc7a5 \ubc1c\uad74", "estimated_days": 3, "is_core": true, "title": "\ud0c0\uac9f \ud504\ub85c\uc81d\ud2b8 \ub9ac\uc2a4\ud2b8\uc5c5"}, {"checklist": ["\uc2dc\ubc29\uc11c \uc81c\uacf5", "\uc0c1\uc138\ub3c4 \uc9c0\uc6d0"], "description": "\ub3c4\uba74 \ube14\ub85d(CAD/BIM) \ubc0f \ub514\ud14c\uc77c \ub3c4\uba74 \uc81c\uacf5", "estimated_days": 5, "is_core": true, "title": "\uc124\uacc4 \uc9c0\uc6d0 (Spec-in)"}]}, {"phase_name": "\uc81c\uc548 (Proposal)", "tasks": [{"checklist": ["\uc790\uc7ac\uc2b9\uc778\uc11c\ub958", "\uc131\uc801\uc11c \uc720\ud6a8\uae30\uac04 \ud655\uc778"], "description": "\uc2dc\ud5d8\uc131\uc801\uc11c, \uce5c\ud658\uacbd \uc778\uc99d, \uad6c\uc870 \uac80\ud1a0\uc11c \uc81c\ucd9c", "estimated_days": 2, "is_core": true, "title": "\uae30\uc220 \uc790\ub8cc \ud328\ud0a4\uc9d5"}, {"checklist": ["VE(Value Engineering) \uc81c\uc548\uc11c", "\ubb3c\ub7c9 \uc0b0\ucd9c"], "description": "\uc608\uc0b0 \ub9de\ucda4\ud615 \uacac\uc801 \uc81c\uc548", "estimated_days": 3, "is_core": true, "title": "\uacac\uc801 \ubc0f VE \ub300\uc751"}]}, {"phase_name": "\uc2dc\uacf5 (Construction)", "tasks": [{"checklist": ["\uc0d8\ud50c \uc2dc\uacf5", "\ub9c8\uac10 \uc0c1\uc138 \ud611\uc758"], "description": "\uc2dc\uacf5 \uc0c1\uc138 \ud611\uc758 \ubc0f \ubb38\uc81c\uc810 \uc0ac\uc804 \uccb4\ud06c", "estimated_days": 1, "is_core": true, "title": "\ud604\uc7a5 \uae30\uc220 \ubbf8\ud305"}]}]};
+    
+    templateData["const_manual"] = {"category": "B. \uac74\ucd95\uc790\uc7ac (Construction Materials)", "description": "\uc2dc\uacf5 \ud488\uc9c8 \ud655\ubcf4\ub97c \uc704\ud55c \ud45c\uc900 \uac00\uc774\ub4dc \ubc0f \uad50\uc721", "name": "9. \ud604\uc7a5 \uc2dc\uacf5 \ud45c\uc900\ud654 (\ub9e4\ub274\uc5bc+\uad50\uc721)", "phases": [{"phase_name": "\ud45c\uc900\ud654 (Standardization)", "tasks": [{"checklist": ["\ub2e8\uacc4\ubcc4 \uccb4\ud06c\ud3ec\uc778\ud2b8", "\uc18c\uc694 \uc2dc\uac04 \uc0b0\ucd9c"], "description": "\uc790\uc7ac \ubc18\uc785\ubd80\ud130 \ub9c8\uac10\uae4c\uc9c0 \ub2e8\uacc4 \uc815\uc758", "estimated_days": 3, "is_core": true, "title": "\uc2dc\uacf5 \ud504\ub85c\uc138\uc2a4 \ub9f5\ud551"}, {"checklist": ["\ud558\uc790 \uc0ac\ub840\uc9d1", "\uc608\ubc29 \ub300\ucc45"], "description": "\ub204\uc218, \uacb0\ub85c, \uc804\uae30 \ud569\uc120 \ub4f1 \uc8fc\uc694 \ud558\uc790 \uc720\ud615 \ubd84\uc11d", "estimated_days": 2, "is_core": true, "title": "\uc704\ud5d8 \ud3ec\uc778\ud2b8(Risk) \uc815\uc758"}]}, {"phase_name": "\uad50\uc721\uc790\ub8cc (Materials)", "tasks": [{"checklist": ["\uc0ac\uc9c4 \uae30\uc900\uc11c", "\ud569\uaca9/\ubd88\ud569\uaca9 \uae30\uc900"], "description": "\ud604\uc7a5 \ud734\ub300\uc6a9 \uac00\uc774\ub4dc\ubd81 \ubc0f \uc810\uac80\ud45c", "estimated_days": 5, "is_core": true, "title": "\uc2dc\uacf5 \ub9e4\ub274\uc5bc/\uccb4\ud06c\ub9ac\uc2a4\ud2b8 \uc81c\uc791"}, {"checklist": ["\ub3d9\uc601\uc0c1 \uac15\uc758", "\uc2e4\uc2b5 \ud0a4\ud2b8"], "description": "\uc2dc\uacf5\ud300 \uad50\uc721\uc6a9 \uad50\uc7ac \ubc0f \uc2e4\uc2b5 \uacc4\ud68d", "estimated_days": 3, "is_core": true, "title": "\uad50\uc721 \ucee4\ub9ac\ud058\ub7fc \uac1c\ubc1c"}]}, {"phase_name": "\uc801\uc6a9 (Implementation)", "tasks": [{"checklist": ["\ud604\uc7a5 \uac80\uc218", "\ub9e4\ub274\uc5bc \uac1c\uc815"], "description": "\uc2dc\ubc94 \ud604\uc7a5 \uc801\uc6a9 \ubc0f \ud53c\ub4dc\ubc31", "estimated_days": 5, "is_core": true, "title": "\ud30c\uc77c\ub7ff \ud604\uc7a5 \uc801\uc6a9"}]}]};
+    
+    templateData["const_ce"] = {"category": "B. \uac74\ucd95\uc790\uc7ac (Construction Materials)", "description": "\uc720\ub7fd \uaddc\uaca9(Construction Products Regulation) \ub300\uc751 \ubb38\uc11c\ud654", "name": "10. CE/CPR \ubb38\uc11c \ud328\ud0a4\uc9d5", "phases": [{"phase_name": "\uaddc\uaca9 \ud655\uc778 (Standards)", "tasks": [{"checklist": ["EN \uaddc\uaca9 \ubc88\ud638 \ud655\uc778", "\ud544\uc218 \ud2b9\uc131 \ud30c\uc545"], "description": "\ud574\ub2f9 \uc790\uc7ac\uc758 \uc870\ud654 \ud45c\uc900 \ud655\uc778", "estimated_days": 1, "is_core": true, "title": "\uc801\uc6a9 \ud45c\uc900(hEN) \ud655\uc778"}, {"checklist": ["DoP \ubc88\ud638 \ub9e4\uce6d", "\uc11c\uba85 \ud655\uc778"], "description": "\uc81c\uc870\uc0ac\uc758 Declaration of Performance \uc218\ucde8", "estimated_days": 2, "is_core": true, "title": "DoP (\uc131\ub2a5\uc120\uc5b8\uc11c) \ud655\ubcf4"}]}, {"phase_name": "\ubb38\uc11c\ud654 (Documentation)", "tasks": [{"checklist": ["\ub0b4\ud654 \uc131\ub2a5", "\ub2e8\uc5f4 \uc131\ub2a5", "\ub0b4\uad6c\uc131 \ub4f1\uae09"], "description": "DoP \uae30\ubc18 \uae30\uc220 \ub370\uc774\ud130 \uc815\ub9ac", "estimated_days": 2, "is_core": true, "title": "\uc601\ubb38 \uc2a4\ud399\uc2dc\ud2b8/\uc131\ub2a5\ud45c \uc791\uc131"}, {"checklist": ["\ub85c\uace0 \ube44\uc728", "\uc2dd\ubcc4 \ubc88\ud638"], "description": "\uc81c\ud488/\ud3ec\uc7a5\uc5d0 CE \ub77c\ubca8 \uaddc\uc815 \uc900\uc218 \ud655\uc778", "estimated_days": 1, "is_core": true, "title": "CE \ub9c8\ud0b9 \ubd80\ucc29 \uad00\ub9ac"}]}]};
+    
+    templateData["const_showroom"] = {"category": "B. \uac74\ucd95\uc790\uc7ac (Construction Materials)", "description": "\uace0\uac1d \uccb4\ud5d8\uc744 \uc704\ud55c \uc624\ud504\ub77c\uc778 \uc804\uc2dc \uacf5\uac04 \uc870\uc131", "name": "11. \uc0d8\ud50c\ub8f8/\uc1fc\ub8f8 \uad6c\ucd95", "phases": [{"phase_name": "\uae30\ud68d (Planning)", "tasks": [{"checklist": ["\ud3c9\uba74\ub3c4 \ub808\uc774\uc544\uc6c3", "\uc870\uba85 \uacc4\ud68d"], "description": "\ud0c0\uac9f \uace0\uac1d \uacbd\ud5d8 \uc2dc\ub098\ub9ac\uc624 \uc124\uacc4", "estimated_days": 5, "is_core": true, "title": "\uc804\uc2dc \ucee8\uc149 \ubc0f \ub3d9\uc120 \uae30\ud68d"}, {"checklist": ["\uc0d8\ud50c \ubc1c\uc8fc", "\uceec\ub7ec\uce69 \uc900\ube44"], "description": "\uc8fc\ub825 \uc81c\ud488 \ubc0f \uc2e0\uc81c\ud488 \ub77c\uc778\uc5c5 \ud655\uc815", "estimated_days": 2, "is_core": true, "title": "\uc804\uc2dc SKU \uc120\uc815"}]}, {"phase_name": "\uc2dc\uacf5 (Construction)", "tasks": [{"checklist": ["\uc804\uae30 \ubc30\uc120", "\ub9c8\uac10 \uac80\uc218"], "description": "\ubcbd\uccb4, \ubc14\ub2e5, \uc870\uba85, \uc9d1\uae30 \uc124\uce58", "estimated_days": 14, "is_core": true, "title": "\uc778\ud14c\ub9ac\uc5b4 \uc2dc\uacf5"}, {"checklist": ["\uac00\uaca9\ud45c \ubd80\ucc29", "QR \uc124\uba85\uc11c"], "description": "\uc0d8\ud50c \ubc30\uce58 \ubc0f \uc124\uba85\ubb3c(VMD) \ubd80\ucc29", "estimated_days": 3, "is_core": true, "title": "\uc81c\ud488 \ub514\uc2a4\ud50c\ub808\uc774"}]}, {"phase_name": "\uc6b4\uc601 (Operation)", "tasks": [{"checklist": ["\uc608\uc57d \uc2dc\uc2a4\ud15c", "\uace0\uac1d \ubc29\uba85\ub85d"], "description": "\ubc29\ubb38 \uc608\uc57d, \uc0c1\ub2f4 \uc2a4\ud06c\ub9bd\ud2b8, \ub9ac\ub4dc \uad00\ub9ac \ud504\ub85c\uc138\uc2a4", "estimated_days": 3, "is_core": true, "title": "\uc6b4\uc601 \ub9e4\ub274\uc5bc \uc218\ub9bd"}]}]};
+    
+    templateData["const_project"] = {"category": "B. \uac74\ucd95\uc790\uc7ac (Construction Materials)", "description": "\uac74\uc124 \ud504\ub85c\uc81d\ud2b8 \ub2e8\uc704 \uacc4\uc57d \ubc0f \ub0a9\ud488 \uad00\ub9ac", "name": "12. \uacac\uc801/\uc218\uc8fc/\ub0a9\uae30 (\ud504\ub85c\uc81d\ud2b8 \uc601\uc5c5)", "phases": [{"phase_name": "\uacac\uc801 (Estimation)", "tasks": [{"checklist": ["\ub85c\uc2a4\uc728 \uc801\uc6a9", "\ubd80\uc790\uc7ac \ud3ec\ud568"], "description": "\ud604\uc7a5 \ub3c4\uba74 \uae30\ubc18 \ud544\uc694 \uc790\uc7ac \uc218\ub7c9 \uacc4\uc0b0", "estimated_days": 2, "is_core": true, "title": "\ub3c4\uba74 \uc811\uc218 \ubc0f \ubb3c\ub7c9 \uc0b0\ucd9c"}, {"checklist": ["\uc720\ud6a8\uae30\uac04 \uba85\uc2dc", "\ud2b9\uae30\uc0ac\ud56d \uae30\uc7ac"], "description": "\ub2e8\uac00, \ub0a9\uae30, \uacb0\uc81c \uc870\uac74 \uc81c\uc548", "estimated_days": 1, "is_core": true, "title": "\uacac\uc801\uc11c \uc81c\ucd9c"}]}, {"phase_name": "\uacc4\uc57d/\ubc1c\uc8fc (Contract)", "tasks": [{"checklist": ["\uacc4\uc57d\uc774\ud589\ubcf4\uc99d", "\uc120\uc218\uae08 \uc218\ub839"], "description": "\uceec\ub7ec, \uaddc\uaca9, \uc218\ub7c9 \ud655\uc815", "estimated_days": 2, "is_core": true, "title": "\ucd5c\uc885 \uc635\uc158 \ud655\uc815 \ubc0f \uacc4\uc57d"}, {"checklist": ["\ub0a9\uae30 \uc77c\uc815 \ud53d\uc2a4"], "description": "\uacf5\uc7a5 \uc0dd\uc0b0 \uc758\ub8b0 \ub610\ub294 \uc7ac\uace0 \ud560\ub2f9", "estimated_days": 1, "is_core": true, "title": "\uc790\uc7ac \ubc1c\uc8fc"}]}, {"phase_name": "\ub0a9\ud488 (Delivery)", "tasks": [{"checklist": ["\uc591\uc911 \uc7a5\ube44 \ud655\uc778", "\ud558\ucc28 \uacf5\uac04 \ud655\ubcf4"], "description": "\ud604\uc7a5 \uacf5\uc815\uc5d0 \ub9de\ucd98 \ubd84\ud560 \ub0a9\ud488 \ud611\uc758", "estimated_days": 1, "is_core": true, "title": "\ud604\uc7a5 \ubc18\uc785 \uc77c\uc815 \uc870\uc728"}, {"checklist": ["\uac70\ub798\uba85\uc138\uc11c", "\uc778\uc218\uc99d \ud68c\uc218"], "description": "\ud604\uc7a5 \ubc18\uc785 \ud655\uc778 \ubc0f \uc11c\uba85 \ub0a0\uc778", "estimated_days": 1, "is_core": true, "title": "\uac80\uc218 \ubc0f \uc778\uc218\uc99d"}]}]};
+    
+    templateData["const_as"] = {"category": "B. \uac74\ucd95\uc790\uc7ac (Construction Materials)", "description": "\uc9c0\uc18d\uc801\uc778 \uc720\uc9c0\ubcf4\uc218 \ubc0f \uace0\uac1d \ub9cc\uc871 \uad00\ub9ac \uc2dc\uc2a4\ud15c", "name": "13. A/S \ubc0f \ubd80\ud488 \uc6b4\uc601 \uccb4\uacc4", "phases": [{"phase_name": "\uccb4\uacc4 \uc218\ub9bd (Setup)", "tasks": [{"checklist": ["\ubd80\ud488 SKU \ucf54\ub4dc\ud654", "\uc548\uc804\uc7ac\uace0 \uc124\uc815"], "description": "\ube48\ubc1c \ud558\uc790\uc640 \ud544\uc694 \uc608\ube44 \ubd80\ud488 \uc2dd\ubcc4", "estimated_days": 3, "is_core": true, "title": "\uc8fc\uc694 \uace0\uc7a5 \ubaa8\ub4dc \ubc0f \ubd80\ud488 \uc815\uc758"}, {"checklist": ["\ubcf4\uc99d\uc11c \uc57d\uad00", "\uc218\uac00\ud45c"], "description": "\uc720/\ubb34\uc0c1 \uae30\uc900 \ubc0f \ucd9c\uc7a5\ube44 \ucc45\uc815", "estimated_days": 2, "is_core": true, "title": "A/S \ube44\uc6a9 \ubc0f \ubcf4\uc99d \uc815\ucc45"}]}, {"phase_name": "\uc6b4\uc601 (Operation)", "tasks": [{"checklist": ["\uc0c1\ub2f4 \ub9e4\ub274\uc5bc", "\uace0\uc7a5 \uc99d\uc0c1 \uc0ac\uc9c4 \uc694\uccad"], "description": "\uc804\ud654/\ucc44\ud305 1\ucc28 \uc751\ub300 \ubc0f \uc790\uac00\uc870\uce58 \uc548\ub0b4", "estimated_days": 2, "is_core": true, "title": "\uc811\uc218 \ubc0f \uc6d0\uaca9 \uc9c4\ub2e8 \ud504\ub85c\uc138\uc2a4"}, {"checklist": ["\uc218\ub9ac \ud0a4\ud2b8 \uc810\uac80", "\uace0\uac1d \ud655\uc778\uc11c"], "description": "\uae30\uc0ac \ubc29\ubb38 \uc808\ucc28 \ubc0f \ubcf5\uc7a5/\ud0dc\ub3c4 \uaddc\uc815", "estimated_days": 2, "is_core": true, "title": "\ud604\uc7a5 \ubc29\ubb38 SOP"}]}]};
+    
+    templateData["comm_ve"] = {"category": "C. \uacf5\ud1b5 (Common)", "description": "\uc218\uc775\uc131 \uac1c\uc120\uc744 \uc704\ud55c \uac00\uce58 \uacf5\ud559 (Value Engineering) \ud504\ub85c\uc81d\ud2b8", "name": "14. \uc6d0\uac00\uc808\uac10/\ub9ac\ub514\uc790\uc778 (VE)", "phases": [{"phase_name": "\ubd84\uc11d (Analysis)", "tasks": [{"checklist": ["\uc6d0\uac00 \ud14c\uc774\ube14", "Pareto \ubd84\uc11d"], "description": "\uc7ac\ub8cc\ube44, \uac00\uacf5\ube44, \ubb3c\ub958\ube44 \ub4f1 \uc6d0\uac00 \uc694\uc18c \ud30c\uc545", "estimated_days": 2, "is_core": true, "title": "\uc6d0\uac00 \uad6c\uc870 \ubd84\ud574"}, {"checklist": ["\ud0c0\uac9f \ubd80\ud488 \uc120\uc815"], "description": "\uc0c1\uc704 5\uac1c \uc6d0\uac00 \uc0c1\uc2b9 \uc694\uc778 \ub3c4\ucd9c", "estimated_days": 1, "is_core": true, "title": "\uace0\ube44\uc6a9 \uc694\uc778 \uc2dd\ubcc4"}]}, {"phase_name": "\uc81c\uc548/\uac80\uc99d (Proposal)", "tasks": [{"checklist": ["\uacf5\uae09\uc0ac \uc81c\uc548 \uc694\uccad", "\uc0d8\ud50c \ud14c\uc2a4\ud2b8"], "description": "\ub3d9\ub4f1 \uc774\uc0c1 \uc131\ub2a5\uc758 \uc800\ub834\ud55c \ub300\uc548 \ubaa8\uc0c9", "estimated_days": 5, "is_core": true, "title": "\ub300\uccb4 \uc18c\uc7ac/\uacf5\ubc95 \ubc1c\uad74"}, {"checklist": ["\uc2e0\ub8b0\uc131 \ud14c\uc2a4\ud2b8", "\uc2b9\uc778\uc6d0 \uac31\uc2e0"], "description": "\ubcc0\uacbd \uc2dc \ub0b4\uad6c\uc131/\ub514\uc790\uc778 \uc601\ud5a5 \uac80\ud1a0", "estimated_days": 3, "is_core": true, "title": "\ud488\uc9c8 \uc601\ud5a5 \ud3c9\uac00"}]}, {"phase_name": "\uc801\uc6a9 (Implementation)", "tasks": [{"checklist": ["\ub2e8\uac00 \ubcc0\uacbd \ud569\uc758\uc11c"], "description": "\ubcc0\uacbd\ub41c \uc0ac\uc591\uc73c\ub85c \ucd5c\uc885 \ub2e8\uac00 \ud655\uc815", "estimated_days": 2, "is_core": true, "title": "\uc7ac\uacac\uc801 \ubc0f \ub2e8\uac00 \ud569\uc758"}, {"checklist": ["BOM \uc218\uc815"], "description": "VE \uc801\uc6a9 \uc81c\ud488 \uc0dd\uc0b0 \ud22c\uc785", "estimated_days": 1, "is_core": true, "title": "\uc591\uc0b0 \uc801\uc6a9"}]}]};
+    
+    templateData["comm_renewal"] = {"category": "C. \uacf5\ud1b5 (Common)", "description": "\ud3ec\ud2b8\ud3f4\ub9ac\uc624 \ucd5c\uc801\ud654 \ubc0f \ube0c\ub79c\ub4dc \uc7ac\uc815\ube44", "name": "15. \ube0c\ub79c\ub4dc/\uc81c\ud488\uad70 \ub77c\uc778\uc5c5 \ub9ac\ub274\uc5bc", "phases": [{"phase_name": "\uc9c4\ub2e8 (Diagnosis)", "tasks": [{"checklist": ["\uc2dc\uc7a5 \ud3ec\uc9c0\uc154\ub2dd \ub9f5", "\ud310\ub9e4\ub7c9/\uc774\uc775 \ubd84\uc11d"], "description": "\uac00\uaca9\ub300\ubcc4/\uae30\ub2a5\ubcc4 \uc81c\ud488 \ubd84\ud3ec \ubd84\uc11d", "estimated_days": 2, "is_core": true, "title": "\ub77c\uc778\uc5c5 \ub9f5 (Positioning Map)"}, {"checklist": ["\ub2e8\uc885 \uc608\uace0", "\uc7ac\uace0 \uc18c\uc9c4 \uacc4\ud68d"], "description": "SKU \ud6a8\uc728\ud654 \uc758\uc0ac\uacb0\uc815", "estimated_days": 2, "is_core": true, "title": "\ub2e8\uc885/\uc720\uc9c0/\uac15\ud654 \uacb0\uc815"}]}, {"phase_name": "\uae30\ud68d (Planning)", "tasks": [{"checklist": ["BI \uac00\uc774\ub4dc\ub77c\uc778", "\uc2dc\ub9ac\uc988 \ub124\uc774\ubc0d"], "description": "\ube0c\ub79c\ub4dc \ud1b5\uc77c\uc131\uc744 \uc704\ud55c \ub514\uc790\uc778 \uc5b8\uc5b4 \uc7ac\uc815\ub9bd", "estimated_days": 5, "is_core": true, "title": "\ub124\uc774\ubc0d \ubc0f \ud328\ud0a4\uc9c0 \uac00\uc774\ub4dc"}, {"checklist": ["\uc2dc\uc98c\uc131 \uace0\ub824", "\ub9c8\ucf00\ud305 \uc77c\uc815 \uc5f0\ub3d9"], "description": "\uc2e0\uc81c\ud488 \ucd9c\uc2dc \ub85c\ub4dc\ub9f5 \uc218\ub9bd", "estimated_days": 2, "is_core": true, "title": "\ubd84\uae30\ubcc4 \ub860\uce6d \uce98\ub9b0\ub354"}]}]};
+    
+
+    
+    
+    try {
+        templateData["custom_1"] = {
+            "name": "Custom 1",
+            "category": "Cat",
+            "description": "Desc",
+    "phases": JSON.parse("{\"phases\": []}")
+        };
+    } catch (e) {
+        console.error("Failed to parse custom template 1", e);
+    }
+    
+    
+
+    function openDetailModal(id) {
+        const data = templateData[id];
+        if (!data) return;
+
+        document.getElementById('detailCategory').textContent = data.category;
+        document.getElementById('detailName').textContent = data.name;
+        document.getElementById('detailDescription').textContent = data.description;
+
+        const contentDiv = document.getElementById('detailContent');
+        let html = '';
+
+        let phases = data.phases;
+        // Normalize phases data
+        if (typeof phases === 'string') {
+            try {
+                phases = JSON.parse(phases);
+            } catch (e) {
+                console.error("Error parsing phases JSON", e);
+                phases = [];
+            }
+        }
+        // Handle { "phases": [...] } wrapper structure
+        if (phases && !Array.isArray(phases) && phases.phases && Array.isArray(phases.phases)) {
+            phases = phases.phases;
+        }
+
+        if (phases && Array.isArray(phases)) {
+            phases.forEach((phase, idx) => {
+                html += `
+                    <div class="mb-6 last:mb-0">
+                        <h4 class="font-bold text-gray-800 text-base mb-3 flex items-center">
+                            <span class="bg-gray-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">${idx + 1}</span>
+                            ${phase.phase_name}
+                        </h4>
+                        <div class="ml-8 space-y-3">
+                            ${phase.tasks.map(t => `
+                                <div class="bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-300 transition-colors">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <h5 class="font-bold text-sm text-blue-700">${t.title}</h5>
+                                        <span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                                            ${t.estimated_days}일
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-gray-600 mb-2">${t.description}</p>
+                                    ${t.checklist && t.checklist.length > 0 ? `
+                                        <div class="bg-gray-50 rounded p-2">
+                                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Checklist</p>
+                                            <ul class="space-y-1">
+                                                ${t.checklist.map(item => `
+                                                    <li class="flex items-center text-xs text-gray-500">
+                                                        <span class="w-1 h-1 bg-gray-400 rounded-full mr-2"></span>
+                                                        ${item}
+                                                    </li>
+                                                `).join('')}
+                                            </ul>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        contentDiv.innerHTML = html;
+
+        const modal = document.getElementById('detailModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeDetailModal() {
+        const modal = document.getElementById('detailModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+
+
+</body>
+
+</html>

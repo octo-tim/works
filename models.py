@@ -228,6 +228,10 @@ class WorkTemplate(Base):
     description = Column(String)
     content_json = Column(Text) # Stores phases/tasks as JSON string
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    
     creator_id = Column(Integer, ForeignKey("users.id"))
+    editor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    creator = relationship("User")
+    creator = relationship("User", foreign_keys=[creator_id])
+    editor = relationship("User", foreign_keys=[editor_id])

@@ -1796,6 +1796,37 @@ async def create_work_template(
     return RedirectResponse(url="/work-templates", status_code=303)
 
 
+@app.post("/work-templates/{template_id}/update")
+async def update_work_template(
+    template_id: int,
+    name: str = Form(...),
+    category: str = Form(...),
+    description: str = Form(...),
+    content_json: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """템플릿 수정"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+        
+    template = db.query(models.WorkTemplate).filter(models.WorkTemplate.id == template_id).first()
+    if not template:
+        # Should probably return error page or alert, but redirecting for now
+        return RedirectResponse(url="/work-templates?error=TemplateNotFound", status_code=303)
+        
+    template.name = name
+    template.category = category
+    template.description = description
+    template.content_json = content_json
+    template.updated_at = datetime.now()
+    template.editor_id = current_user.id
+    
+    db.commit()
+    
+    return RedirectResponse(url="/work-templates", status_code=303)
+
+
 
 
 @app.get("/api/projects/templates")

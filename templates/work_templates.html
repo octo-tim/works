@@ -49,10 +49,26 @@
                          We'll use a small script to render it or just simple "View Details" logic later. 
                          Wait, I can parse it in the loop if I add a template filter, OR I can just skip the list preview for now. 
                          Let's try to pass parsed data from backend next time. For now, just basic card. -->
-                    <button onclick="openDetailModal('custom_{{ t.id }}')"
-                        class="mt-auto w-full bg-blue-50 text-blue-600 text-sm font-bold py-2 rounded-lg hover:bg-blue-100 transition">
-                        상세 보기
-                    </button>
+                    <div class="mt-auto">
+                        <p class="text-[10px] text-gray-400 mb-2 text-right">
+                            {% if t.updated_at %}
+                            Updated: {{ t.updated_at.strftime('%y.%m.%d') }}
+                            {% if t.editor %} by {{ t.editor.username }} {% endif %}
+                            {% else %}
+                            Created: {{ t.created_at.strftime('%y.%m.%d') }}
+                            {% endif %}
+                        </p>
+                        <div class="flex space-x-2">
+                            <button onclick="openDetailModal('custom_{{ t.id }}')"
+                                class="flex-1 bg-blue-50 text-blue-600 text-sm font-bold py-2 rounded-lg hover:bg-blue-100 transition">
+                                상세
+                            </button>
+                            <button onclick="openEditModal('custom_{{ t.id }}')"
+                                class="bg-gray-100 text-gray-600 text-sm font-bold py-2 px-4 rounded-lg hover:bg-gray-200 transition">
+                                ✏️
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -109,6 +125,60 @@
 {% endblock %}
 
 {% block modals %}
+<!-- Edit Template Modal -->
+<div id="editTemplateModal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
+    style="z-index: 60;">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-0 flex flex-col max-h-[90vh]">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+            <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                ✏️ 템플릿 수정
+            </h3>
+            <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        </div>
+
+        <form id="editForm" method="POST" action="" class="flex-1 flex flex-col overflow-hidden">
+            <input type="hidden" id="editId" name="template_id">
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-4">
+                <div>
+                    <label class="block text-gray-700 text-xs font-bold mb-1">템플릿 이름</label>
+                    <input type="text" id="editName" name="name" required
+                        class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-xs font-bold mb-1">카테고리</label>
+                    <input type="text" id="editCategory" name="category" required
+                        class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-xs font-bold mb-1">설명</label>
+                    <textarea id="editDescription" name="description" required rows="2"
+                        class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-xs font-bold mb-1">
+                        내용 (JSON 데이터)
+                        <span class="text-red-500 text-[10px] font-normal ml-2">* 고급 사용자용. 구조가 깨지면 상세보기가 작동하지
+                            않습니다.</span>
+                    </label>
+                    <textarea id="editContentJson" name="content_json" required rows="10"
+                        class="w-full border border-gray-300 rounded p-2 text-xs font-mono bg-gray-50 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end space-x-2 rounded-b-xl">
+                <button type="button" onclick="closeEditModal()"
+                    class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-white transition text-sm">
+                    취소
+                </button>
+                <button type="submit"
+                    class="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-sm text-sm">
+                    저장하기
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 <!-- Create Template Modal -->
 <div id="createTemplateModal"
     class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center backdrop-blur-sm"
@@ -444,6 +514,46 @@
 
     function closeDetailModal() {
         const modal = document.getElementById('detailModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function openEditModal(id) {
+        // Parse ID (custom_123 -> 123)
+        const dbId = id.replace('custom_', '');
+        const data = templateData[id];
+
+        if (!data) {
+            alert("No Data");
+            return;
+        }
+
+        // Fill Form
+        document.getElementById('editId').value = dbId;
+        document.getElementById('editName').value = data.name;
+        document.getElementById('editCategory').value = data.category;
+        document.getElementById('editDescription').value = data.description;
+
+        // Content JSON: if phases is object, stringify.
+        let phasesJson = '';
+        if (typeof data.phases === 'object') {
+            phasesJson = JSON.stringify(data.phases, null, 2);
+        } else {
+            phasesJson = data.phases;
+        }
+        document.getElementById('editContentJson').value = phasesJson;
+
+        // Open Modal
+        const modal = document.getElementById('editTemplateModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        // Set Action
+        document.getElementById('editForm').action = `/work-templates/${dbId}/update`;
+    }
+
+    function closeEditModal() {
+        const modal = document.getElementById('editTemplateModal');
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     }
