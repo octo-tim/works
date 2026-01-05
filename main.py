@@ -1567,6 +1567,7 @@ class AIHelper:
         response = self.model.generate_content(prompt)
         return json.loads(response.text)
 
+
     def generate_wbs_json(self, goal, deadline, p_type, scope, stakeholders):
         prompt = f"""
         You are a project management expert. Create a WBS (Work Breakdown Structure) for a new project.
@@ -1596,8 +1597,23 @@ class AIHelper:
             ]
         }}
         """
-        response = self.model.generate_content(prompt)
-        return json.loads(response.text)
+        # Retry logic for 429 errors
+        max_retries = 3
+        base_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.model.generate_content(prompt)
+                return json.loads(response.text)
+            except Exception as e:
+                is_rate_limit = "429" in str(e) or "ResourceExhausted" in str(e)
+                if is_rate_limit and attempt < max_retries - 1:
+                    wait_time = base_delay * (2 ** attempt)
+                    print(f"AI Rate Limit hit. Retrying in {wait_time}s... (Attempt {attempt+1}/{max_retries})")
+                    import time
+                    time.sleep(wait_time)
+                else:
+                    raise e
 
 @app.post("/api/projects/ai-wbs")
 async def generate_project_wbs(
@@ -1622,7 +1638,14 @@ async def generate_project_wbs(
         return result
     except Exception as e:
         print(f"AI WBS Error: {e}")
-        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
+        status_code = 500
+        detail = f"AI Error: {str(e)}"
+        
+        if "429" in str(e) or "ResourceExhausted" in str(e):
+            status_code = 503
+            detail = "AI 서비스 사용량이 많아 잠시 후 다시 시도해주세요. (Rate Limit)"
+            
+        raise HTTPException(status_code=status_code, detail=detail)
 
 
 @app.post("/api/minutes/ai-analyze")
