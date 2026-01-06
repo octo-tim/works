@@ -159,14 +159,16 @@
                     <textarea id="editDescription" name="description" required rows="2"
                         class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
                 </div>
-                <!-- JSON Content Editor -->
+                <!-- Text Content Editor (Parsed to JSON) -->
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
                     <label class="block text-gray-700 text-[10px] font-bold mb-1">
-                        JSON 데이터
-                        <span class="text-red-500 font-normal ml-1">* 형식이 틀리면 상세보기가 작동하지 않습니다.</span>
+                        상세 내용 (텍스트 형식)
+                        <span class="text-blue-500 font-normal ml-1">* # 단계명, - 업무명: 설명 형식으로 입력하세요.</span>
                     </label>
-                    <textarea id="editContentJson" name="content_json" rows="10"
-                        class="w-full border border-gray-300 rounded p-2 text-xs font-mono focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    <textarea id="editContentText" rows="10"
+                        placeholder="# 1단계: 기획&#10;- 시장 조사: 경쟁사 분석하기&#10;- 기획안 작성&#10;&#10;# 2단계: 개발&#10;- 프론트엔드 작업"
+                        class="w-full border border-gray-300 rounded p-2 text-xs font-mono focus:ring-blue-500 focus:border-blue-500 leading-relaxed"></textarea>
+                    <input type="hidden" id="editContentJson" name="content_json">
                 </div>
             </div>
 
@@ -175,7 +177,7 @@
                     class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-white transition text-sm">
                     취소
                 </button>
-                <button type="submit"
+                <button type="submit" onclick="prepareSubmit()"
                     class="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-sm text-sm">
                     저장하기
                 </button>
@@ -515,6 +517,77 @@
         modal.classList.remove('flex');
     }
 
+    function jsonToText(phases) {
+        if (!phases || !Array.isArray(phases)) return "";
+        let text = "";
+        phases.forEach(phase => {
+            text += `# ${phase.phase_name}\n`;
+            if (phase.tasks && Array.isArray(phase.tasks)) {
+                phase.tasks.forEach(task => {
+                    let line = `- ${task.title}`;
+                    if (task.description) {
+                        line += `: ${task.description}`;
+                    }
+                    text += `${line}\n`;
+                });
+            }
+            text += "\n";
+        });
+        return text.trim();
+    }
+
+    function textToJson(text) {
+        const lines = text.split('\n');
+        const phases = [];
+        let currentPhase = null;
+
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line) return;
+
+            if (line.startsWith('#')) {
+                // New Phase
+                if (currentPhase) phases.push(currentPhase);
+                currentPhase = {
+                    phase_name: line.substring(1).trim(),
+                    tasks: []
+                };
+            } else if (line.startsWith('-') || line.startsWith('*')) {
+                // Task
+                if (!currentPhase) {
+                    // Create default phase if none exists
+                    currentPhase = { phase_name: "기본 단계", tasks: [] };
+                }
+                let content = line.substring(1).trim();
+                let title = content;
+                let description = "";
+
+                // Split by first colon
+                const colonIdx = content.indexOf(':');
+                if (colonIdx > -1) {
+                    title = content.substring(0, colonIdx).trim();
+                    description = content.substring(colonIdx + 1).trim();
+                }
+
+                currentPhase.tasks.push({
+                    title: title,
+                    description: description,
+                    checklist: [],
+                    estimated_days: 1
+                });
+            }
+        });
+        if (currentPhase) phases.push(currentPhase);
+        return phases;
+    }
+
+    function prepareSubmit() {
+        const text = document.getElementById('editContentText').value;
+        const json = textToJson(text);
+        document.getElementById('editContentJson').value = JSON.stringify(json);
+        return true;
+    }
+
     function openEditModal(id) {
         // Parse ID (custom_123 -> 123)
         const dbId = id.replace('custom_', '');
@@ -531,14 +604,22 @@
         document.getElementById('editCategory').value = data.category;
         document.getElementById('editDescription').value = data.description;
 
-        // Content JSON: if phases is object, stringify.
-        let phasesJson = '';
+        // Content JSON handling
+        let phases = [];
         if (typeof data.phases === 'object') {
-            phasesJson = JSON.stringify(data.phases, null, 2);
-        } else {
-            phasesJson = data.phases;
+            phases = data.phases;
+            // Handle wrapper
+            if (!Array.isArray(phases) && phases.phases) {
+                phases = phases.phases;
+            }
+        } else if (typeof data.phases === 'string') {
+            try {
+                phases = JSON.parse(data.phases);
+            } catch (e) { phases = []; }
         }
-        document.getElementById('editContentJson').value = phasesJson;
+
+        // Convert to Text format
+        document.getElementById('editContentText').value = jsonToText(phases);
 
         // Open Modal
         const modal = document.getElementById('editTemplateModal');
