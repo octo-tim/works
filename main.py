@@ -2191,8 +2191,8 @@ async def generate_work_report_endpoint(
             start_date=start_date,
             end_date=end_date,
             summary=ai_result.get("summary"),
-            evaluation=ai_result.get("evaluation"),
-            score=ai_result.get("score"),
+            evaluation=json.dumps(ai_result, ensure_ascii=False), # Save full JSON for frontend parsing
+            score=ai_result.get("average_score"), # AI returns 'average_score'
             created_at=datetime.now()
         )
         db.add(new_report)
