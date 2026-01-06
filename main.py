@@ -45,11 +45,9 @@ def get_db():
         db.close()
 
 # Temporary manual migration endpoint for debugging
-@app.get("/fix-db")
-def fix_db_manually():
-    import fix_production_schema
-    logs = fix_production_schema.fix_schema()
-    return {"logs": logs}
+
+# (Moved /fix-db endpoint to bottom to avoid NameError)
+
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[models.User]:
@@ -111,6 +109,14 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content="<h1>Internal Server Error</h1><p>서버 오류가 발생했습니다. 관리자에게 문의하세요.</p>"
     )
+
+
+# Temporary manual migration endpoint for debugging
+@app.get("/fix-db")
+def fix_db_manually():
+    import fix_production_schema
+    logs = fix_production_schema.fix_schema()
+    return {"logs": logs}
 
 # 정적 파일 및 템플릿 설정
 app.mount("/static", StaticFiles(directory="static"), name="static")
