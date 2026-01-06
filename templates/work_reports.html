@@ -288,7 +288,13 @@
                     strengths = parsedEval.strengths || [];
                     improvements = parsedEval.improvements || [];
                     overallComment = parsedEval.overall_comment || parsedEval.summary || "";
-                    evaluationText = null; // Use structured data instead
+
+                    // If structured feedback is missing but text evaluation exists (legacy or AI fallback), use it.
+                    if (strengths.length === 0 && improvements.length === 0 && parsedEval.evaluation) {
+                        evaluationText = parsedEval.evaluation;
+                    } else {
+                        evaluationText = null;
+                    }
                 }
             } catch (e) {
                 // Legacy or text-only evaluation
@@ -491,11 +497,20 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Initialize Marked for summary markdown
         const summaryDiv = document.querySelector('#reportContent .prose:nth-of-type(1)');
         if (summaryDiv) {
             summaryDiv.innerHTML = marked.parse(summaryDiv.innerText);
         }
-        // Note: Detailed eval might be empty or text, handle carefully if needed
+
+        // Check if there is a latest report loaded via server-side rendering
+        // If so, we need to trigger the visualization logic because the 'evaluation' field 
+        // rendered by Jinja is just the raw JSON string.
+        {% if history %}
+        const latestId = {{ history[0].id }
+    };
+    loadReport(latestId);
+    {% endif %}
     });
 
 </script>

@@ -1811,7 +1811,9 @@ class AIHelper:
                     "feedback": "string (Brief specific comment on this task)"
                 }}
             ],
-            "evaluation": "string (Detailed qualitative feedback, strengths/weaknesses, markdown allowed)"
+            "strengths": ["string (Key strength 1)", "string (Key strength 2)"],
+            "improvements": ["string (Area for improvement 1)", "string (Area for improvement 2)"],
+            "overall_comment": "string (Short overall summary/comment)"
         }}
         """
         response = self.model.generate_content(prompt)
