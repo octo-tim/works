@@ -2,15 +2,18 @@ import os
 import sys
 from sqlalchemy import create_engine, text
 
-def fix_schema():
+def fix_schema(db_url=None):
     logs = []
     def log(msg):
         print(msg)
         logs.append(str(msg))
 
     # Get database URL from argument or environment
-    db_url = os.getenv("DATABASE_URL")
-    if len(sys.argv) > 1:
+    if not db_url:
+        db_url = os.getenv("DATABASE_URL")
+    
+    # Only check sys.argv if we are running as main script (not imported)
+    if __name__ == "__main__" and len(sys.argv) > 1:
         db_url = sys.argv[1]
     
     if not db_url:

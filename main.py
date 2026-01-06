@@ -27,7 +27,7 @@ try:
     print("Running schema migration check...")
     # Pass database URL from config or env if needed, but the script handles env var
     # We call it directly. Note: It needs DATABASE_URL env var which Render provides.
-    fix_production_schema.fix_schema()
+    fix_production_schema.fix_schema(os.getenv("DATABASE_URL"))
 except Exception as e:
     print(f"Migration warning: {e}")
 # ---------------------------------------------------------
@@ -115,7 +115,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/fix-db")
 def fix_db_manually():
     import fix_production_schema
-    logs = fix_production_schema.fix_schema()
+    logs = fix_production_schema.fix_schema(os.getenv("DATABASE_URL"))
     return {"logs": logs}
 
 # 정적 파일 및 템플릿 설정
