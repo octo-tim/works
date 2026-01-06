@@ -18,6 +18,19 @@ import google.generativeai as genai
 import json
 import re
 import wbs_templates # Template Module
+import fix_production_schema # Import migration script
+
+# ---------------------------------------------------------
+# AUTO-MIGRATION FOR PRODUCTION (Added by AI)
+# This ensures missing columns are added on server startup
+try:
+    print("Running schema migration check...")
+    # Pass database URL from config or env if needed, but the script handles env var
+    # We call it directly. Note: It needs DATABASE_URL env var which Render provides.
+    fix_production_schema.fix_schema()
+except Exception as e:
+    print(f"Migration warning: {e}")
+# ---------------------------------------------------------
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
