@@ -1790,14 +1790,7 @@ class AIHelper:
         }}
         """
         response = self.model.generate_content(prompt)
-        return json.loads(response.text) "ResourceExhausted" in str(e)
-                if is_rate_limit and attempt < max_retries - 1:
-                    wait_time = base_delay * (2 ** attempt)
-                    print(f"AI Rate Limit hit. Retrying in {wait_time}s... (Attempt {attempt+1}/{max_retries})")
-                    import time
-                    time.sleep(wait_time)
-                else:
-                    raise e
+        return json.loads(response.text)
     
     def generate_template_json(self, topic):
         prompt = f"""
