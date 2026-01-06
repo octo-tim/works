@@ -269,52 +269,104 @@
             content.classList.remove('hidden');
 
             // Parse detailed data
-            let scores = report.evaluation ? null : null;
+            let scores = null;
             let tasks = [];
-            let evaluationText = report.evaluation;
+            let strengths = [];
+            let improvements = [];
+            let overallComment = "";
+            let evaluationText = report.evaluation; // Fallback
 
             // Try to parse 'evaluation' as JSON if it contains the structured data
             try {
                 const parsedEval = JSON.parse(report.evaluation);
-                if (parsedEval.scores) {
+                // Check if it's the new format
+                if (parsedEval.strengths || parsedEval.scores) {
                     scores = parsedEval.scores;
                     tasks = parsedEval.tasks_processed || [];
-                    evaluationText = parsedEval.evaluation || ""; // The text part
-                    // If parsed, update score to average if needed or trust report.score
+                    strengths = parsedEval.strengths || [];
+                    improvements = parsedEval.improvements || [];
+                    overallComment = parsedEval.overall_comment || parsedEval.summary || "";
+                    evaluationText = null; // Use structured data instead
                 }
             } catch (e) {
                 // Legacy or text-only evaluation
-                console.log("Evaluation is text-only");
+                console.log("Evaluation is text-only", e);
             }
 
             const scoreColor = report.score >= 90 ? 'text-blue-600' : (report.score >= 70 ? 'text-green-600' : 'text-orange-500');
 
-            // Build Score Chart HTML
-            let chartHtml = '';
+            // --- Build Radar Chart HTML ---
+            // We need a canvas for Chart.js
+            let visualizationHtml = '';
             if (scores) {
-                const categories = ['productivity', 'quality', 'consistency', 'communication'];
-                const labels = { 'productivity': '생산성', 'quality': '완성도', 'consistency': '성실성', 'communication': '소통' };
-
-                chartHtml = '<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">';
-                categories.forEach(cat => {
-                    const val = scores[cat] || 0;
-                    const catColor = val >= 80 ? 'bg-blue-500' : (val >= 60 ? 'bg-green-500' : 'bg-orange-500');
-                    chartHtml += `
-                        <div class="bg-white border border-gray-100 rounded-lg p-3 shadow-sm">
-                            <div class="flex justify-between mb-2">
-                                <span class="text-xs font-bold text-gray-500">${labels[cat]}</span>
-                                <span class="text-sm font-bold ${val >= 80 ? 'text-blue-600' : 'text-gray-700'}">${val}점</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="${catColor} h-2 rounded-full" style="width: ${val}%"></div>
-                            </div>
-                        </div>
-                    `;
-                });
-                chartHtml += '</div>';
+                visualizationHtml = `
+                    <div class="bg-white border border-gray-100 rounded-xl p-6 mb-8 flex flex-col md:flex-row gap-8 items-center shadow-sm">
+                         <!-- Radar Chart Container -->
+                         <div class="w-full md:w-1/2 h-64 relative">
+                            <canvas id="scoreRadarChart"></canvas>
+                         </div>
+                         <!-- Detailed Scores -->
+                         <div class="w-full md:w-1/2 grid grid-cols-2 gap-4">
+                            ${Object.entries(scores).map(([key, val]) => `
+                                <div class="bg-gray-50 rounded-lg p-3">
+                                    <div class="text-xs text-gray-500 uppercase font-bold mb-1">${key}</div>
+                                    <div class="text-2xl font-bold ${val >= 80 ? 'text-blue-600' : 'text-gray-700'}">${val}</div>
+                                </div>
+                            `).join('')}
+                         </div>
+                    </div>
+                `;
             }
 
-            // Build Task Table HTML
+            // --- Build Feedback Cards HTML ---
+            let feedbackHtml = '';
+            if (strengths.length > 0 || improvements.length > 0) {
+                feedbackHtml = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    <!-- Strengths -->
+                    <div class="bg-green-50 border border-green-100 rounded-xl p-6">
+                        <h3 class="text-lg font-bold text-green-800 mb-4 flex items-center">
+                            <span class="mr-2">💪</span> 잘한 점 (Strengths)
+                        </h3>
+                        <ul class="space-y-3">
+                            ${strengths.map(s => `
+                                <li class="flex items-start text-sm text-green-800">
+                                    <span class="mt-1 mr-2 text-green-500">✔</span>
+                                    <span>${s}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    <!-- Improvements -->
+                    <div class="bg-orange-50 border border-orange-100 rounded-xl p-6">
+                        <h3 class="text-lg font-bold text-orange-800 mb-4 flex items-center">
+                            <span class="mr-2">🚀</span> 보완할 점 (Improvements)
+                        </h3>
+                        <ul class="space-y-3">
+                            ${improvements.map(s => `
+                                <li class="flex items-start text-sm text-orange-800">
+                                    <span class="mt-1 mr-2 text-orange-500">⚡</span>
+                                    <span>${s}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+                `;
+            } else if (evaluationText) {
+                // Fallback to text
+                feedbackHtml = `
+                    <section class="mt-8">
+                        <h3 class="text-lg font-bold text-gray-800 mb-3">⚖️ 상세 평가</h3>
+                        <div class="prose prose-sm max-w-none text-gray-600">
+                            ${marked.parse(evaluationText)}
+                        </div>
+                    </section>
+                 `;
+            }
+
+
+            // --- Build Task Table HTML ---
             let taskTableHtml = '';
             if (tasks && tasks.length > 0) {
                 taskTableHtml = `
@@ -345,7 +397,7 @@
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${t.status === 'Done' ? 'bg-green-100 text-green-800' :
-                        (t.status === 'In Progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')
+                        'bg-gray-100 text-gray-800'
                     }">
                                                 ${t.status}
                                             </span>
@@ -359,6 +411,7 @@
                 `;
             }
 
+            // Render Main Content
             content.innerHTML = `
                 <div class="bg-gray-50 p-6 border-b border-gray-100 flex justify-between items-start">
                     <div>
@@ -371,6 +424,7 @@
                             </span>
                         </div>
                         <h2 class="text-2xl font-bold text-gray-800">업무 평가 리포트</h2>
+                        ${overallComment ? `<p class="text-gray-600 mt-2 text-sm italic">"${overallComment}"</p>` : ''}
                     </div>
                     <div class="text-right">
                         <span class="block text-xs font-bold text-gray-400 uppercase">Average Score</span>
@@ -379,32 +433,54 @@
                     </div>
                 </div>
                 
-                <div class="p-8 overflow-y-auto custom-scrollbar space-y-8">
-                    <!-- Score Breakdown -->
-                    ${chartHtml}
-
-                    <section>
-                        <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
-                            <span class="mr-2">📝</span> 요약
-                        </h3>
-                        <div class="prose prose-sm max-w-none text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                             ${marked.parse(report.summary || '')}
-                        </div>
-                    </section>
+                <div class="p-8 overflow-y-auto custom-scrollbar">
                     
-                    <!-- Task Table -->
+                    ${visualizationHtml}
+                    ${feedbackHtml}
                     ${taskTableHtml}
 
-                    <section>
-                        <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
-                            <span class="mr-2">⚖️</span> 상세 평가 및 피드백
-                        </h3>
-                        <div class="prose prose-sm max-w-none text-gray-600">
-                            ${marked.parse(evaluationText || '')}
-                        </div>
-                    </section>
                 </div>
             `;
+
+            // --- Initialize Chart.js ---
+            if (scores && document.getElementById('scoreRadarChart')) {
+                const ctx = document.getElementById('scoreRadarChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['생산성', '완성도', '성실성', '소통'],
+                        datasets: [{
+                            label: '평가 점수',
+                            data: [
+                                scores.productivity || 0,
+                                scores.quality || 0,
+                                scores.consistency || 0,
+                                scores.communication || 0
+                            ],
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 2,
+                            pointRadius: 3
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            r: {
+                                angleLines: { display: false },
+                                suggestedMin: 0,
+                                suggestedMax: 100,
+                                ticks: { display: false } // Hide chart ticks for cleaner look
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+
 
         } catch (e) {
             console.error(e);
@@ -412,21 +488,12 @@
         }
     }
 
-    // Initial Render of Markdown for the latest item loaded by Jinja
     document.addEventListener('DOMContentLoaded', () => {
-        // If there is history, re-render the static part with marked.js provided we inject raw MD?
-        // Since Jinja renders it, we might want to use a filter in Jinja OR just rely on text.
-        // Current template uses {{ summary | safe }}. If backend sends Markdown, we need parsing.
-        // Let's do a quick pass to convert the initial view if it exists.
-
         const summaryDiv = document.querySelector('#reportContent .prose:nth-of-type(1)');
         if (summaryDiv) {
             summaryDiv.innerHTML = marked.parse(summaryDiv.innerText);
         }
-        const evalDiv = document.querySelector('#reportContent .prose:nth-of-type(2)');
-        if (evalDiv) {
-            evalDiv.innerHTML = marked.parse(evalDiv.innerText);
-        }
+        // Note: Detailed eval might be empty or text, handle carefully if needed
     });
 
 </script>
