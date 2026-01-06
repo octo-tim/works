@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="h-full flex flex-col p-6 space-y-6 overflow-hidden">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">📊 업무 리포트 (AI 평가)</h1>
+            <p class="text-sm text-gray-500 mt-1">AI가 업무 기록을 분석하여 일간/주간/월간 리포트를 작성하고 평가합니다.</p>
+        </div>
+    </div>
+
+    <div class="flex-1 flex gap-6 overflow-hidden">
+        <!-- Left: Generator -->
+        <div class="w-1/3 bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col">
+            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <span class="bg-blue-100 text-blue-600 rounded-lg p-1.5 mr-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
+                        </path>
+                    </svg>
+                </span>
+                리포트 생성
+            </h2>
+
+            <div class="space-y-6 flex-1">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">리포트 종류</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="selectType('DAILY')" id="btnDAILY"
+                            class="py-2 px-3 rounded-lg border border-blue-500 bg-blue-50 text-blue-700 font-bold text-sm transition focus:outline-none ring-2 ring-blue-200">
+                            일간
+                        </button>
+                        <button type="button" onclick="selectType('WEEKLY')" id="btnWEEKLY"
+                            class="py-2 px-3 rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 text-sm transition focus:outline-none">
+                            주간
+                        </button>
+                        <button type="button" onclick="selectType('MONTHLY')" id="btnMONTHLY"
+                            class="py-2 px-3 rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 text-sm transition focus:outline-none">
+                            월간
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">기준 날짜</label>
+                    <input type="date" id="reportDate" value="{{ today }}"
+                        class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-blue-500 focus:border-blue-500">
+                    <p class="text-xs text-gray-500 mt-2" id="dateHint">
+                        선택한 날짜의 하루 동안의 업무를 분석합니다.
+                    </p>
+                </div>
+
+                <div class="bg-blue-50 rounded-lg p-4 text-xs text-blue-800 leading-relaxed">
+                    <p>💡 <b>AI 분석 기준</b></p>
+                    <ul class="list-disc pl-4 mt-1 space-y-1">
+                        <li>완료된 업무의 중요도와 난이도</li>
+                        <li>업무 처리의 신속성 및 일정 준수</li>
+                        <li>제목과 설명의 충실도</li>
+                    </ul>
+                </div>
+            </div>
+
+            <button onclick="generateReport()" id="genBtn"
+                class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex justify-center items-center">
+                <span class="mr-2">✨</span> 리포트 생성 및 평가하기
+            </button>
+        </div>
+
+        <!-- Right: Report View -->
+        <div class="w-2/3 flex flex-col gap-6 h-full overflow-hidden">
+            <!-- Latest Report / Loading -->
+            <div id="reportContainer"
+                class="bg-white rounded-xl shadow-sm border border-gray-200 p-0 flex-1 flex flex-col overflow-hidden relative">
+
+                <!-- Loading Overlay -->
+                <div id="loadingOverlay"
+                    class="absolute inset-0 bg-white/90 z-20 hidden flex-col items-center justify-center">
+                    <div class="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4">
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800 animate-pulse">AI가 업무 내용을 분석하고 있습니다...</h3>
+                    <p class="text-sm text-gray-500">약 10~20초 정도 소요됩니다.</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState"
+                    class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 {% if history %}hidden{% endif %}">
+                    <svg class="w-20 h-20 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                        </path>
+                    </svg>
+                    <p class="text-lg font-medium">생성된 리포트가 없습니다.</p>
+                    <p class="text-sm">왼쪽에서 새로운 리포트를 생성해보세요.</p>
+                </div>
+
+                <!-- Content (Initially hidden if no history, populated by JS or Server) -->
+                <div id="reportContent" class="flex flex-col h-full {% if not history %}hidden{% endif %}">
+                    {% if history %}
+                    {% set latest = history[0] %}
+                    <!-- Report Header -->
+                    <div class="bg-gray-50 p-6 border-b border-gray-100 flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">
+                                    {{ latest.report_type }}
+                                </span>
+                                <span class="text-gray-500 text-sm font-mono">
+                                    {{ latest.start_date }} ~ {{ latest.end_date }}
+                                </span>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800">업무 평가 리포트</h2>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-xs font-bold text-gray-400 uppercase">Total Score</span>
+                            <span class="text-4xl font-black text-blue-600">{{ latest.score }}</span>
+                            <span class="text-lg text-gray-400 font-bold">/100</span>
+                        </div>
+                    </div>
+
+                    <!-- Scrollable Body -->
+                    <div class="p-8 overflow-y-auto custom-scrollbar space-y-8">
+                        <!-- Summary -->
+                        <section>
+                            <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                                <span class="mr-2">📝</span> 요약
+                            </h3>
+                            <div
+                                class="prose prose-sm max-w-none text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                {{ latest.summary | safe }} <!-- Use safe filter if rendering markdown HTML -->
+                                <!-- Note: We might need a markdown parser in JS or Backend. For now simple text with newlines. -->
+                            </div>
+                        </section>
+
+                        <!-- Evaluation -->
+                        <section>
+                            <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                                <span class="mr-2">⚖️</span> 상세 평가
+                            </h3>
+                            <div class="prose prose-sm max-w-none text-gray-600">
+                                {{ latest.evaluation | safe }}
+                            </div>
+                        </section>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- History List (Compact) -->
+            <div class="h-1/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                <div
+                    class="bg-gray-50 px-4 py-3 border-b border-gray-200 font-bold text-sm text-gray-700 flex justify-between items-center">
+                    <span>📋 리포트 히스토리</span>
+                    <span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">{{ history|length }}</span>
+                </div>
+                <div class="overflow-y-auto p-0 divide-y divide-gray-100 flex-1 custom-scrollbar">
+                    {% for report in history %}
+                    <div onclick="loadReport({{ report.id }})"
+                        class="p-4 hover:bg-blue-50 cursor-pointer transition flex justify-between items-center group">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border 
+                                    {% if report.report_type == 'DAILY' %} border-green-200 bg-green-50 text-green-700
+                                    {% elif report.report_type == 'WEEKLY' %} border-purple-200 bg-purple-50 text-purple-700
+                                    {% else %} border-orange-200 bg-orange-50 text-orange-700 {% endif %}">
+                                    {{ report.report_type }}
+                                </span>
+                                <span class="text-xs text-gray-500">{{ report.start_date }}</span>
+                            </div>
+                            <p class="text-xs text-gray-400">{{ report.created_at.strftime('%Y-%m-%d %H:%M') }} 생성됨</p>
+                        </div>
+                        <div class="flex items-center">
+                            <span
+                                class="text-lg font-bold mr-3 {% if report.score >= 90 %}text-blue-600{% elif report.score >= 70 %}text-green-600{% else %}text-orange-500{% endif %}">
+                                {{ report.score }}점
+                            </span>
+                            <svg class="w-4 h-4 text-gray-300 group-hover:text-blue-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    let currentType = 'DAILY';
+
+    function selectType(type) {
+        currentType = type;
+        // Reset styles
+        ['DAILY', 'WEEKLY', 'MONTHLY'].forEach(t => {
+            const btn = document.getElementById('btn' + t);
+            if (t === type) {
+                btn.className = "py-2 px-3 rounded-lg border border-blue-500 bg-blue-50 text-blue-700 font-bold text-sm transition focus:outline-none ring-2 ring-blue-200";
+            } else {
+                btn.className = "py-2 px-3 rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 text-sm transition focus:outline-none";
+            }
+        });
+
+        // Update Hint
+        const hints = {
+            'DAILY': '선택한 날짜의 하루 동안의 업무를 분석합니다.',
+            'WEEKLY': '선택한 날짜가 포함된 한 주(월~일)의 업무를 분석합니다.',
+            'MONTHLY': '선택한 날짜가 포함된 해당 월의 모든 업무를 분석합니다.'
+        };
+        document.getElementById('dateHint').textContent = hints[type];
+    }
+
+    async function generateReport() {
+        const dateVal = document.getElementById('reportDate').value;
+        if (!dateVal) {
+            alert("날짜를 선택해주세요.");
+            return;
+        }
+
+        const overlay = document.getElementById('loadingOverlay');
+        const emptyState = document.getElementById('emptyState');
+        const content = document.getElementById('reportContent');
+
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+
+        try {
+            const response = await fetch('/api/work-reports/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: currentType,
+                    date: dateVal
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || '생성 실패');
+            }
+
+            const data = await response.json();
+
+            // Reload page to show new report (simplest way to update history and view)
+            // Or render dynamically. Let's reload for simplicity to fetch full history state.
+            window.location.reload();
+
+        } catch (e) {
+            alert("오류 발생: " + e.message);
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
+    }
+
+    async function loadReport(id) {
+        // Fetch detail and render
+        try {
+            const response = await fetch('/api/work-reports/' + id);
+            if (!response.ok) throw new Error("Load failed");
+            const report = await response.json();
+
+            // Render (Manually updating DOM to avoid reload)
+            document.getElementById('emptyState').classList.add('hidden');
+            const content = document.getElementById('reportContent');
+            content.classList.remove('hidden');
+
+            const scoreColor = report.score >= 90 ? 'text-blue-600' : (report.score >= 70 ? 'text-green-600' : 'text-orange-500');
+
+            content.innerHTML = `
+                <div class="bg-gray-50 p-6 border-b border-gray-100 flex justify-between items-start">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">
+                                ${report.report_type}
+                            </span>
+                            <span class="text-gray-500 text-sm font-mono">
+                                ${report.start_date} ~ ${report.end_date}
+                            </span>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800">업무 평가 리포트</h2>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-xs font-bold text-gray-400 uppercase">Total Score</span>
+                        <span class="text-4xl font-black ${scoreColor}">${report.score}</span>
+                        <span class="text-lg text-gray-400 font-bold">/100</span>
+                    </div>
+                </div>
+                
+                <div class="p-8 overflow-y-auto custom-scrollbar space-y-8">
+                    <section>
+                        <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                            <span class="mr-2">📝</span> 요약
+                        </h3>
+                        <div class="prose prose-sm max-w-none text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                             ${marked.parse(report.summary || '')}
+                        </div>
+                    </section>
+                    
+                    <section>
+                        <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                            <span class="mr-2">⚖️</span> 상세 평가
+                        </h3>
+                        <div class="prose prose-sm max-w-none text-gray-600">
+                            ${marked.parse(report.evaluation || '')}
+                        </div>
+                    </section>
+                </div>
+            `;
+
+        } catch (e) {
+            console.error(e);
+            alert("리포트를 불러올 수 없습니다.");
+        }
+    }
+
+    // Initial Render of Markdown for the latest item loaded by Jinja
+    document.addEventListener('DOMContentLoaded', () => {
+        // If there is history, re-render the static part with marked.js provided we inject raw MD?
+        // Since Jinja renders it, we might want to use a filter in Jinja OR just rely on text.
+        // Current template uses {{ summary | safe }}. If backend sends Markdown, we need parsing.
+        // Let's do a quick pass to convert the initial view if it exists.
+
+        const summaryDiv = document.querySelector('#reportContent .prose:nth-of-type(1)');
+        if (summaryDiv) {
+            summaryDiv.innerHTML = marked.parse(summaryDiv.innerText);
+        }
+        const evalDiv = document.querySelector('#reportContent .prose:nth-of-type(2)');
+        if (evalDiv) {
+            evalDiv.innerHTML = marked.parse(evalDiv.innerText);
+        }
+    });
+
+</script>
+{% endblock %}

@@ -1752,7 +1752,45 @@ class AIHelper:
                 response = self.model.generate_content(prompt)
                 return json.loads(response.text)
             except Exception as e:
-                is_rate_limit = "429" in str(e) or "ResourceExhausted" in str(e)
+                import time
+                is_rate_limit = "429" in str(e) or "Resource has been exhausted" in str(e)
+                if is_rate_limit and attempt < max_retries - 1:
+                   time.sleep(base_delay * (2 ** attempt)) # Exponential backoff
+                   continue
+                else:
+                    raise e
+
+
+    def generate_work_report(self, task_list, report_type, start_date, end_date):
+        prompt = f"""
+        You are an HR and Project Management expert. Analyze the user's work logs and generate a performance report.
+        
+        Report Type: {report_type}
+        Period: {start_date} ~ {end_date}
+        
+        User's Task Log:
+        {task_list}
+        
+        Instructions:
+        1. Summary: Summarize what the user achieved during this period. Highlight completed high-priority items.
+        2. Evaluation: Evaluate the user's performance based on:
+           - Productivity (Task completion rate)
+           - Consistency
+           - Impact (based on task titles/descriptions)
+           - Identify strengths and 1 area for improvement.
+        3. Score: Assign a score from 0 to 100 based on the evaluation. (Avergage is 70-80, Excellent is 90+).
+        
+        IMPORTANT: Output MUST be in KOREAN (한국어).
+        
+        Output Schema (JSON):
+        {{
+            "summary": "string (markdown allowed)",
+            "evaluation": "string (markdown allowed, include strengths/weaknesses)",
+            "score": int
+        }}
+        """
+        response = self.model.generate_content(prompt)
+        return json.loads(response.text) "ResourceExhausted" in str(e)
                 if is_rate_limit and attempt < max_retries - 1:
                     wait_time = base_delay * (2 ** attempt)
                     print(f"AI Rate Limit hit. Retrying in {wait_time}s... (Attempt {attempt+1}/{max_retries})")
@@ -2020,8 +2058,144 @@ async def create_task_from_ai(
 
         return {"status": "success", "task_id": new_task.id}
     except Exception as e:
-        print(f"AI Task Error: {e}")
         # traceback.print_exc()
+
+# --- Work Reports ---
+
+@app.get("/work-reports", response_class=HTMLResponse)
+def work_reports_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+    """업무 리포트 페이지"""
+    # Simply render the template. History will be fetched via API or injected here.
+    # Check for existing reports to list in sidebar or history tab
+    history = db.query(models.WorkReport).filter(models.WorkReport.user_id == current_user.id).order_by(models.WorkReport.created_at.desc()).all()
+    
+    return templates.TemplateResponse("work_reports.html", {
+        "request": request, 
+        "current_user": current_user,
+        "history": history,
+        "today": date.today()
+    })
+
+@app.post("/api/work-reports/generate")
+async def generate_work_report_endpoint(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_auth)
+):
+    try:
+        data = await request.json()
+        report_type = data.get("type", "DAILY") # DAILY, WEEKLY, MONTHLY
+        target_date_str = data.get("date") # Specific date to anchor the report
+        
+        if not target_date_str:
+            target_date = date.today()
+        else:
+            target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+            
+        # Calculate Date Range
+        if report_type == "DAILY":
+            start_date = target_date
+            end_date = target_date
+        elif report_type == "WEEKLY":
+            start_date = target_date - timedelta(days=target_date.weekday()) # Monday
+            end_date = start_date + timedelta(days=6) # Sunday
+        elif report_type == "MONTHLY":
+            start_date = target_date.replace(day=1)
+            next_month = start_date.replace(day=28) + timedelta(days=4)
+            end_date = next_month - timedelta(days=next_month.day)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid report type")
+
+        # Fetch Tasks
+        # Tasks started or due or updated within this range?
+        # Let's say: Created OR Updated OR Due within this range.
+        # Simplification: Tasks that overlap with this range or are 'Done' in this range.
+        
+        # We'll fetch tasks where (start_date <= range_end) AND (due_date >= range_start)
+        # But allow None dates to match generously if updated_at is in range (if we had updated_at on Task)
+        # Using creating/due/status for now.
+        
+        tasks_query = db.query(models.Task).filter(
+            models.Task.creator_id == current_user.id, # Or assignee? 'creator_id' is who made it, assignee might be more relevant if system allows delegation. But User model has tasks_assigned.
+            # Let's look at assigned tasks.
+            # models.Task.assignees.any(id=current_user.id) # If using M2M
+            # For backward compatibility with legacy 'assignee_id' and new 'assignees'
+            # We will grab tasks where user is assignee OR creator.
+        )
+        
+        all_tasks = tasks_query.all()
+        
+        # Filter in python for complex logic (simplify db query)
+        relevant_tasks = []
+        for t in all_tasks:
+            # Check overlap
+            t_start = t.start_date or date.min
+            t_end = t.due_date or date.max
+            
+            # Since task dates might be null, let's also check status.
+            # If Done, include if likely done recently? (Hard without completed_at)
+            # Reverting: Just include ALL active tasks + Done tasks if they 'seem' relevant.
+            # BETTER APPROACH: Just fetch everything for the prompt to filter? No, context limit.
+            
+            # Strict logic:
+            # - If DAILY: Active tasks on that day.
+            # - If WEEKLY: Active tasks in that week.
+            
+            is_relevant = False
+            # 1. Date overlap
+            if not (t_start > end_date or t_end < start_date):
+                is_relevant = True
+            
+            # 2. If no dates, include if status is NOT Done (backlog)
+            if not t.start_date and not t.due_date and t.status != "Done":
+                is_relevant = True
+                
+            if is_relevant:
+                relevant_tasks.append(f"- [{t.status}] {t.title} (Due: {t.due_date}): {t.description or ''}")
+
+        if not relevant_tasks:
+            # If empty, maybe add a note
+            relevant_tasks.append("No specific tasks found for this period.")
+
+        task_log_str = "\n".join(relevant_tasks)
+
+        # Call AI
+        ai = AIHelper()
+        ai_result = ai.generate_work_report(task_log_str, report_type, start_date, end_date)
+        
+        # Save Report
+        new_report = models.WorkReport(
+            user_id=current_user.id,
+            report_type=report_type,
+            start_date=start_date,
+            end_date=end_date,
+            summary=ai_result.get("summary"),
+            evaluation=ai_result.get("evaluation"),
+            score=ai_result.get("score"),
+            created_at=datetime.now()
+        )
+        db.add(new_report)
+        db.commit()
+        db.refresh(new_report)
+        
+        return {
+            "status": "success",
+            "report_id": new_report.id,
+            "data": ai_result,
+            "date_range": f"{start_date} ~ {end_date}"
+        }
+
+    except Exception as e:
+        print(f"Report Generation Error: {e}")
+        # traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/work-reports/{report_id}")
+def get_report_detail(report_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+    report = db.query(models.WorkReport).filter(models.WorkReport.id == report_id, models.WorkReport.user_id == current_user.id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
         raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
 
 

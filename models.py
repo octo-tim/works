@@ -235,3 +235,19 @@ class WorkTemplate(Base):
 
     creator = relationship("User", foreign_keys=[creator_id])
     editor = relationship("User", foreign_keys=[editor_id])
+
+
+class WorkReport(Base):
+    __tablename__ = "work_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    report_type = Column(String) # DAILY, WEEKLY, MONTHLY
+    start_date = Column(Date)
+    end_date = Column(Date)
+    summary = Column(Text, nullable=True)
+    evaluation = Column(Text, nullable=True)
+    score = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.datetime.now)
+
+    user = relationship("User", backref="work_reports")
