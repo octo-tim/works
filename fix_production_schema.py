@@ -23,6 +23,7 @@ def fix_schema():
         with engine.connect() as conn:
             print("Successfully connected. checking schema...")
             
+            columns = [
                 ("email", "VARCHAR"), 
                 ("phone", "VARCHAR"), 
                 ("position", "VARCHAR")
