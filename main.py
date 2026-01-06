@@ -1790,7 +1790,7 @@ class AIHelper:
         4. Calculate the Average Score.
         5. Organize the tasks into a structured list for display. Infer a 'Category' for each task (e.g., Development, Meeting, Planning).
         
-        IMPORTANT: Output MUST be in KOREAN (한국어).
+        IMPORTANT: Output content MUST be in KOREAN (한국어), BUT JSON Keys MUST remain in English.
         
         Output Schema (JSON):
         {{

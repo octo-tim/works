@@ -233,6 +233,7 @@
             const response = await fetch('/api/work-reports/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     type: currentType,
                     date: dateVal
