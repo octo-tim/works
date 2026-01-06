@@ -44,6 +44,13 @@ def get_db():
     finally:
         db.close()
 
+# Temporary manual migration endpoint for debugging
+@app.get("/fix-db")
+def fix_db_manually():
+    import fix_production_schema
+    logs = fix_production_schema.fix_schema()
+    return {"logs": logs}
+
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[models.User]:
     """현재 로그인한 사용자 가져오기"""
