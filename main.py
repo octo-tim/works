@@ -1772,21 +1772,38 @@ class AIHelper:
         {task_list}
         
         Instructions:
-        1. Summary: Summarize what the user achieved during this period. Highlight completed high-priority items.
-        2. Evaluation: Evaluate the user's performance based on:
-           - Productivity (Task completion rate)
-           - Consistency
-           - Impact (based on task titles/descriptions)
-           - Identify strengths and 1 area for improvement.
-        3. Score: Assign a score from 0 to 100 based on the evaluation. (Avergage is 70-80, Excellent is 90+).
+        1. Analyze the tasks to understand the Context and Volume.
+        2. Evaluate performance based on 4 categories:
+           - Productivity (Task completion volume & speed)
+           - Quality (Complexity & impact of tasks)
+           - Consistency (Regular updates & management)
+           - Communication (clarity of titles/descriptions)
+        3. Assign a score (0-100) for each category.
+        4. Calculate the Average Score.
+        5. Organize the tasks into a structured list for display. Infer a 'Category' for each task (e.g., Development, Meeting, Planning).
         
         IMPORTANT: Output MUST be in KOREAN (한국어).
         
         Output Schema (JSON):
         {{
-            "summary": "string (markdown allowed)",
-            "evaluation": "string (markdown allowed, include strengths/weaknesses)",
-            "score": int
+            "summary": "string (Overall summary of the period, markdown allowed)",
+            "scores": {{
+                "productivity": int,
+                "quality": int,
+                "consistency": int,
+                "communication": int
+            }},
+            "average_score": int,
+            "tasks_processed": [
+                {{
+                    "date": "YYYY-MM-DD" (or "Unknown"),
+                    "category": "string (Inferred Category)",
+                    "title": "string",
+                    "status": "string (Done/In Progress/Todo)",
+                    "feedback": "string (Brief specific comment on this task)"
+                }}
+            ],
+            "evaluation": "string (Detailed qualitative feedback, strengths/weaknesses, markdown allowed)"
         }}
         """
         response = self.model.generate_content(prompt)

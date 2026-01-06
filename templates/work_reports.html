@@ -268,7 +268,96 @@
             const content = document.getElementById('reportContent');
             content.classList.remove('hidden');
 
+            // Parse detailed data
+            let scores = report.evaluation ? null : null;
+            let tasks = [];
+            let evaluationText = report.evaluation;
+
+            // Try to parse 'evaluation' as JSON if it contains the structured data
+            try {
+                const parsedEval = JSON.parse(report.evaluation);
+                if (parsedEval.scores) {
+                    scores = parsedEval.scores;
+                    tasks = parsedEval.tasks_processed || [];
+                    evaluationText = parsedEval.evaluation || ""; // The text part
+                    // If parsed, update score to average if needed or trust report.score
+                }
+            } catch (e) {
+                // Legacy or text-only evaluation
+                console.log("Evaluation is text-only");
+            }
+
             const scoreColor = report.score >= 90 ? 'text-blue-600' : (report.score >= 70 ? 'text-green-600' : 'text-orange-500');
+
+            // Build Score Chart HTML
+            let chartHtml = '';
+            if (scores) {
+                const categories = ['productivity', 'quality', 'consistency', 'communication'];
+                const labels = { 'productivity': '생산성', 'quality': '완성도', 'consistency': '성실성', 'communication': '소통' };
+
+                chartHtml = '<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">';
+                categories.forEach(cat => {
+                    const val = scores[cat] || 0;
+                    const catColor = val >= 80 ? 'bg-blue-500' : (val >= 60 ? 'bg-green-500' : 'bg-orange-500');
+                    chartHtml += `
+                        <div class="bg-white border border-gray-100 rounded-lg p-3 shadow-sm">
+                            <div class="flex justify-between mb-2">
+                                <span class="text-xs font-bold text-gray-500">${labels[cat]}</span>
+                                <span class="text-sm font-bold ${val >= 80 ? 'text-blue-600' : 'text-gray-700'}">${val}점</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="${catColor} h-2 rounded-full" style="width: ${val}%"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+                chartHtml += '</div>';
+            }
+
+            // Build Task Table HTML
+            let taskTableHtml = '';
+            if (tasks && tasks.length > 0) {
+                taskTableHtml = `
+                <section class="mt-8">
+                    <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                        <span class="mr-2">📋</span> 분석된 업무 목록
+                    </h3>
+                    <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">날짜</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">카테고리</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">업무명 / 피드백</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">상태</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                ${tasks.map(t => `
+                                    <tr>
+                                        <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500">${t.date || '-'}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-xs font-medium text-gray-700">
+                                            <span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600">${t.category || '기타'}</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-800">
+                                            <div class="font-bold">${t.title}</div>
+                                            <div class="text-xs text-gray-500 mt-1">${t.feedback || ''}</div>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${t.status === 'Done' ? 'bg-green-100 text-green-800' :
+                        (t.status === 'In Progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')
+                    }">
+                                                ${t.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                `;
+            }
 
             content.innerHTML = `
                 <div class="bg-gray-50 p-6 border-b border-gray-100 flex justify-between items-start">
@@ -284,13 +373,16 @@
                         <h2 class="text-2xl font-bold text-gray-800">업무 평가 리포트</h2>
                     </div>
                     <div class="text-right">
-                        <span class="block text-xs font-bold text-gray-400 uppercase">Total Score</span>
+                        <span class="block text-xs font-bold text-gray-400 uppercase">Average Score</span>
                         <span class="text-4xl font-black ${scoreColor}">${report.score}</span>
                         <span class="text-lg text-gray-400 font-bold">/100</span>
                     </div>
                 </div>
                 
                 <div class="p-8 overflow-y-auto custom-scrollbar space-y-8">
+                    <!-- Score Breakdown -->
+                    ${chartHtml}
+
                     <section>
                         <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
                             <span class="mr-2">📝</span> 요약
@@ -300,12 +392,15 @@
                         </div>
                     </section>
                     
+                    <!-- Task Table -->
+                    ${taskTableHtml}
+
                     <section>
                         <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
-                            <span class="mr-2">⚖️</span> 상세 평가
+                            <span class="mr-2">⚖️</span> 상세 평가 및 피드백
                         </h3>
                         <div class="prose prose-sm max-w-none text-gray-600">
-                            ${marked.parse(report.evaluation || '')}
+                            ${marked.parse(evaluationText || '')}
                         </div>
                     </section>
                 </div>
