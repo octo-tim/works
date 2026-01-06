@@ -272,7 +272,7 @@ def signup_page(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
 @app.post("/signup")
-def signup(request: Request, username: str = Form(...), password: str = Form(...), department: str = Form(...), db: Session = Depends(get_db)):
+def signup(request: Request, username: str = Form(...), password: str = Form(...), department: str = Form(...), position: str = Form(None), db: Session = Depends(get_db)):
     """사용자 회원가입"""
     try:
         if db.query(models.User).filter(models.User.username == username).first():
@@ -282,6 +282,7 @@ def signup(request: Request, username: str = Form(...), password: str = Form(...
             username=username,
             password_hash=utils.get_password_hash(password),
             department=department,
+            position=position,
             role="admin" if username == config.ADMIN_USERNAME else "user"
         )
         db.add(new_user)
