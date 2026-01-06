@@ -2074,8 +2074,10 @@ async def create_task_from_ai(
 # --- Work Reports ---
 
 @app.get("/work-reports", response_class=HTMLResponse)
-def work_reports_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+def work_reports_page(request: Request, db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(get_current_user)):
     """업무 리포트 페이지"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=302)
     # Simply render the template. History will be fetched via API or injected here.
     # Check for existing reports to list in sidebar or history tab
     history = db.query(models.WorkReport).filter(models.WorkReport.user_id == current_user.id).order_by(models.WorkReport.created_at.desc()).all()
