@@ -81,7 +81,8 @@ async def global_exception_handler(request: Request, exc: Exception):
     error_msg = "".join(traceback.format_exception(None, exc, exc.__traceback__))
     print(f"Global Error: {error_msg}")
     # 프로덕션에서는 상세 에러를 숨기는 것이 좋습니다
-    if os.getenv("DEBUG", "False").lower() == "true":
+    # if os.getenv("DEBUG", "False").lower() == "true":
+    if True:
         return HTMLResponse(
             status_code=500,
             content=f"<h1>Internal Server Error</h1><pre>{error_msg}</pre>"
