@@ -39,7 +39,9 @@ def fix_schema(db_url=None):
 
             # 2. Fix work_templates table
             work_template_columns = [
+                ("created_at", "TIMESTAMP"), # Check existence just in case
                 ("updated_at", "TIMESTAMP"),
+                ("creator_id", "INTEGER"),   # Check existence just in case
                 ("editor_id", "INTEGER")
             ]
             
