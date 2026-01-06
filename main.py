@@ -1750,7 +1750,15 @@ class AIHelper:
         for attempt in range(max_retries):
             try:
                 response = self.model.generate_content(prompt)
-                return json.loads(response.text)
+                text = response.text
+                if text.startswith("```json"):
+                    text = text[7:]
+                if text.startswith("```"):
+                    text = text[3:]
+                if text.endswith("```"):
+                    text = text[:-3]
+                text = text.strip()
+                return json.loads(text)
             except Exception as e:
                 import time
                 is_rate_limit = "429" in str(e) or "Resource has been exhausted" in str(e)
