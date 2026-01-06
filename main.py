@@ -100,7 +100,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     print(f"Global Error: {error_msg}")
     # 프로덕션에서는 상세 에러를 숨기는 것이 좋습니다
     # if os.getenv("DEBUG", "False").lower() == "true":
-    if True:
+    if os.getenv("DEBUG", "False").lower() == "true":
         return HTMLResponse(
             status_code=500,
             content=f"<h1>Internal Server Error</h1><pre>{error_msg}</pre>"
@@ -111,12 +111,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Temporary manual migration endpoint for debugging
-@app.get("/fix-db")
-def fix_db_manually():
-    import fix_production_schema
-    logs = fix_production_schema.fix_schema(os.getenv("DATABASE_URL"))
-    return {"logs": logs}
+
 
 # 정적 파일 및 템플릿 설정
 app.mount("/static", StaticFiles(directory="static"), name="static")
