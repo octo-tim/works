@@ -507,6 +507,7 @@
         // If so, we need to trigger the visualization logic because the 'evaluation' field 
         // rendered by Jinja is just the raw JSON string.
         {% if history %}
+        {% if history %}
         const latestId = {{ history[0].id }
     };
     loadReport(latestId);
