@@ -2051,6 +2051,7 @@ async def create_task_from_ai(
 
         return {"status": "success", "task_id": new_task.id}
     except Exception as e:
+        print(f"AI Task Error: {e}")
         # traceback.print_exc()
 
 # --- Work Reports ---
@@ -2189,7 +2190,7 @@ def get_report_detail(report_id: int, db: Session = Depends(get_db), current_use
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     return report
-        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
+
 
 
 @app.post("/api/events/ai")
