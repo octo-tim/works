@@ -118,6 +118,17 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 
+@app.middleware("http")
+async def log_work_report_cookies(request: Request, call_next):
+    if request.url.path.startswith("/work-reports"):
+        print(f"[{datetime.now()}] Middleware Debug: Path={request.url.path}, Cookies={request.cookies.keys()}")
+        if "access_token" in request.cookies:
+            print(f"  -> Found access_token (len={len(request.cookies['access_token'])})")
+        else:
+            print("  -> MISSING access_token")
+    response = await call_next(request)
+    return response
+
 # 정적 파일 및 템플릿 설정
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
