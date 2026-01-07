@@ -261,7 +261,9 @@
     async function loadReport(id) {
         // Fetch detail and render
         try {
-            const response = await fetch('/api/work-reports/' + id);
+            const response = await fetch('/api/work-reports/' + id, {
+                credentials: 'include'
+            });
             if (!response.ok) throw new Error("Load failed");
             const report = await response.json();
 
@@ -507,7 +509,8 @@
         // If so, we need to trigger the visualization logic because the 'evaluation' field 
         // rendered by Jinja is just the raw JSON string.
         {% if history %}
-        const latestId = {{ history[0].id }};    loadReport(latestId);
+        const latestId = {{ history[0].id }
+    }; loadReport(latestId);
     {% endif %}
     });
 
