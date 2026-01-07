@@ -55,6 +55,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
     """현재 로그인한 사용자 가져오기"""
     token = request.cookies.get("access_token")
     if not token:
+        print(f"[{datetime.now()}] Auth Debug: No access_token cookie found. Path: {request.url.path}")
         return None
     try:
         if token.startswith("Bearer "):
@@ -64,8 +65,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
         if username is None:
             return None
     except JWTError:
+        print(f"[{datetime.now()}] Auth Debug: JWT Error")
         return None
     
+    print(f"[{datetime.now()}] Auth Debug: Token decoded, user={username}")
     user = db.query(models.User).filter(models.User.username == username).first()
     if not user:
         return None
@@ -265,7 +268,7 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
     
     access_token = utils.create_access_token(data={"sub": user.username})
     response = RedirectResponse(url="/", status_code=303)
-    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, samesite="lax")
+    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, samesite="lax", path="/")
     return response
 
 @app.get("/signup", response_class=HTMLResponse)
@@ -296,7 +299,7 @@ def signup(request: Request, username: str = Form(...), password: str = Form(...
 @app.get("/logout")
 def logout(request: Request):
     response = RedirectResponse(url="/login", status_code=303)
-    response.delete_cookie("access_token")
+    response.delete_cookie("access_token", path="/")
     return response
 
 
@@ -2089,6 +2092,7 @@ async def create_task_from_ai(
 def work_reports_page(request: Request, db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(get_current_user)):
     """업무 리포트 페이지"""
     if not current_user:
+        print(f"[{datetime.now()}] Work Reports Page: Not authenticated, redirecting to login")
         return RedirectResponse(url="/login", status_code=302)
     # Simply render the template. History will be fetched via API or injected here.
     # Check for existing reports to list in sidebar or history tab
