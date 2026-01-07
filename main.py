@@ -6,6 +6,7 @@ import os
 import traceback
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from database import SessionLocal, engine
 import models
 from typing import Optional, List
@@ -2140,11 +2141,10 @@ async def generate_work_report_endpoint(
         # Using creating/due/status for now.
         
         tasks_query = db.query(models.Task).filter(
-            models.Task.creator_id == current_user.id, # Or assignee? 'creator_id' is who made it, assignee might be more relevant if system allows delegation. But User model has tasks_assigned.
-            # Let's look at assigned tasks.
-            # models.Task.assignees.any(id=current_user.id) # If using M2M
-            # For backward compatibility with legacy 'assignee_id' and new 'assignees'
-            # We will grab tasks where user is assignee OR creator.
+            or_(
+                models.Task.assignees.any(id=current_user.id),
+                models.Task.creator_id == current_user.id
+            )
         )
         
         all_tasks = tasks_query.all()
