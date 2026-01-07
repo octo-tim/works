@@ -327,6 +327,7 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',
                 body: JSON.stringify({ topic: topic })
             });
 
@@ -661,7 +662,8 @@
         const dbId = id.replace('custom_', '');
         try {
             const response = await fetch(`/work-templates/${dbId}/delete`, {
-                method: 'POST'
+                method: 'POST',
+                credentials: 'include'
             });
             if (response.ok) {
                 window.location.reload();
