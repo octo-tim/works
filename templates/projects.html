@@ -5,11 +5,27 @@
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-gray-800">프로젝트관리</h2>
-        <button onclick="document.getElementById('newProjectModal').classList.remove('hidden')"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm text-sm font-medium">
-            + 새 프로젝트
-        </button>
+        <div class="flex items-center gap-3">
+            <!-- 일괄 삭제 버튼 -->
+            <button type="button" onclick="deleteSelectedProjects()" id="bulkDeleteBtn"
+                class="bg-red-500 text-white px-4 py-2 rounded shadow-sm text-sm font-medium hover:bg-red-600 transition hidden items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                <span id="selectedCountText">0개 삭제</span>
+            </button>
+            <button onclick="document.getElementById('newProjectModal').classList.remove('hidden')"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm text-sm font-medium">
+                + 새 프로젝트
+            </button>
+        </div>
     </div>
+
+    <!-- 일괄 삭제 폼 (숨김) -->
+    <form id="bulkDeleteForm" action="/projects/delete_bulk" method="post" class="hidden">
+        <input type="hidden" name="project_ids" id="bulkDeleteIds">
+    </form>
 
     <div class="flex-1 overflow-y-auto pr-2 space-y-8">
 
@@ -25,6 +41,10 @@
                 <table class="w-full text-sm text-left text-gray-500">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                         <tr>
+                            <th scope="col" class="px-3 py-3 w-10">
+                                <input type="checkbox" class="select-all-checkbox w-4 h-4 text-blue-600 rounded border-gray-300" 
+                                    data-section="scheduled" onchange="toggleSectionSelect(this, 'scheduled')">
+                            </th>
                             <th scope="col" class="px-6 py-3">프로젝트명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
                             <th scope="col" class="px-6 py-3">생성자</th>
@@ -36,6 +56,10 @@
                     <tbody>
                         {% for p in scheduled %}
                         <tr class="bg-white border-b hover:bg-gray-50">
+                            <td class="px-3 py-4">
+                                <input type="checkbox" class="project-checkbox w-4 h-4 text-blue-600 rounded border-gray-300"
+                                    data-project-id="{{ p.id }}" data-section="scheduled" onchange="updateSelectedCount()">
+                            </td>
                             <td class="px-6 py-4 font-medium text-blue-600">
                                 <a href="javascript:void(0)" class="project-task-link hover:underline"
                                     data-project-id="{{ p.id }}" data-project-name="{{ p.name }}">{{ p.name }}</a>
@@ -80,7 +104,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-400">등록된 프로젝트가 없습니다.</td>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-400">등록된 프로젝트가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -100,6 +124,10 @@
                 <table class="w-full text-sm text-left text-gray-500">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                         <tr>
+                            <th scope="col" class="px-3 py-3 w-10">
+                                <input type="checkbox" class="select-all-checkbox w-4 h-4 text-blue-600 rounded border-gray-300" 
+                                    data-section="inprogress" onchange="toggleSectionSelect(this, 'inprogress')">
+                            </th>
                             <th scope="col" class="px-6 py-3">프로젝트명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
                             <th scope="col" class="px-6 py-3">생성자</th>
@@ -111,6 +139,10 @@
                     <tbody>
                         {% for p in inprogress %}
                         <tr class="bg-white border-b hover:bg-gray-50">
+                            <td class="px-3 py-4">
+                                <input type="checkbox" class="project-checkbox w-4 h-4 text-blue-600 rounded border-gray-300"
+                                    data-project-id="{{ p.id }}" data-section="inprogress" onchange="updateSelectedCount()">
+                            </td>
                             <td class="px-6 py-4 font-medium text-blue-600">
                                 <a href="javascript:void(0)" class="project-task-link hover:underline"
                                     data-project-id="{{ p.id }}" data-project-name="{{ p.name }}">{{ p.name }}</a>
@@ -155,7 +187,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-400">진행 중인 프로젝트가 없습니다.</td>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-400">진행 중인 프로젝트가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -175,6 +207,10 @@
                 <table class="w-full text-sm text-left text-gray-500">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                         <tr>
+                            <th scope="col" class="px-3 py-3 w-10">
+                                <input type="checkbox" class="select-all-checkbox w-4 h-4 text-blue-600 rounded border-gray-300" 
+                                    data-section="completed" onchange="toggleSectionSelect(this, 'completed')">
+                            </th>
                             <th scope="col" class="px-6 py-3">프로젝트명</th>
                             <th scope="col" class="px-6 py-3">사업부</th>
                             <th scope="col" class="px-6 py-3">생성자</th>
@@ -186,6 +222,10 @@
                     <tbody>
                         {% for p in completed %}
                         <tr class="bg-white border-b hover:bg-gray-50">
+                            <td class="px-3 py-4">
+                                <input type="checkbox" class="project-checkbox w-4 h-4 text-blue-600 rounded border-gray-300"
+                                    data-project-id="{{ p.id }}" data-section="completed" onchange="updateSelectedCount()">
+                            </td>
                             <td class="px-6 py-4 font-medium text-blue-600">
                                 <a href="javascript:void(0)" class="project-task-link hover:underline"
                                     data-project-id="{{ p.id }}" data-project-name="{{ p.name }}">{{ p.name }}</a>
@@ -232,7 +272,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-400">완료된 프로젝트가 없습니다.</td>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-400">완료된 프로젝트가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -251,6 +291,8 @@
     document.addEventListener('DOMContentLoaded', function () {
         const urlParams = new URLSearchParams(window.location.search);
         const error = urlParams.get('error');
+        const deleted = urlParams.get('deleted');
+        
         if (error === 'duplicate_name') {
             alert('이미 존재하는 프로젝트명입니다. 다른 이름으로 시도해주세요.');
             // Clean URL
@@ -260,7 +302,66 @@
         } else if (error) {
             alert('오류가 발생했습니다: ' + error);
         }
+        
+        if (deleted) {
+            // Clean URL after showing result
+            const url = new URL(window.location.href);
+            url.searchParams.delete('deleted');
+            window.history.replaceState({}, document.title, url);
+        }
     });
+
+    // 프로젝트 복수 선택 및 삭제 기능
+    function toggleSectionSelect(checkbox, section) {
+        const checkboxes = document.querySelectorAll(`.project-checkbox[data-section="${section}"]`);
+        checkboxes.forEach(cb => cb.checked = checkbox.checked);
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        const checkboxes = document.querySelectorAll('.project-checkbox:checked');
+        const count = checkboxes.length;
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const selectedCountText = document.getElementById('selectedCountText');
+
+        if (count > 0) {
+            bulkDeleteBtn.classList.remove('hidden');
+            bulkDeleteBtn.classList.add('flex');
+            selectedCountText.textContent = `${count}개 삭제`;
+        } else {
+            bulkDeleteBtn.classList.add('hidden');
+            bulkDeleteBtn.classList.remove('flex');
+        }
+
+        // 각 섹션의 전체 선택 체크박스 상태 업데이트
+        ['scheduled', 'inprogress', 'completed'].forEach(section => {
+            const sectionCheckboxes = document.querySelectorAll(`.project-checkbox[data-section="${section}"]`);
+            const sectionChecked = document.querySelectorAll(`.project-checkbox[data-section="${section}"]:checked`);
+            const selectAllCheckbox = document.querySelector(`.select-all-checkbox[data-section="${section}"]`);
+            
+            if (selectAllCheckbox && sectionCheckboxes.length > 0) {
+                selectAllCheckbox.checked = sectionChecked.length === sectionCheckboxes.length;
+                selectAllCheckbox.indeterminate = sectionChecked.length > 0 && sectionChecked.length < sectionCheckboxes.length;
+            }
+        });
+    }
+
+    function deleteSelectedProjects() {
+        const checkboxes = document.querySelectorAll('.project-checkbox:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.dataset.projectId);
+
+        if (ids.length === 0) {
+            alert('삭제할 프로젝트를 선택해주세요.');
+            return;
+        }
+
+        if (!confirm(`선택한 ${ids.length}개의 프로젝트를 삭제하시겠습니까?\n(연결된 업무는 프로젝트 연결이 해제됩니다)`)) {
+            return;
+        }
+
+        document.getElementById('bulkDeleteIds').value = ids.join(',');
+        document.getElementById('bulkDeleteForm').submit();
+    }
 
     // Explicitly attach to window to avoid scope issues
     window.projectOpenEditModal = function (el) {

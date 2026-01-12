@@ -1,7 +1,6 @@
-from fastapi import FastAPI, Depends, Request, Form, status, UploadFile, File, HTTPException
+from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-import shutil
 import os
 import traceback
 from fastapi.templating import Jinja2Templates
@@ -17,7 +16,6 @@ import config
 import utils
 import google.generativeai as genai
 import json
-import re
 import wbs_templates # Template Module
 import fix_production_schema # Import migration script
 
@@ -208,11 +206,11 @@ def on_startup():
                     db.rollback()
                     # 컬럼이 이미 존재하는 경우 무시
             
-            # 마이그레이션: 부서명 한글화
+            # 마이그레이션: 부서명 한글화 (파라미터 바인딩으로 SQL Injection 방지)
             for eng, kor in config.DEPARTMENT_MAPPING.items():
-                db.execute(text(f"UPDATE users SET department = '{kor}' WHERE department = '{eng}'"))
-                db.execute(text(f"UPDATE projects SET department = '{kor}' WHERE department = '{eng}'"))
-                db.execute(text(f"UPDATE tasks SET department = '{kor}' WHERE department = '{eng}'"))
+                db.execute(text("UPDATE users SET department = :kor WHERE department = :eng"), {"kor": kor, "eng": eng})
+                db.execute(text("UPDATE projects SET department = :kor WHERE department = :eng"), {"kor": kor, "eng": eng})
+                db.execute(text("UPDATE tasks SET department = :kor WHERE department = :eng"), {"kor": kor, "eng": eng})
             db.commit()
             
             populate_db(db)
@@ -255,7 +253,6 @@ def health_check_db(db: Session = Depends(get_db)):
         user_count = db.query(models.User).count()
         return f"<h1>✅ Database is Healthy</h1><p>Connection successful.</p><p>Total Users: {user_count}</p><p>DB URL: {engine.url}</p>"
     except Exception as e:
-        import traceback
         error_msg = "".join(traceback.format_exception(None, e, e.__traceback__))
         print(f"DB Health Error: {error_msg}")
         return f"<h1>❌ Database Error</h1><pre>{error_msg}</pre>"
@@ -427,13 +424,6 @@ def read_root(request: Request,
     # Serialize for Calendar
     calendar_events = []
     for t in tasks:
-        # Determine color
-        color = "#6B7280" # Gray (Todo)
-        if t.status == "In Progress":
-            color = "#3B82F6" # Blue
-        elif t.status == "Done":
-            color = "#10B981" # Green
-        
         # Determine dates
         start = t.start_date
         end = t.due_date
@@ -510,7 +500,6 @@ def read_root(request: Request,
         "todays_events": todays_events, # Pass to template
         "calendar_events": calendar_events, # Pass to template
 
-        "users": users,
         "users": users,
         "projects": db.query(models.Project).all(), # Pass projects for modal
         "selected_month": target_month,
@@ -714,8 +703,6 @@ def update_task_status(task_id: int, status: str = Form(...), db: Session = Depe
         db.commit()
     return RedirectResponse(url="/", status_code=303)
 
-    return RedirectResponse(url="/", status_code=303)
-
 
 @app.post("/todays_check/create", response_class=RedirectResponse)
 def create_todays_check(receiver_id: int = Form(...), content: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -824,12 +811,94 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
     db.execute(models.project_assignees.delete().where(models.project_assignees.c.user_id == user_id))
     db.execute(models.task_assignees.delete().where(models.task_assignees.c.user_id == user_id))
     
-    # 4. 사용자 삭제
+    # 4. TodaysCheck 관련 데이터 삭제 (sender_id, receiver_id)
+    db.query(models.TodaysCheck).filter(models.TodaysCheck.sender_id == user_id).delete()
+    db.query(models.TodaysCheck).filter(models.TodaysCheck.receiver_id == user_id).delete()
+    
+    # 5. TaskProgress 관련 데이터 삭제
+    db.query(models.TaskProgress).filter(models.TaskProgress.writer_id == user_id).delete()
+    
+    # 6. MeetingMinute 관련 데이터 정리
+    db.query(models.MeetingMinutes).filter(models.MeetingMinutes.writer_id == user_id).update({"writer_id": None})
+    
+    # 7. CalendarEvent 관련 데이터 삭제
+    db.query(models.CalendarEvent).filter(models.CalendarEvent.user_id == user_id).delete()
+    
+    # 8. WorkTemplate 관련 데이터 정리
+    db.query(models.WorkTemplate).filter(models.WorkTemplate.creator_id == user_id).update({"creator_id": None})
+    db.query(models.WorkTemplate).filter(models.WorkTemplate.editor_id == user_id).update({"editor_id": None})
+    
+    # 9. WorkReport 관련 데이터 삭제
+    db.query(models.WorkReport).filter(models.WorkReport.user_id == user_id).delete()
+    
+    # 10. 사용자 삭제
     db.delete(user_to_delete)
     db.commit()
     
     return RedirectResponse(url="/admin", status_code=303)
 
+
+@app.post("/admin/users/delete_bulk", response_class=RedirectResponse)
+def delete_bulk_users(request: Request, user_ids: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
+    """사용자 일괄 삭제"""
+    try:
+        ids = [int(id.strip()) for id in user_ids.split(',') if id.strip()]
+    except ValueError:
+        return RedirectResponse(url="/admin?error=invalid_ids", status_code=303)
+    
+    if not ids:
+        return RedirectResponse(url="/admin", status_code=303)
+    
+    # 자신을 삭제 목록에서 제외
+    if current_user.id in ids:
+        ids.remove(current_user.id)
+    
+    if not ids:
+        return RedirectResponse(url="/admin?error=cannot_delete_self", status_code=303)
+    
+    deleted_count = 0
+    for user_id in ids:
+        user_to_delete = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user_to_delete:
+            continue
+        
+        # 1. 생성한 프로젝트/업무에서 creator_id 제거
+        db.query(models.Project).filter(models.Project.creator_id == user_id).update({"creator_id": None})
+        db.query(models.Task).filter(models.Task.creator_id == user_id).update({"creator_id": None})
+        
+        # 2. 할당된 업무에서 assignee_id 제거 (레거시)
+        db.query(models.Task).filter(models.Task.assignee_id == user_id).update({"assignee_id": None})
+        
+        # 3. 다대다 관계에서 제거
+        db.execute(models.project_assignees.delete().where(models.project_assignees.c.user_id == user_id))
+        db.execute(models.task_assignees.delete().where(models.task_assignees.c.user_id == user_id))
+        
+        # 4. TodaysCheck 관련 데이터 삭제 (sender_id, receiver_id)
+        db.query(models.TodaysCheck).filter(models.TodaysCheck.sender_id == user_id).delete()
+        db.query(models.TodaysCheck).filter(models.TodaysCheck.receiver_id == user_id).delete()
+        
+        # 5. TaskProgress 관련 데이터 삭제
+        db.query(models.TaskProgress).filter(models.TaskProgress.writer_id == user_id).delete()
+        
+        # 6. MeetingMinute 관련 데이터 정리
+        db.query(models.MeetingMinutes).filter(models.MeetingMinutes.writer_id == user_id).update({"writer_id": None})
+        
+        # 7. CalendarEvent 관련 데이터 삭제
+        db.query(models.CalendarEvent).filter(models.CalendarEvent.user_id == user_id).delete()
+        
+        # 8. WorkTemplate 관련 데이터 정리
+        db.query(models.WorkTemplate).filter(models.WorkTemplate.creator_id == user_id).update({"creator_id": None})
+        db.query(models.WorkTemplate).filter(models.WorkTemplate.editor_id == user_id).update({"editor_id": None})
+        
+        # 9. WorkReport 관련 데이터 삭제
+        db.query(models.WorkReport).filter(models.WorkReport.user_id == user_id).delete()
+        
+        # 10. 사용자 삭제
+        db.delete(user_to_delete)
+        deleted_count += 1
+    
+    db.commit()
+    return RedirectResponse(url=f"/admin?deleted={deleted_count}", status_code=303)
 
 
 @app.get("/projects", response_class=HTMLResponse)
@@ -856,7 +925,6 @@ def read_projects(request: Request, db: Session = Depends(get_db), current_user:
         })
     except Exception as e:
         print(f"Project Page Error: {e}")
-        import traceback
         traceback.print_exc()
         return HTMLResponse(content=f"<h1>Internal Server Error</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", status_code=500)
 
@@ -1066,7 +1134,6 @@ def read_tasks_page(request: Request, db: Session = Depends(get_db), current_use
         "scheduled": tasks_scheduled,
         "inprogress": tasks_inprogress,
         "completed": tasks_done, 
-        "users": users,
         "users": users,
         "projects": projects
     })
@@ -1279,6 +1346,34 @@ def delete_project(project_id: int, db: Session = Depends(get_db), current_user:
         db.commit()
     return RedirectResponse(url="/projects", status_code=303)
 
+
+@app.post("/projects/delete_bulk", response_class=RedirectResponse)
+def delete_bulk_projects(request: Request, project_ids: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """프로젝트 일괄 삭제"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    try:
+        ids = [int(id.strip()) for id in project_ids.split(',') if id.strip()]
+    except ValueError:
+        return RedirectResponse(url="/projects?error=invalid_ids", status_code=303)
+    
+    if not ids:
+        return RedirectResponse(url="/projects", status_code=303)
+    
+    deleted_count = 0
+    for project_id in ids:
+        project = db.query(models.Project).filter(models.Project.id == project_id).first()
+        if project:
+            # 프로젝트에 연결된 업무들의 project_id를 null로 설정
+            db.query(models.Task).filter(models.Task.project_id == project_id).update({"project_id": None})
+            db.delete(project)
+            deleted_count += 1
+    
+    db.commit()
+    return RedirectResponse(url=f"/projects?deleted={deleted_count}", status_code=303)
+
+
 @app.post("/tasks/{task_id}/delete", response_class=RedirectResponse)
 def delete_task(task_id: int, request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login", status_code=303)
@@ -1463,14 +1558,13 @@ async def create_meeting_minute(
                 
             except Exception as e:
                 print(f"[ERROR] Failed to create AI tasks: {e}")
-                import traceback
                 error_trace = traceback.format_exc()
                 print(error_trace)
                 try:
                     with open(log_path, "a") as f:
                         f.write(f"[ERROR] Exception: {e}\n{error_trace}\n")
-                except:
-                    pass
+                except Exception as log_error:
+                    print(f"[WARNING] Failed to write to log file: {log_error}")
                 # Don't fail the whole request, just log it
 
 
@@ -1506,7 +1600,6 @@ async def create_meeting_minute(
         
     except Exception as e:
         print(f"Meeting Minute Save Error: {e}")
-        import traceback
         traceback.print_exc()
         return HTMLResponse(content=f"<h1>Internal Server Error</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", status_code=500)
 
@@ -2167,7 +2260,8 @@ def work_reports_page(request: Request, db: Session = Depends(get_db), current_u
     
     response = templates.TemplateResponse("work_reports.html", {
         "request": request, 
-        "current_user": current_user,
+        "user": current_user,
+        "current_user": current_user,  # 호환성을 위해 둘 다 전달
         "history": history,
         "today": date.today()
     })

@@ -40,27 +40,62 @@
                 </div>
             </form>
         </div>
+
+        <!-- 일괄 삭제 컨트롤 -->
+        <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" 
+                        class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <span class="text-sm text-gray-600">전체 선택</span>
+                </label>
+                <span id="selectedCount" class="text-sm text-gray-400 hidden">
+                    (<span id="countNum">0</span>명 선택됨)
+                </span>
+            </div>
+            <button type="button" onclick="deleteBulkUsers()" id="bulkDeleteBtn"
+                class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition hidden items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                선택 삭제
+            </button>
+        </div>
+
+        <!-- 일괄 삭제 폼 (숨김) -->
+        <form id="bulkDeleteForm" action="/admin/users/delete_bulk" method="post" class="hidden">
+            <input type="hidden" name="user_ids" id="bulkDeleteIds">
+        </form>
+
         <ul class="w-full space-y-2">
             {% for u in users %}
-            <li
-                class="flex justify-between items-center text-sm border-b border-gray-50 pb-2 last:border-0 hover:bg-gray-50 p-2 rounded transition group">
-                <div class="cursor-pointer flex-1"
-                    onclick="openEditUserModal('{{ u.id }}', '{{ u.username }}', '{{ u.department or '' }}', '{{ u.email or '' }}', '{{ u.phone or '' }}', '{{ u.position or '' }}')">
-                    <div class="flex items-center gap-2">
-                        <span class="font-bold text-gray-800 group-hover:text-blue-600 transition">{{ u.username
-                            }}</span>
-                        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{{ u.department or '미지정'
-                            }}</span>
-                        {% if u.position %}
-                        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{{ u.position }}</span>
-                        {% endif %}
-                        <span class="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition">✎ 수정</span>
-                    </div>
-                    <div class="text-xs text-gray-400 mt-1">
-                        {{ u.email or '-' }} | {{ u.phone or '-' }}
+            <li class="flex justify-between items-center text-sm border-b border-gray-50 pb-2 last:border-0 hover:bg-gray-50 p-2 rounded transition group">
+                <!-- 체크박스 -->
+                <div class="flex items-center gap-3 flex-1">
+                    {% if u.username != user.username %}
+                    <input type="checkbox" class="user-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        data-user-id="{{ u.id }}" onchange="updateSelectedCount()">
+                    {% else %}
+                    <input type="checkbox" class="w-4 h-4 rounded border-gray-200 bg-gray-100" disabled title="본인은 삭제할 수 없습니다">
+                    {% endif %}
+                    
+                    <div class="cursor-pointer flex-1"
+                        onclick="openEditUserModal('{{ u.id }}', '{{ u.username }}', '{{ u.department or '' }}', '{{ u.email or '' }}', '{{ u.phone or '' }}', '{{ u.position or '' }}')">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-800 group-hover:text-blue-600 transition">{{ u.username }}</span>
+                            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{{ u.department or '미지정' }}</span>
+                            {% if u.position %}
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{{ u.position }}</span>
+                            {% endif %}
+                            <span class="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition">✎ 수정</span>
+                        </div>
+                        <div class="text-xs text-gray-400 mt-1">
+                            {{ u.email or '-' }} | {{ u.phone or '-' }}
+                        </div>
                     </div>
                 </div>
-                {% if u.username != user.username %} <!-- Prevent deleting self -->
+                {% if u.username != user.username %}
                 <form action="/admin/users/{{ u.id }}/delete" method="post"
                     onsubmit="return confirm('정말 삭제하시겠습니까? (할당된 업무는 해제됩니다)');">
                     <button type="submit" class="text-red-500 hover:text-red-700 text-sm">삭제</button>
@@ -72,10 +107,6 @@
             {% endfor %}
         </ul>
     </section>
-
-
-
-
 </div>
 
 <!-- Edit User Modal -->
@@ -137,6 +168,74 @@
 
         document.getElementById('editUserForm').action = "/admin/users/" + id + "/update";
         document.getElementById('editUserModal').classList.remove('hidden');
+    }
+
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.user-checkbox');
+        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+        const count = checkboxes.length;
+        const countSpan = document.getElementById('selectedCount');
+        const countNum = document.getElementById('countNum');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const selectAll = document.getElementById('selectAll');
+        const allCheckboxes = document.querySelectorAll('.user-checkbox');
+
+        countNum.textContent = count;
+
+        if (count > 0) {
+            countSpan.classList.remove('hidden');
+            bulkDeleteBtn.classList.remove('hidden');
+            bulkDeleteBtn.classList.add('flex');
+        } else {
+            countSpan.classList.add('hidden');
+            bulkDeleteBtn.classList.add('hidden');
+            bulkDeleteBtn.classList.remove('flex');
+        }
+
+        // 전체 선택 체크박스 상태 업데이트
+        if (allCheckboxes.length > 0) {
+            selectAll.checked = checkboxes.length === allCheckboxes.length;
+            selectAll.indeterminate = checkboxes.length > 0 && checkboxes.length < allCheckboxes.length;
+        }
+    }
+
+    function deleteBulkUsers() {
+        const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.dataset.userId);
+
+        if (ids.length === 0) {
+            alert('삭제할 사용자를 선택해주세요.');
+            return;
+        }
+
+        if (!confirm(`선택한 ${ids.length}명의 사용자를 삭제하시겠습니까?\n(할당된 업무는 해제됩니다)`)) {
+            return;
+        }
+
+        document.getElementById('bulkDeleteIds').value = ids.join(',');
+        document.getElementById('bulkDeleteForm').submit();
+    }
+
+    // URL 파라미터로 삭제 결과 표시
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('deleted')) {
+        const count = urlParams.get('deleted');
+        if (count > 0) {
+            // 간단한 토스트 알림 (선택사항)
+            console.log(`${count}명의 사용자가 삭제되었습니다.`);
+        }
+    }
+    if (urlParams.has('error')) {
+        const error = urlParams.get('error');
+        if (error === 'cannot_delete_self') {
+            alert('본인 계정은 삭제할 수 없습니다.');
+        }
     }
 </script>
 {% endblock %}

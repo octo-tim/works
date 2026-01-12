@@ -1,7 +1,9 @@
+import datetime
+
 from database import engine, SessionLocal
 import models
 from passlib.context import CryptContext
-import datetime
+
 
 # Drop existing tables
 models.Base.metadata.drop_all(bind=engine)
@@ -12,8 +14,11 @@ models.Base.metadata.create_all(bind=engine)
 # Password hashing setup
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 def get_password_hash(password):
+    """비밀번호 해시 생성"""
     return pwd_context.hash(password)
+
 
 db = SessionLocal()
 
@@ -44,20 +49,14 @@ dist_user = models.User(
 )
 db.add(dist_user)
 
-
-
-
-
 db.commit()
 
 # Create Projects
-
 project1 = models.Project(
     name="Mobile App Redesign",
     description="Redesigning the main mobile application",
     status="In Progress",
     start_date=datetime.date(2025, 1, 1),
-
 )
 db.add(project1)
 
