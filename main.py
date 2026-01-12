@@ -762,6 +762,48 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
     return RedirectResponse(url="/admin", status_code=303)
 
 
+@app.post("/admin/users/delete_bulk", response_class=RedirectResponse)
+def delete_bulk_users(request: Request, user_ids: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
+    """사용자 일괄 삭제"""
+    try:
+        ids = [int(id.strip()) for id in user_ids.split(',') if id.strip()]
+    except ValueError:
+        return RedirectResponse(url="/admin?error=invalid_ids", status_code=303)
+    
+    if not ids:
+        return RedirectResponse(url="/admin", status_code=303)
+    
+    # 자신을 삭제 목록에서 제외
+    if current_user.id in ids:
+        ids.remove(current_user.id)
+    
+    if not ids:
+        return RedirectResponse(url="/admin?error=cannot_delete_self", status_code=303)
+    
+    deleted_count = 0
+    for user_id in ids:
+        user_to_delete = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user_to_delete:
+            continue
+        
+        # 1. 생성한 프로젝트/업무에서 creator_id 제거
+        db.query(models.Project).filter(models.Project.creator_id == user_id).update({"creator_id": None})
+        db.query(models.Task).filter(models.Task.creator_id == user_id).update({"creator_id": None})
+        
+        # 2. 할당된 업무에서 assignee_id 제거 (레거시)
+        db.query(models.Task).filter(models.Task.assignee_id == user_id).update({"assignee_id": None})
+        
+        # 3. 다대다 관계에서 제거
+        db.execute(models.project_assignees.delete().where(models.project_assignees.c.user_id == user_id))
+        db.execute(models.task_assignees.delete().where(models.task_assignees.c.user_id == user_id))
+        
+        # 4. 사용자 삭제
+        db.delete(user_to_delete)
+        deleted_count += 1
+    
+    db.commit()
+    return RedirectResponse(url=f"/admin?deleted={deleted_count}", status_code=303)
+
 
 @app.get("/projects", response_class=HTMLResponse)
 def read_projects(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
