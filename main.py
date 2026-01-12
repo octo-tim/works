@@ -2094,7 +2094,8 @@ def work_reports_page(request: Request, db: Session = Depends(get_db), current_u
     
     return templates.TemplateResponse("work_reports.html", {
         "request": request, 
-        "current_user": current_user,
+        "user": current_user,
+        "current_user": current_user,  # 호환성을 위해 둘 다 전달
         "history": history,
         "today": date.today()
     })
