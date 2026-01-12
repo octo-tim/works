@@ -415,8 +415,27 @@ def read_root(request: Request,
     tasks_todo = [t for t in tasks if t.status == 'Todo']
 
     # In Progress: Status is 'In Progress' OR (Date matches Today AND Status != 'Done')
+    # AND, strictly for the user (assignee)
     tasks_inprogress = []
+    
+    # Pre-fetch user's assigned tasks to avoid N+1 or complex filtering in Python
+    # But since we already have 'tasks' list loaded (which is filtered by department usually),
+    # we can just filter it in Python.
+    
     for t in tasks:
+        # Check if user is assigned
+        is_assigned = False
+        if t.assignee_id == current_user.id:
+            is_assigned = True
+        else:
+            for assignee in t.assignees:
+                if assignee.id == current_user.id:
+                    is_assigned = True
+                    break
+        
+        if not is_assigned:
+            continue
+
         is_active_today = False
         if t.start_date and t.due_date:
             if t.start_date <= today <= t.due_date:
@@ -479,13 +498,12 @@ def read_root(request: Request,
     today_start = datetime.combine(today, datetime.min.time())
     today_end = datetime.combine(today, datetime.max.time())
 
+    # Personalized: Only my events
     event_query = db.query(models.Event).filter(
         models.Event.start_time >= today_start,
-        models.Event.start_time <= today_end
+        models.Event.start_time <= today_end,
+        models.Event.user_id == current_user.id 
     )
-
-    if current_user.role != "admin":
-        event_query = event_query.filter(models.Event.department == current_user.department)
 
     db_events = event_query.all()
 
@@ -510,8 +528,13 @@ def read_root(request: Request,
         "tasks_done": tasks_done,
         "todays_checks": todays_checks,
         "todays_events": todays_events,  # Pass to template
-        "calendar_events": calendar_events,  # Pass to template
-
+        "calendar_events": calendar_events,
+        "projects_summary": [], # Placeholder if needed
+        "today_stats": {
+            "total": len(tasks),
+            "done": len(tasks_done),
+            "inprogress": len(tasks_inprogress)
+        },
         "users": users,
         "projects": db.query(models.Project).all(),  # Pass projects for modal
         "selected_month": target_month,
