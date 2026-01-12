@@ -1389,16 +1389,15 @@ def delete_task(task_id: int, request: Request, db: Session = Depends(get_db), c
 
 
 @app.post("/tasks/delete_bulk", response_class=RedirectResponse)
-def delete_bulk_tasks(request: Request,
+async def delete_bulk_tasks(request: Request,
                       db: Session = Depends(get_db),
                       current_user: models.User = Depends(get_current_user)):
     """업무 일괄 삭제"""
     if not current_user:
         return RedirectResponse(url="/login", status_code=303)
     
-    # 폼 데이터에서 task_ids 추출 (동기 방식)
-    import asyncio
-    form_data = asyncio.get_event_loop().run_until_complete(request.form())
+    # 폼 데이터에서 task_ids 추출 (async 방식)
+    form_data = await request.form()
     task_ids_raw = form_data.getlist('task_ids')
     
     if not task_ids_raw:
