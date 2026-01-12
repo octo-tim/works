@@ -763,7 +763,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
     db.query(models.TaskProgress).filter(models.TaskProgress.writer_id == user_id).delete()
     
     # 6. MeetingMinute 관련 데이터 정리
-    db.query(models.MeetingMinute).filter(models.MeetingMinute.writer_id == user_id).update({"writer_id": None})
+    db.query(models.MeetingMinutes).filter(models.MeetingMinutes.writer_id == user_id).update({"writer_id": None})
     
     # 7. CalendarEvent 관련 데이터 삭제
     db.query(models.CalendarEvent).filter(models.CalendarEvent.user_id == user_id).delete()
@@ -825,7 +825,7 @@ def delete_bulk_users(request: Request, user_ids: str = Form(...), db: Session =
         db.query(models.TaskProgress).filter(models.TaskProgress.writer_id == user_id).delete()
         
         # 6. MeetingMinute 관련 데이터 정리
-        db.query(models.MeetingMinute).filter(models.MeetingMinute.writer_id == user_id).update({"writer_id": None})
+        db.query(models.MeetingMinutes).filter(models.MeetingMinutes.writer_id == user_id).update({"writer_id": None})
         
         # 7. CalendarEvent 관련 데이터 삭제
         db.query(models.CalendarEvent).filter(models.CalendarEvent.user_id == user_id).delete()
