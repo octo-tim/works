@@ -1395,49 +1395,54 @@ async def delete_bulk_tasks(request: Request,
     """업무 일괄 삭제"""
     if not current_user:
         return RedirectResponse(url="/login", status_code=303)
-    
-    # 폼 데이터에서 task_ids 추출 (async 방식)
-    form_data = await request.form()
-    task_ids_raw = form_data.getlist('task_ids')
-    
-    if not task_ids_raw:
-        return RedirectResponse(url="/tasks", status_code=303)
-    
-    try:
-        task_ids = [int(id) for id in task_ids_raw if id]
-    except ValueError:
-        return RedirectResponse(url="/tasks?error=invalid_ids", status_code=303)
+    with open("debug.log", "a") as f:
+        f.write(f"[{datetime.now()}] Bulk Delete Request: user={current_user.username}, ids={task_ids}\n")
+
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
     
     if not task_ids:
+        with open("debug.log", "a") as f:
+            f.write("  -> No task_ids provided\n")
         return RedirectResponse(url="/tasks", status_code=303)
 
     try:
-        # 안전한 삭제를 위해 조회 후 삭제
         tasks = db.query(models.Task).filter(models.Task.id.in_(task_ids)).all()
+        with open("debug.log", "a") as f:
+            f.write(f"  -> Found {len(tasks)} tasks to process\n")
+        
         for t in tasks:
-            # 권한 체크: 관리자, 작성자, 담당자만 삭제 가능
             can_delete = False
             if current_user.role == "admin":
                 can_delete = True
             elif t.creator_id == current_user.id:
                 can_delete = True
-            elif t.assignee_id == current_user.id: # Legacy check
+            elif t.assignee_id == current_user.id:
                 can_delete = True
             else:
-                # Multi-assignee check
                 for assignee in t.assignees:
                     if assignee.id == current_user.id:
                         can_delete = True
                         break
             
+            with open("debug.log", "a") as f:
+                f.write(f"  -> Task {t.id} ({t.title}): can_delete={can_delete}\n")
+
             if can_delete:
                 db.delete(t)
             else:
-                print(f"[WARNING] User {current_user.username} tried to delete task {t.id} without permission")
+                with open("debug.log", "a") as f:
+                    f.write(f"  [WARNING] User {current_user.username} tried to delete task {t.id} without permission\n")
             
         db.commit()
+        with open("debug.log", "a") as f:
+            f.write("  -> Commit successful\n")
     except Exception as e:
-        print(f"Bulk Delete Tasks Error: {e}")
+        with open("debug.log", "a") as f:
+            import traceback
+            f.write(f"Bulk Delete Tasks Error: {e}\n")
+            f.write(traceback.format_exc())
+            f.write("\n")
         db.rollback()
         
     return RedirectResponse(url="/tasks", status_code=303)
