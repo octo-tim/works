@@ -57,11 +57,10 @@ def validate_file_upload(filename: str, file_size: int) -> tuple[bool, Optional[
     """파일 업로드 검증"""
     if file_size > config.MAX_FILE_SIZE:
         return False, f"파일 크기가 {config.MAX_FILE_SIZE / (1024*1024):.0f}MB를 초과합니다."
-    
+
     if filename:
         ext = os.path.splitext(filename)[1].lower()
         if ext not in config.ALLOWED_EXTENSIONS:
             return False, f"허용되지 않은 파일 형식입니다. 허용 형식: {', '.join(config.ALLOWED_EXTENSIONS)}"
-    
-    return True, None
 
+    return True, None
