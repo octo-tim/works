@@ -1802,7 +1802,9 @@ async def read_calendar(request: Request, db: Session = Depends(get_db), current
     """일정 관리 페이지"""
     if not current_user:
         return RedirectResponse(url="/login")
-    return templates.TemplateResponse("calendar.html", {"request": request, "user": current_user})
+    
+    users = db.query(models.User).all()
+    return templates.TemplateResponse("calendar.html", {"request": request, "user": current_user, "users": users})
 
 
 @app.get("/api/events")
@@ -1814,7 +1816,8 @@ def get_events(scope: str = "all", db: Session = Depends(get_db), current_user: 
     query = db.query(models.Event)
 
     if scope == "personal":
-        query = query.filter(models.Event.user_id == current_user.id)
+        # Personal scope now includes: Created by me OR Assigned to me
+        query = query.filter((models.Event.user_id == current_user.id) | (models.Event.assignee_id == current_user.id))
     elif scope == "department":
         query = query.filter(models.Event.department == current_user.department)
     # scope == 'all' returns all events (or potentially limited to visibility rules if needed)
@@ -1824,15 +1827,31 @@ def get_events(scope: str = "all", db: Session = Depends(get_db), current_user: 
     # Format for FullCalendar
     formatted_events = []
     for event in events:
+        # Determine color
+        # Blue: Created by me OR Assigned to me
+        is_mine = (event.user_id == current_user.id) or (event.assignee_id == current_user.id)
+        
+        assignee_name = event.assignee.username if event.assignee else ""
+        creator_name = event.user.username if event.user else "Unknown"
+        
+        display_title = event.title
+        if assignee_name:
+             display_title = f"[{assignee_name}] {event.title}"
+        
         formatted_events.append({
             "id": event.id,
-            "title": event.title,
+            "title": display_title,
             "start": event.start_time.isoformat() if event.start_time else None,
             "end": event.end_time.isoformat() if event.end_time else None,
             "allDay": event.is_all_day,
             "description": event.description,
-            "backgroundColor": "#3b82f6" if event.user_id == current_user.id else "#10b981",  # Blue for mine, Green for others
-            "borderColor": "#3b82f6" if event.user_id == current_user.id else "#10b981",
+            "backgroundColor": "#3b82f6" if is_mine else "#10b981",  # Blue for mine, Green for others
+            "borderColor": "#3b82f6" if is_mine else "#10b981",
+            "extendedProps": {
+                "description": event.description,
+                "assignee_id": event.assignee_id,
+                "creator_name": creator_name
+            }
         })
     return formatted_events
 
@@ -1844,6 +1863,7 @@ def create_event(
     start_time: str = Form(...),
     end_time: str = Form(...),
     is_all_day: bool = Form(False),
+    assignee_id: int = Form(None), # New field
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -1854,6 +1874,14 @@ def create_event(
     start_dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M")
     end_dt = datetime.strptime(end_time, "%Y-%m-%dT%H:%M")
 
+    # If assignee_id is not provided, default to creator? Or allow null?
+    # Usually if I register a schedule for myself, assignee is me.
+    # explicit None is fine if we want "Unassigned", but usually it's "Me".
+    # Let's default to current_user if not provided?
+    # But user might want to assign to someone else.
+    
+    final_assignee_id = assignee_id if assignee_id else current_user.id
+
     new_event = models.Event(
         title=title,
         description=description,
@@ -1861,12 +1889,12 @@ def create_event(
         end_time=end_dt,
         is_all_day=is_all_day,
         user_id=current_user.id,
+        assignee_id=final_assignee_id,
         department=current_user.department
     )
     db.add(new_event)
     db.commit()
     return {"status": "success"}
-
 
 @app.put("/api/events/{event_id}")
 def update_event(
@@ -1876,6 +1904,7 @@ def update_event(
     start_time: str = Form(...),
     end_time: str = Form(...),
     is_all_day: bool = Form(False),
+    assignee_id: int = Form(None), # New field
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -1887,8 +1916,16 @@ def update_event(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    # Permission check: Only creator or admin can update
-    if event.user_id != current_user.id and current_user.role != 'admin':
+    # Permission check: Only creator, admin, OR Assignee can update
+    can_edit = False
+    if current_user.role == 'admin':
+        can_edit = True
+    elif event.user_id == current_user.id:
+        can_edit = True
+    elif event.assignee_id == current_user.id:
+        can_edit = True
+    
+    if not can_edit:
         raise HTTPException(status_code=403, detail="Not authorized to update this event")
 
     start_dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M")
@@ -1899,6 +1936,8 @@ def update_event(
     event.start_time = start_dt
     event.end_time = end_dt
     event.is_all_day = is_all_day
+    if assignee_id:
+        event.assignee_id = assignee_id
 
     db.commit()
     return {"status": "success"}

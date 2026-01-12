@@ -170,9 +170,11 @@ class Event(Base):
     is_all_day = Column(Boolean, default=False)
 
     user_id = Column(Integer, ForeignKey("users.id"))
+    assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True) # New field
     department = Column(String, nullable=True)  # For easier department filtering
 
-    user = relationship("User", backref="events")
+    user = relationship("User", foreign_keys=[user_id], backref="created_events")
+    assignee = relationship("User", foreign_keys=[assignee_id], backref="assigned_events")
 
 
 class TodaysCheck(Base):

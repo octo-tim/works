@@ -74,6 +74,17 @@
                 <textarea name="description" rows="2"
                     class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
             </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">담당자</label>
+                <select name="assignee_id" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+                    {% for u in users %}
+                    <option value="{{ u.id }}" {% if user.id==u.id %}selected{% endif %}>{{ u.username }} ({{
+                        u.department }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">시작</label>
@@ -119,6 +130,17 @@
                 <textarea name="description" id="edit_description" rows="2"
                     class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
             </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">담당자</label>
+                <select name="assignee_id" id="edit_assignee_id"
+                    class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+                    {% for u in users %}
+                    <option value="{{ u.id }}">{{ u.username }} ({{ u.department }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">시작</label>
@@ -216,6 +238,22 @@
         document.getElementById('edit_event_id').value = event.id;
         document.getElementById('edit_title').value = event.title;
         document.getElementById('edit_description').value = event.extendedProps.description || '';
+
+        // Set Assignee
+        const assigneeSelect = document.getElementById('edit_assignee_id');
+        if (event.extendedProps.assignee_id) {
+            assigneeSelect.value = event.extendedProps.assignee_id;
+        } else {
+            // Default or empty? Maybe reset to something or leave as is (first option?)
+            assigneeSelect.value = ""; // Or select current user if we knew it? Backend defaults to current user on create. 
+            // On edit, if null, it means unassigned or legacy. Let's try to set to default or just keep as is (likely first option).
+            // Better to perhaps select the event creator if assignee is null?
+            // Actually, for simplicity, if null, we leave it or selet the first option.
+            // But let's check creator?
+            // if (event.extendedProps.user_id) ... no user_id in extendedProps yet. 
+            // Let's just rely on users provided.
+            assigneeSelect.selectedIndex = 0; // Reset
+        }
 
         // Format dates for input type="datetime-local" (YYYY-MM-DDTHH:mm)
         const formatDateTime = (date) => {
