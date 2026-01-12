@@ -1250,6 +1250,34 @@ def delete_project(project_id: int, db: Session = Depends(get_db), current_user:
         db.commit()
     return RedirectResponse(url="/projects", status_code=303)
 
+
+@app.post("/projects/delete_bulk", response_class=RedirectResponse)
+def delete_bulk_projects(request: Request, project_ids: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """프로젝트 일괄 삭제"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    try:
+        ids = [int(id.strip()) for id in project_ids.split(',') if id.strip()]
+    except ValueError:
+        return RedirectResponse(url="/projects?error=invalid_ids", status_code=303)
+    
+    if not ids:
+        return RedirectResponse(url="/projects", status_code=303)
+    
+    deleted_count = 0
+    for project_id in ids:
+        project = db.query(models.Project).filter(models.Project.id == project_id).first()
+        if project:
+            # 프로젝트에 연결된 업무들의 project_id를 null로 설정
+            db.query(models.Task).filter(models.Task.project_id == project_id).update({"project_id": None})
+            db.delete(project)
+            deleted_count += 1
+    
+    db.commit()
+    return RedirectResponse(url=f"/projects?deleted={deleted_count}", status_code=303)
+
+
 @app.post("/tasks/{task_id}/delete", response_class=RedirectResponse)
 def delete_task(task_id: int, request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not current_user: return RedirectResponse(url="/login", status_code=303)
