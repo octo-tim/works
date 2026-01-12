@@ -409,11 +409,12 @@ def read_root(request: Request,
 
     tasks = query.all()
 
-    # 본인 담당인 경우만 표시 (관리자는 전체 표시)
+    # 본인 담당인 경우만 표시 (관리자는 전체 표시 -> 관리자도 대시보드에서는 본인 것만 보도록 수정)
     def is_my_task(task, user):
         """Check if the task is assigned to the current user"""
-        if user.role == "admin":
-            return True
+        # if user.role == "admin": 
+        #    return True  <-- Removed to enforce personalization for admins too
+        
         # Check legacy single assignee
         if task.assignee_id == user.id:
             return True
