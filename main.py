@@ -1,7 +1,6 @@
-from fastapi import FastAPI, Depends, Request, Form, status, UploadFile, File, HTTPException
+from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-import shutil
 import os
 import traceback
 from fastapi.templating import Jinja2Templates
@@ -17,7 +16,6 @@ import config
 import utils
 import google.generativeai as genai
 import json
-import re
 import wbs_templates # Template Module
 import fix_production_schema # Import migration script
 
@@ -208,11 +206,11 @@ def on_startup():
                     db.rollback()
                     # 컬럼이 이미 존재하는 경우 무시
             
-            # 마이그레이션: 부서명 한글화
+            # 마이그레이션: 부서명 한글화 (파라미터 바인딩으로 SQL Injection 방지)
             for eng, kor in config.DEPARTMENT_MAPPING.items():
-                db.execute(text(f"UPDATE users SET department = '{kor}' WHERE department = '{eng}'"))
-                db.execute(text(f"UPDATE projects SET department = '{kor}' WHERE department = '{eng}'"))
-                db.execute(text(f"UPDATE tasks SET department = '{kor}' WHERE department = '{eng}'"))
+                db.execute(text("UPDATE users SET department = :kor WHERE department = :eng"), {"kor": kor, "eng": eng})
+                db.execute(text("UPDATE projects SET department = :kor WHERE department = :eng"), {"kor": kor, "eng": eng})
+                db.execute(text("UPDATE tasks SET department = :kor WHERE department = :eng"), {"kor": kor, "eng": eng})
             db.commit()
             
             populate_db(db)
@@ -255,7 +253,6 @@ def health_check_db(db: Session = Depends(get_db)):
         user_count = db.query(models.User).count()
         return f"<h1>✅ Database is Healthy</h1><p>Connection successful.</p><p>Total Users: {user_count}</p><p>DB URL: {engine.url}</p>"
     except Exception as e:
-        import traceback
         error_msg = "".join(traceback.format_exception(None, e, e.__traceback__))
         print(f"DB Health Error: {error_msg}")
         return f"<h1>❌ Database Error</h1><pre>{error_msg}</pre>"
@@ -371,13 +368,6 @@ def read_root(request: Request,
     # Serialize for Calendar
     calendar_events = []
     for t in tasks:
-        # Determine color
-        color = "#6B7280" # Gray (Todo)
-        if t.status == "In Progress":
-            color = "#3B82F6" # Blue
-        elif t.status == "Done":
-            color = "#10B981" # Green
-        
         # Determine dates
         start = t.start_date
         end = t.due_date
@@ -454,7 +444,6 @@ def read_root(request: Request,
         "todays_events": todays_events, # Pass to template
         "calendar_events": calendar_events, # Pass to template
 
-        "users": users,
         "users": users,
         "projects": db.query(models.Project).all(), # Pass projects for modal
         "selected_month": target_month,
@@ -658,8 +647,6 @@ def update_task_status(task_id: int, status: str = Form(...), db: Session = Depe
         db.commit()
     return RedirectResponse(url="/", status_code=303)
 
-    return RedirectResponse(url="/", status_code=303)
-
 
 @app.post("/todays_check/create", response_class=RedirectResponse)
 def create_todays_check(receiver_id: int = Form(...), content: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -800,7 +787,6 @@ def read_projects(request: Request, db: Session = Depends(get_db), current_user:
         })
     except Exception as e:
         print(f"Project Page Error: {e}")
-        import traceback
         traceback.print_exc()
         return HTMLResponse(content=f"<h1>Internal Server Error</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", status_code=500)
 
@@ -1010,7 +996,6 @@ def read_tasks_page(request: Request, db: Session = Depends(get_db), current_use
         "scheduled": tasks_scheduled,
         "inprogress": tasks_inprogress,
         "completed": tasks_done, 
-        "users": users,
         "users": users,
         "projects": projects
     })
@@ -1407,14 +1392,13 @@ async def create_meeting_minute(
                 
             except Exception as e:
                 print(f"[ERROR] Failed to create AI tasks: {e}")
-                import traceback
                 error_trace = traceback.format_exc()
                 print(error_trace)
                 try:
                     with open(log_path, "a") as f:
                         f.write(f"[ERROR] Exception: {e}\n{error_trace}\n")
-                except:
-                    pass
+                except Exception as log_error:
+                    print(f"[WARNING] Failed to write to log file: {log_error}")
                 # Don't fail the whole request, just log it
 
 
@@ -1450,7 +1434,6 @@ async def create_meeting_minute(
         
     except Exception as e:
         print(f"Meeting Minute Save Error: {e}")
-        import traceback
         traceback.print_exc()
         return HTMLResponse(content=f"<h1>Internal Server Error</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", status_code=500)
 
