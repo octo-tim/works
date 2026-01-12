@@ -409,12 +409,6 @@ def read_root(request: Request,
 
     tasks = query.all()
 
-    today = datetime.now().date()
-
-    # Organized for Dashboard
-    tasks_todo = [t for t in tasks if t.status == 'Todo']
-
-    # In Progress: Status is 'In Progress' OR (Date matches Today AND Status != 'Done')
     # 본인 담당인 경우만 표시 (관리자는 전체 표시)
     def is_my_task(task, user):
         """Check if the task is assigned to the current user"""
@@ -432,16 +426,20 @@ def read_root(request: Request,
             return True
         return False
     
+    # Filter tasks to only those relevant to the current user (Assignee or Creator)
+    # Admin sees everything (handled in is_my_task)
+    tasks = [t for t in tasks if is_my_task(t, current_user)]
+
+    today = datetime.now().date()
+
+    # Organized for Dashboard
+    tasks_todo = [t for t in tasks if t.status == 'Todo']
+
+    # In Progress: Status is 'In Progress' OR (Date matches Today AND Status != 'Done')
     tasks_inprogress = []
     
-    # Pre-fetch user's assigned tasks to avoid N+1 or complex filtering in Python
-    # But since we already have 'tasks' list loaded (which is filtered by department usually),
-    # we can just filter it in Python.
-    
     for t in tasks:
-        # 본인 담당 업무만 필터링
-        if not is_my_task(t, current_user):
-            continue
+        # tasks list is already filtered by is_my_task above.
 
         is_active_today = False
         if t.start_date and t.due_date:
