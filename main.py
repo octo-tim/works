@@ -755,7 +755,27 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
     db.execute(models.project_assignees.delete().where(models.project_assignees.c.user_id == user_id))
     db.execute(models.task_assignees.delete().where(models.task_assignees.c.user_id == user_id))
     
-    # 4. 사용자 삭제
+    # 4. TodaysCheck 관련 데이터 삭제 (sender_id, receiver_id)
+    db.query(models.TodaysCheck).filter(models.TodaysCheck.sender_id == user_id).delete()
+    db.query(models.TodaysCheck).filter(models.TodaysCheck.receiver_id == user_id).delete()
+    
+    # 5. TaskProgress 관련 데이터 삭제
+    db.query(models.TaskProgress).filter(models.TaskProgress.writer_id == user_id).delete()
+    
+    # 6. MeetingMinute 관련 데이터 정리
+    db.query(models.MeetingMinute).filter(models.MeetingMinute.writer_id == user_id).update({"writer_id": None})
+    
+    # 7. CalendarEvent 관련 데이터 삭제
+    db.query(models.CalendarEvent).filter(models.CalendarEvent.user_id == user_id).delete()
+    
+    # 8. WorkTemplate 관련 데이터 정리
+    db.query(models.WorkTemplate).filter(models.WorkTemplate.creator_id == user_id).update({"creator_id": None})
+    db.query(models.WorkTemplate).filter(models.WorkTemplate.editor_id == user_id).update({"editor_id": None})
+    
+    # 9. WorkReport 관련 데이터 삭제
+    db.query(models.WorkReport).filter(models.WorkReport.user_id == user_id).delete()
+    
+    # 10. 사용자 삭제
     db.delete(user_to_delete)
     db.commit()
     
@@ -797,7 +817,27 @@ def delete_bulk_users(request: Request, user_ids: str = Form(...), db: Session =
         db.execute(models.project_assignees.delete().where(models.project_assignees.c.user_id == user_id))
         db.execute(models.task_assignees.delete().where(models.task_assignees.c.user_id == user_id))
         
-        # 4. 사용자 삭제
+        # 4. TodaysCheck 관련 데이터 삭제 (sender_id, receiver_id)
+        db.query(models.TodaysCheck).filter(models.TodaysCheck.sender_id == user_id).delete()
+        db.query(models.TodaysCheck).filter(models.TodaysCheck.receiver_id == user_id).delete()
+        
+        # 5. TaskProgress 관련 데이터 삭제
+        db.query(models.TaskProgress).filter(models.TaskProgress.writer_id == user_id).delete()
+        
+        # 6. MeetingMinute 관련 데이터 정리
+        db.query(models.MeetingMinute).filter(models.MeetingMinute.writer_id == user_id).update({"writer_id": None})
+        
+        # 7. CalendarEvent 관련 데이터 삭제
+        db.query(models.CalendarEvent).filter(models.CalendarEvent.user_id == user_id).delete()
+        
+        # 8. WorkTemplate 관련 데이터 정리
+        db.query(models.WorkTemplate).filter(models.WorkTemplate.creator_id == user_id).update({"creator_id": None})
+        db.query(models.WorkTemplate).filter(models.WorkTemplate.editor_id == user_id).update({"editor_id": None})
+        
+        # 9. WorkReport 관련 데이터 삭제
+        db.query(models.WorkReport).filter(models.WorkReport.user_id == user_id).delete()
+        
+        # 10. 사용자 삭제
         db.delete(user_to_delete)
         deleted_count += 1
     
