@@ -415,8 +415,29 @@ def read_root(request: Request,
     tasks_todo = [t for t in tasks if t.status == 'Todo']
 
     # In Progress: Status is 'In Progress' OR (Date matches Today AND Status != 'Done')
+    # 본인 담당인 경우만 표시 (관리자는 전체 표시)
+    def is_my_task(task, user):
+        """Check if the task is assigned to the current user"""
+        if user.role == "admin":
+            return True
+        # Check legacy single assignee
+        if task.assignee_id == user.id:
+            return True
+        # Check multi-assignees
+        for assignee in task.assignees:
+            if assignee.id == user.id:
+                return True
+        # Check if user is the creator
+        if task.creator_id == user.id:
+            return True
+        return False
+    
     tasks_inprogress = []
     for t in tasks:
+        # 본인 담당 업무만 필터링
+        if not is_my_task(t, current_user):
+            continue
+            
         is_active_today = False
         if t.start_date and t.due_date:
             if t.start_date <= today <= t.due_date:
@@ -484,13 +505,23 @@ def read_root(request: Request,
         models.Event.start_time <= today_end
     )
 
+    # 본인 담당 일정만 표시 (관리자는 전체 표시)
     if current_user.role != "admin":
-        event_query = event_query.filter(models.Event.department == current_user.department)
+        event_query = event_query.filter(
+            (models.Event.user_id == current_user.id) |
+            (models.Event.department == current_user.department)
+        )
 
     db_events = event_query.all()
 
     todays_events = []
     for e in db_events:
+        # 본인 담당 일정만 표시 (관리자는 전체 표시)
+        if current_user.role != "admin":
+            # 본인이 생성한 일정이거나 본인 부서의 일정만 표시
+            if e.user_id != current_user.id and e.department != current_user.department:
+                continue
+        
         todays_events.append({
             "title": e.title,
             "description": e.description,
