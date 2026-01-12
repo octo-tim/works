@@ -76,8 +76,8 @@ class Task(Base):
     assignee = relationship("User", foreign_keys=[assignee_id]) # Legacy single assignee
     creator = relationship("User", foreign_keys=[creator_id])
     assignees = relationship("User", secondary=task_assignees, backref="tasks_multi_assigned")
-    files = relationship("TaskFile", back_populates="task")
-    progresses = relationship("TaskProgress", back_populates="task", order_by="desc(TaskProgress.date)")
+    files = relationship("TaskFile", back_populates="task", cascade="all, delete-orphan")
+    progresses = relationship("TaskProgress", back_populates="task", order_by="desc(TaskProgress.date)", cascade="all, delete-orphan")
 
 
 class TaskFile(Base):

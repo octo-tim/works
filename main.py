@@ -264,6 +264,62 @@ def health_check_db(db: Session = Depends(get_db)):
 
 # --- Page Routes ---
 
+@app.get("/mypage", response_class=HTMLResponse)
+def read_mypage(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """마이페이지"""
+    if not current_user:
+        return RedirectResponse(url="/login")
+    
+    return templates.TemplateResponse("mypage.html", {
+        "request": request, 
+        "user": current_user
+    })
+
+@app.post("/mypage/update", response_class=RedirectResponse)
+def update_mypage_profile(request: Request, 
+                          email: str = Form(None), 
+                          phone: str = Form(None), 
+                          position: str = Form(None),
+                          db: Session = Depends(get_db), 
+                          current_user: models.User = Depends(get_current_user)):
+    """마이페이지 프로필 업데이트"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    current_user.email = email
+    current_user.phone = phone
+    current_user.position = position
+    db.commit()
+    
+    return RedirectResponse(url="/mypage?success=true", status_code=303)
+
+
+@app.post("/mypage/password", response_class=RedirectResponse)
+def update_mypage_password(request: Request, 
+                           current_password: str = Form(...), 
+                           new_password: str = Form(...), 
+                           confirm_password: str = Form(...), 
+                           db: Session = Depends(get_db), 
+                           current_user: models.User = Depends(get_current_user)):
+    """마이페이지 비밀번호 변경"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    # 1. 현재 비밀번호 확인
+    if not utils.verify_password(current_password, current_user.password_hash):
+        return RedirectResponse(url="/mypage?error=incorrect_password", status_code=303)
+
+    # 2. 새 비밀번호 일치 확인
+    if new_password != confirm_password:
+        return RedirectResponse(url="/mypage?error=password_mismatch", status_code=303)
+
+    # 3. 비밀번호 업데이트
+    current_user.password_hash = utils.get_password_hash(new_password)
+    db.commit()
+    
+    return RedirectResponse(url="/mypage?success=true", status_code=303)
+
+
 
 # --- Auth Routes ---
 @app.get("/login", response_class=HTMLResponse)
@@ -2109,12 +2165,16 @@ def work_reports_page(request: Request, db: Session = Depends(get_db), current_u
     # Check for existing reports to list in sidebar or history tab
     history = db.query(models.WorkReport).filter(models.WorkReport.user_id == current_user.id).order_by(models.WorkReport.created_at.desc()).all()
     
-    return templates.TemplateResponse("work_reports.html", {
+    response = templates.TemplateResponse("work_reports.html", {
         "request": request, 
         "current_user": current_user,
         "history": history,
         "today": date.today()
     })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.post("/api/work-reports/generate")
 async def generate_work_report_endpoint(
