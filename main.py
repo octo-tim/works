@@ -910,7 +910,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
     db.query(models.MeetingMinutes).filter(models.MeetingMinutes.writer_id == user_id).update({"writer_id": None})
 
     # 7. CalendarEvent 관련 데이터 삭제
-    db.query(models.CalendarEvent).filter(models.CalendarEvent.user_id == user_id).delete()
+    db.query(models.Event).filter(models.Event.user_id == user_id).delete()
 
     # 8. WorkTemplate 관련 데이터 정리
     db.query(models.WorkTemplate).filter(models.WorkTemplate.creator_id == user_id).update({"creator_id": None})
@@ -972,7 +972,7 @@ def delete_bulk_users(request: Request, user_ids: str = Form(...), db: Session =
         db.query(models.MeetingMinutes).filter(models.MeetingMinutes.writer_id == user_id).update({"writer_id": None})
 
         # 7. CalendarEvent 관련 데이터 삭제
-        db.query(models.CalendarEvent).filter(models.CalendarEvent.user_id == user_id).delete()
+        db.query(models.Event).filter(models.Event.user_id == user_id).delete()
 
         # 8. WorkTemplate 관련 데이터 정리
         db.query(models.WorkTemplate).filter(models.WorkTemplate.creator_id == user_id).update({"creator_id": None})
