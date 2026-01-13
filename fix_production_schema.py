@@ -67,6 +67,12 @@ def fix_schema(db_url=None):
             add_columns("users", columns)
             add_columns("work_templates", work_template_columns)
 
+            # Fix events table
+            events_columns = [
+                ("assignee_id", "INTEGER"),
+            ]
+            add_columns("events", events_columns)
+
             conn.commit()
             log("Schema update finished.")
 
